@@ -14,6 +14,11 @@ import time
 
 HERE = Path(__file__).resolve().parent
 OUT = HERE / 'out'
+sys.path.insert(0, str(HERE / 'scripts'))
+import gameview  # noqa: E402
+import prepare as dump  # noqa: E402  (param.sfo)
+
+SUPPORTED = {'CUSA00473': '01.28'}  # title ID: the version LBPPC's patches are made for
 MSYS2_BIN = Path(r'C:\msys64\clang64\bin')  # development builds: SDL3 and the other CLANG64 DLLs
 RESTART_EXIT_CODE = 75  # the in-game menu's Apply and restart (probe.c runtime_restart)
 
@@ -129,8 +134,25 @@ def main(argv):
     if not argv or argv[0].startswith('-'):
         sys.exit(__doc__)
     game = Path(argv[0]).resolve()
-    if not (game / 'eboot.bin').is_file():
-        sys.exit(f'No eboot.bin in {game}')
+    # The game as the PS4 sees it: the update over the game, each with its Sc0 (scripts/gameview.py). LBPPC_UPDATE
+    # is the launcher's Update folder; without one, an update folder beside the game (CUSA00473-UPDATE) is used.
+    update = Path(os.environ['LBPPC_UPDATE']).resolve() if os.environ.get('LBPPC_UPDATE') else gameview.find_update(game)
+    layers = gameview.layers(game, update)
+    os.environ['LBPPC_APP0_LAYERS'] = gameview.encode(layers)
+    view = gameview.GameView(game, layer_list=layers)
+    print('LBPPC: game files from ' + ', '.join(f'{folder}' + (f' (for {prefix})' if prefix else '')
+                                                for prefix, folder in layers), flush=True)
+    if not (view / 'eboot.bin').is_file():
+        sys.exit(f'No eboot.bin in {game}' + (f' or {update}' if update else ''))
+    # Only the version the patches are made for runs: another one has different code at every patched spot.
+    try:
+        info = dump.sfo((view / 'sce_sys/param.sfo').read_bytes())
+    except (OSError, ValueError):
+        info = {}
+    title, version = info.get('TITLE_ID', '?'), info.get('APP_VER', '?')
+    if title in SUPPORTED and version != SUPPORTED[title]:
+        sys.exit(f'LBPPC: this copy of LittleBigPlanet 3 is version {version}; LBPPC needs version {SUPPORTED[title]}. '
+                 'Choose the 1.28 update in the launcher (Update folder), or update your copy.')
     # Packaged releases keep the runtime in bin/; development builds in out/.
     # A release ships the game as bin/LBPPC-Game.exe; a checkout builds out/bb-probe.exe.
     probe = HERE / 'bin' / 'LBPPC-Game.exe' if (HERE / 'bin' / 'LBPPC-Game.exe').is_file() else OUT / 'bb-probe.exe'
@@ -142,7 +164,7 @@ def main(argv):
     clear_download_cache(user)
     script('prepare.py', game, '--out', OUT)
     # The game's own modules (LBP3's FMOD plugins) are linked too; sceKernelLoadStartModule hands them out.
-    plugins = sorted(p.relative_to(game).as_posix() for p in game.glob('gamedata_orbis/spu/*.prx'))
+    plugins = view.glob('gamedata_orbis/spu/*.prx')
     script('link_modules.py', game, '--out', OUT, '--modules', 'libc.prx', 'libSceFios2.prx', *plugins)
     script('content_profile.py', game, '--out', OUT)
     # Quit Game in the pause menu: the game files it changes are shown changed by the runtime (out/file_edits.bin).

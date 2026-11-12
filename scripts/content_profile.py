@@ -4,6 +4,7 @@ import json
 import struct
 from pathlib import Path
 from prepare import sfo
+import gameview
 
 
 def prepare(game, out, sku='full'):
@@ -23,4 +24,4 @@ if __name__=='__main__':
     p.add_argument('game',type=Path)
     p.add_argument('--out',type=Path,default=Path(__file__).resolve().parent.parent/'out')
     p.add_argument('--sku',choices=['full','trial'],default='full')
-    a=p.parse_args();prepare(a.game,a.out,a.sku)
+    a=p.parse_args();prepare(gameview.view(a.game),a.out,a.sku)

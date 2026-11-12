@@ -23,6 +23,8 @@ import struct
 import zlib
 from pathlib import Path
 
+import gameview
+
 SCRIPT_PATH = b'gamedata/scripts/modaloverlaystatemainmenu.ff'
 SCRIPT_SHA1 = bytes.fromhex('50500623d5a50337d172c5c8f21f15407b894e1c')  # the 1.28 patch's
 FARC = 'patch_001.farc'
@@ -232,7 +234,7 @@ if __name__ == '__main__':
     a = p.parse_args()
     # The game starts without the button rather than not at all.
     try:
-        prepare(a.game, a.out)
+        prepare(gameview.view(a.game), a.out)
     except Exception as error:  # noqa: BLE001
         (a.out / 'file_edits.bin').unlink(missing_ok=True)
         print(f'Quit Game: not added ({type(error).__name__}: {error})')

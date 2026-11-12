@@ -67,6 +67,7 @@ int32_t runtime_thread_spawn(void** out, void* PS4_SYSV_ABI (*entry)(void*), voi
                              uint64_t stack, const char* name);
 int32_t runtime_thread_join_spawned(void* thread, void** result);
 [[noreturn]] void runtime_thread_exit(void* value);
+int runtime_file_translate(const char* guest, char* out, size_t size);
 }
 
 // ---- Kernel ---------------------------------------------------------------------------------
@@ -408,7 +409,11 @@ public:
         info.app_ver = app_ver ? app_ver : "";
         info.game_folder = app0 ? app0 : "";
         info.initialized = true;
-        info.npCommIds = ReadNpCommIds(info.game_folder / "sce_sys" / "npbind.dat");
+        // lbppc: through the game's layers, so an update's or a separate Sc0 folder's npbind.dat counts.
+        char npbind[1024];
+        info.npCommIds = ReadNpCommIds(runtime_file_translate("/app0/sce_sys/npbind.dat", npbind, sizeof(npbind)) == 0
+                                           ? std::filesystem::path(npbind)
+                                           : info.game_folder / "sce_sys" / "npbind.dat");
     }
 
 private:

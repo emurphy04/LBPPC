@@ -1250,7 +1250,14 @@ static void quit_menu_install(void) {
     const uint64_t site=0x839ac3, lookup=0x7e3490;
     int32_t rel;
     memcpy(&rel,image+site+1,4);
-    if (image[site]!=0xe8 || site+5+(int64_t)rel!=lookup) { fputs("Quit Game: unexpected game code, not added\n",stderr); return; }
+    if (image[site]!=0xe8 || site+5+(int64_t)rel!=lookup) {
+        /* The executable isn't LittleBigPlanet 3 1.28 (US), which every patch here is made for: stop with a message the
+         * player can act on, rather than at the first system call that version makes and this one doesn't. Often a
+         * merge that took the update's param.sfo but the base game's eboot.bin. */
+        fputs("LBPPC: this copy's eboot.bin isn't LittleBigPlanet 3 version 1.28 (US). LBPPC runs only that version: choose "
+              "the 1.28 update in the launcher (Update folder), or check how the update was merged into your copy.\n",stderr);
+        exit(3);
+    }
     unsigned char *s=near_image_alloc();
     if (!s) { fputs("Quit Game: no memory near the image\n",stderr); return; }
     /* jmp [rip+0] to quit_menu_translate */
@@ -2511,7 +2518,9 @@ int main(int argc, char **argv) {
     if (app0) {
         runtime_file_configure(app0, user_dir ? user_dir : "user");
         char sfo[4096], id[16]="";
-        snprintf(sfo,sizeof(sfo),"%s/sce_sys/param.sfo",app0);
+        /* Through the game's layers (an update's or Sc0's param.sfo when there is one; runtime_file.c). */
+        if (runtime_file_translate("/app0/sce_sys/param.sfo",sfo,sizeof(sfo)))
+            snprintf(sfo,sizeof(sfo),"%s/sce_sys/param.sfo",app0);
         if (sfo_value(sfo,"INSTALL_DIR_SAVEDATA",id,sizeof(id),NULL) || sfo_value(sfo,"TITLE_ID",id,sizeof(id),NULL))
             runtime_savedata_configure(id);
         char serial[16]="", title[128]="", version[16]="";
@@ -2657,7 +2666,8 @@ int main(int argc, char **argv) {
     }
     char title[128]="LBPPC", serial[16]="UNKNOWN", sfo[4096];
     uint32_t attributes=0;
-    snprintf(sfo,sizeof(sfo),"%s/sce_sys/param.sfo",app0 ? app0 : ".");
+    if (!app0 || runtime_file_translate("/app0/sce_sys/param.sfo",sfo,sizeof(sfo)))
+        snprintf(sfo,sizeof(sfo),"%s/sce_sys/param.sfo",app0 ? app0 : ".");
     sfo_value(sfo,"TITLE",title,sizeof(title),NULL);
     sfo_value(sfo,"TITLE_ID",serial,sizeof(serial),NULL);
     sfo_value(sfo,"ATTRIBUTE",NULL,0,&attributes);

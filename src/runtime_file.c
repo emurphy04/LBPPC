@@ -191,6 +191,7 @@ static int64_t edited_pread(const FileEdit *e,int h,void *buffer,uint64_t size,i
     return (int64_t)done;
 }
 
+static void load_layers(void);
 static char user_root[512]="user";
 const char *runtime_file_user_dir(void) { return user_root; }
 void runtime_file_configure(const char *app0,const char *user) {
@@ -199,6 +200,7 @@ void runtime_file_configure(const char *app0,const char *user) {
     snprintf(user_root,sizeof(user_root),"%s",user);
     runtime_file_mount("/app0",app0);
     runtime_file_mount("/hostapp",app0);
+    load_layers();
     const char *writable[]={"temp0","download0","data"};
     mkdir(user,0755);
     for (int i=0;i<3;++i) {
@@ -207,6 +209,35 @@ void runtime_file_configure(const char *app0,const char *user) {
         char guest[32]; snprintf(guest,sizeof(guest),"/%s",writable[i]);
         runtime_file_mount(guest,path);
     }
+}
+
+/* lbppc: the game's files from several folders, as the PS4 sees them (LBPPC_APP0_LAYERS, run.py and
+ * scripts/gameview.py): an update over the game, each with its Sc0 for sce_sys/. A path under /app0 (or /hostapp)
+ * is read from the first layer that has it; a directory lists every layer's entries once. */
+typedef struct { char prefix[16]; char host[512]; } Layer;
+static Layer layers[8];
+static size_t layer_count;
+static void load_layers(void) {
+    const char *spec=getenv("LBPPC_APP0_LAYERS");
+    for (const char *p=spec;p && *p && layer_count<8;) {
+        const char *end=strchr(p,'*'); size_t n=end ? (size_t)(end-p) : strlen(p);
+        const char *bar=memchr(p,'|',n);
+        if (bar && (size_t)(bar-p)<sizeof(layers[0].prefix) && n-(size_t)(bar-p)-1<sizeof(layers[0].host)) {
+            Layer *l=&layers[layer_count++];
+            memcpy(l->prefix,p,(size_t)(bar-p)); l->prefix[bar-p]=0;
+            memcpy(l->host,bar+1,n-(size_t)(bar-p)-1); l->host[n-(size_t)(bar-p)-1]=0;
+            for (char *c=l->host;*c;++c) if (*c=='\\') *c='/';
+            printf("Runtime: game files layer %zu: %s%s%s\n",layer_count,l->host,l->prefix[0] ? " for " : "",l->prefix);
+        }
+        p=end ? end+1 : p+n;
+    }
+}
+/* The host path of `rel` (after /app0, "" or "/x/y") in layer `l`, or 0 when the layer doesn't cover it. */
+static int layer_path(const Layer *l,const char *rel,char *out,size_t size) {
+    size_t n=strlen(l->prefix);
+    if (!n) return (size_t)snprintf(out,size,"%s%s",l->host,rel)<size;
+    if (rel[0]!='/' || strncmp(rel+1,l->prefix,n) || (rel[1+n] && rel[1+n]!='/')) return 0;
+    return (size_t)snprintf(out,size,"%s%s",l->host,rel+1+n)<size;
 }
 /* Resolve a guest path to a host path; returns 0 or a host errno. */
 static int translate(const char *guest,char *out,size_t size) {
@@ -225,7 +256,19 @@ static int translate(const char *guest,char *out,size_t size) {
     int result=0;
     if (!m) result=ENOENT;
     else if ((size_t)snprintf(out,size,"%s%s",m->host,buffer+best)>=size) result=ENAMETOOLONG;
+    const int layered=!result && layer_count && (!strcmp(m->guest,"/app0") || !strcmp(m->guest,"/hostapp"));
+    char rel[1024];
+    if (layered) snprintf(rel,sizeof(rel),"%s",buffer+best);
     pthread_mutex_unlock(&lock);
+    if (layered) {
+        for (size_t i=0;i<layer_count;++i) {
+            char candidate[1024]; HostStat st;
+            if (layer_path(&layers[i],rel,candidate,sizeof(candidate)) && !host_stat(candidate,&st)) {
+                snprintf(out,size,"%s",candidate);
+                break;
+            }
+        }
+    }
     if (!result && strstr(out,"/dvdroot_ps4/")) {
         const char *language=getenv("BB_LANGUAGE");
         if (language && !strcmp(language,"17")) {
@@ -284,6 +327,7 @@ static int host_flags(int flags) {
     return r|O_CLOEXEC;
 }
 static void free_listing(Listing *l) { if (l) { free(l->names); free(l->offsets); free(l->types); free(l); } }
+static Listing *list_directory(const char *path);
 static Listing *list_directory(const char *path) {
     DIR *d=opendir(path);
     if (!d) return NULL;
@@ -452,6 +496,35 @@ static int commit_file(const File *f) {
     return 0;
 }
 /* All operations return >=0 or -(host errno); wrappers adapt the convention. */
+/* A directory of the game: its entries in every layer, each name once (the first layer's type). */
+static Listing *list_layers(const char *guest,const char *path) {
+    Listing *merged=list_directory(path);
+    if (!layer_count || !merged || !game_path(guest)) return merged;
+    const char *rel=!strncmp(guest,"/app0",5) ? guest+5 : !strncmp(guest,"/hostapp",8) ? guest+8 : NULL;
+    if (!rel) return merged;
+    size_t bytes=merged->count ? merged->offsets[merged->count-1]+strlen(merged->names+merged->offsets[merged->count-1])+1 : 0;
+    for (size_t i=0;i<layer_count;++i) {
+        char other[1024];
+        if (!layer_path(&layers[i],rel,other,sizeof(other)) || !strcmp(other,path)) continue;
+        Listing *l=list_directory(other);
+        for (size_t j=0;l && j<l->count;++j) {
+            const char *name=l->names+l->offsets[j];
+            int seen=0;
+            for (size_t k=0;k<merged->count && !seen;++k) seen=!strcmp(merged->names+merged->offsets[k],name);
+            if (seen) continue;
+            size_t n=strlen(name)+1;
+            merged->names=realloc(merged->names,bytes+n);
+            merged->offsets=realloc(merged->offsets,(merged->count+1)*sizeof(size_t));
+            merged->types=realloc(merged->types,merged->count+1);
+            if (!merged->names || !merged->offsets || !merged->types) { fputs("Out of memory listing directory\n",stderr); exit(1); }
+            memcpy(merged->names+bytes,name,n);
+            merged->offsets[merged->count]=bytes; merged->types[merged->count]=l->types[j];
+            ++merged->count; bytes+=n;
+        }
+        free_listing(l);
+    }
+    return merged;
+}
 static int64_t do_open(const char *guest,int flags,int mode) {
     if (game_path(guest) && (flags & (3|0x8|0x200|0x400|0x800))) return -EROFS;
     char path[1024];
@@ -466,7 +539,7 @@ static int64_t do_open(const char *guest,int flags,int mode) {
     int host=-1;
     if (!host_stat(path,&s) && S_ISDIR(s.st_mode)) {
         if (flags&3) return -EISDIR;
-        if (!(dir=list_directory(path))) return -EACCES;
+        if (!(dir=list_layers(guest,path))) return -EACCES;
     } else if (flags&0x20000) {
         e=errno==ENOENT ? ENOENT : ENOTDIR;
         if (e==ENOENT) { ++missing; printf("Runtime: open(%s) -> not found\n",guest); }
@@ -512,7 +585,7 @@ static int64_t do_open(const char *guest,int flags,int mode) {
     }
     struct stat s;
     Listing *dir=NULL;
-    if (!fstat(host,&s) && S_ISDIR(s.st_mode)) dir=list_directory(path);
+    if (!fstat(host,&s) && S_ISDIR(s.st_mode)) dir=list_layers(guest,path);
 #endif
     const FileEdit *edit=dir || (flags&3) ? NULL : edit_for(guest,(uint64_t)s.st_size);
     pthread_mutex_lock(&lock);

@@ -22,7 +22,7 @@ import sys
 import threading
 import tkinter as tk
 import webbrowser
-from tkinter import filedialog, font as tkfont, ttk
+from tkinter import filedialog, font as tkfont, messagebox, ttk
 
 from PIL import Image, ImageTk
 
@@ -36,6 +36,7 @@ BIN = ROOT / 'bin' if (ROOT / 'bin' / 'LBPPC-Game.exe').is_file() else ROOT / 'o
 if not FROZEN:
     sys.path.insert(0, str(ROOT / 'scripts'))  # frozen, PyInstaller bundles the module
 import online_accounts  # noqa: E402
+import gameview  # noqa: E402
 import ui_scale  # noqa: E402
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import lbppc_theme as theme  # noqa: E402
@@ -91,7 +92,7 @@ OVERLAY = [('show_fps', 'Frame rate', False), ('show_frame_times', 'Frame times'
            ('show_gpu', 'GPU usage', False), ('show_cpu', 'CPU usage', False), ('show_ram', 'RAM usage', False),
            ('show_fps_graph', 'Frame time graph', False), ('graph_game_frames', 'Graph the game\'s own frames', True),
            ('counter_colors', 'Colour-coded values', True)]
-DEFAULTS = {'game': '', 'resolution': '1920x1080', 'display': 'borderless', 'frame_gen': 'dlss', 'latency': 'on',
+DEFAULTS = {'game': '', 'update': '', 'resolution': '1920x1080', 'display': 'borderless', 'frame_gen': 'dlss', 'latency': 'on',
             'upscaling': 'off', 'sharpening': 'medium', 'beta_notice_seen': False,
             'online': False, 'online_name': '', 'password': '',
             'diagnostics': {key: on for key, _env, _title, _hint, on in DIAGNOSTICS},
@@ -129,18 +130,27 @@ def read_sfo(path):
         return {}
 
 
-def check_game(folder):
-    """(ok, description) of a game folder."""
+def check_game(folder, update=''):
+    """(ok, description) of a game folder and its update (chosen, or found beside it), read as run.py will: the update
+    over the game, each with its Sc0 (scripts/gameview.py)."""
     if not folder:
         return False, "Choose your game's folder (the one holding eboot.bin)."
     game = Path(folder)
-    if not (game / 'eboot.bin').is_file():
-        return False, 'No eboot.bin in this folder.'
-    sfo = read_sfo(game / 'sce_sys' / 'param.sfo')
+    update = Path(update) if update else gameview.find_update(game)
+    view = gameview.GameView(game, update)
+    if not (view / 'eboot.bin').is_file():
+        return False, 'No eboot.bin in this folder' + (' or its update.' if update else '.')
+    sfo = read_sfo(view / 'sce_sys/param.sfo')
     title_id, version = sfo.get('TITLE_ID', '?'), sfo.get('APP_VER', '?')
+    with_update = f' with its update' if update else ''
+    if title_id == 'CUSA00473' and version != '01.28':
+        return False, f'Version {version}: LBPPC needs the 1.28 update. Choose it with Update...'
     if title_id not in ('CUSA00473', '?'):
         return True, f'{title_id} version {version}: other regions or editions are untested.'
-    return True, f'{title_id} version {version}, ready to play'
+    missing = [name for name in ('npbind.dat', 'playgo-chunk.dat') if not (view / f'sce_sys/{name}').is_file()]
+    if missing:
+        return True, f'{title_id} {version}{with_update}, ready. Missing {" and ".join(missing)}: online co-op won\'t work'
+    return True, f'{title_id} version {version}{with_update}, ready to play'
 
 
 def ini_frame_gen():
@@ -757,8 +767,11 @@ class Launcher(tk.Tk):
         entry = field(self, self.game)
         entry.bind('<FocusOut>', lambda _e: self.refresh_game())
         entry.bind('<Return>', lambda _e: self.refresh_game())
-        scene.widget(entry, x + 20, y + 46, w - 180, 30)
-        Tab(scene, 'Browse...', self.browse, x + w - 20, y + 61, 'e', size=14, tilt=3)
+        scene.widget(entry, x + 20, y + 46, w - 300, 30)
+        browse = Tab(scene, 'Browse...', self.browse, x + w - 20, y + 61, 'e', size=14, tilt=3)
+        # The 1.28 update, when it is a folder of its own (CUSA00473-UPDATE beside the game is found without this).
+        Tab(scene, 'Update...', self.choose_update, browse.cx - browse.width / 2 - 12, y + 61, 'e', size=14, tilt=-2)
+        self.update_folder = self.settings.get('update', '')
         self.status_tag_y = y + 84
 
         # Graphics: the choices in two columns
@@ -852,10 +865,12 @@ class Launcher(tk.Tk):
 
     def draw_banner(self):
         game = self.settings['game']
-        art = Path(game) / 'sce_sys' / 'pic1.png' if game else None
+        # Through the update and Sc0 folders, as the game reads them (scripts/gameview.py).
+        view = gameview.GameView(game, self.settings.get('update') or gameview.find_update(game)) if game else None
+        art = view / 'sce_sys/pic1.png' if view else None
         self.scene.image('banner', theme.banner(WIDTH, BANNER_HEIGHT, art), 0, TITLE_HEIGHT)
         # The game's own name (its param.sfo) as the banner's title; LBPPC is the title bar's.
-        sfo = read_sfo(Path(game) / 'sce_sys' / 'param.sfo') if game else {}
+        sfo = read_sfo(view / 'sce_sys/param.sfo') if view else {}
         # The trademark sign is left out (it joins "LittleBigPlanet" and "3" in the game's own title).
         name = ' '.join(re.sub('[\u2122\u00ae]', ' ', sfo.get('TITLE', '')).split()) or 'Choose your game'
         title = theme.text_image(name, 32, theme.hex_colour(theme.ORANGE), 'Bold', outline=theme.CREAM)
@@ -879,8 +894,25 @@ class Launcher(tk.Tk):
             self.game.set(folder)
             self.refresh_game()
 
+    def choose_update(self):
+        if self.update_folder:
+            keep = messagebox.askyesnocancel(
+                'Update folder', f'The update is read from:\n{self.update_folder}\n\nChoose another folder? '
+                '(No stops using it.)', parent=self)
+            if keep is None:
+                return
+            if not keep:
+                self.update_folder = ''
+                self.refresh_game()
+                return
+        folder = filedialog.askdirectory(title='Update folder (the 1.28 update, holding eboot.bin)',
+                                         initialdir=self.update_folder or self.game.get() or None)
+        if folder:
+            self.update_folder = folder
+            self.refresh_game()
+
     def refresh_game(self):
-        ok, text = check_game(self.game.get().strip())
+        ok, text = check_game(self.game.get().strip(), getattr(self, 'update_folder', ''))
         image, margin = theme.tag(text, (70, 140, 40) if ok else (190, 60, 50))
         item = self.scene.image('game:tag', image, self.PANEL_X + 16 - margin, self.status_tag_y - margin)
         self.scene.itemconfigure(item, state='normal' if getattr(self, 'page', 'game') == 'game' else 'hidden')
@@ -893,6 +925,8 @@ class Launcher(tk.Tk):
 
     def store(self):
         self.settings['game'] = self.game.get().strip()
+        if hasattr(self, 'update_folder'):
+            self.settings['update'] = self.update_folder
         for key, (var, values) in self.choices.items() if hasattr(self, 'choices') else ():
             self.settings[key] = next(value for name, value in values if name == var.get())
         if hasattr(self, 'password'):
@@ -1001,6 +1035,8 @@ class Launcher(tk.Tk):
                 input_settings.InputSettings.load(INPUT_INI).save(INPUT_INI)
             except OSError as error:
                 self.append([f'Launcher: input.ini could not be saved with the mouse off: {error}'])
+        if self.settings.get('update'):
+            env['LBPPC_UPDATE'] = self.settings['update']  # run.py reads the game through it (scripts/gameview.py)
         # The player's name in the game (pressing the right stick shows it), offline too.
         if re.fullmatch(online_accounts.NAME_PATTERN, self.settings['online_name']):
             env['BB_USER_NAME'] = self.settings['online_name']
