@@ -374,3 +374,5 @@
 372|{folder}: isto não parece um save de LittleBigPlanet 3 ({name}).
 373|Não há save de LittleBigPlanet 3 nesta pasta. Escolha um save descriptografado (com uma pasta 00000001 com arquivos bigfart, littlefart ou playfart), ou uma pasta com vários.
 374|sessão de jogo
+375|latino-americana
+376|norte-americana

@@ -373,5 +373,7 @@
  "This is a save for another game ({id}), not LittleBigPlanet 3.": "Det här är en sparfil för ett annat spel ({id}), inte LittleBigPlanet 3.",
  "{folder}: this doesn't look like a LittleBigPlanet 3 save ({name}).": "{folder}: det här ser inte ut som en LittleBigPlanet 3-sparfil ({name}).",
  "No LittleBigPlanet 3 save in this folder. Choose a decrypted save (with a 00000001 folder holding bigfart, littlefart or playfart files), or a folder holding several.": "Ingen LittleBigPlanet 3-sparfil i den här mappen. Välj en dekrypterad sparfil (med en mapp 00000001 med bigfart-, littlefart- eller playfart-filer), eller en mapp med flera.",
- "play session": "spelomgång"
+ "play session": "spelomgång",
+ "Latin American": "latinamerikanska",
+ "North American": "nordamerikanska"
 }

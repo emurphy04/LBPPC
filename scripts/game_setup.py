@@ -34,8 +34,11 @@ except ImportError:
         return text.format(**fields) if fields else text
 
 TITLE_ID, VERSION = 'CUSA00473', '01.28'  # the game and version LBPPC's patches are made for
-OTHER_LBP3 = {'CUSA00063': N_('European (PAL)'), 'CUSA00693': N_('Asian'), 'CUSA00810': N_('Japanese'),
-              'CUSA00762': N_('Asian'), 'CUSA01077': N_('Korean')}  # LittleBigPlanet 3's other releases  # LittleBigPlanet 3's other releases
+# LittleBigPlanet 3's other editions, by the region the game's own table (eboot 0x12c8718) gives each: A the Americas,
+# E Europe, J Japan, K and C Asia. CUSA00810 sold with Latin American Spanish and Brazilian Portuguese.
+OTHER_LBP3 = {'CUSA00063': N_('European (PAL)'), 'CUSA00762': N_('European (PAL)'), 'CUSA01072': N_('European (PAL)'),
+              'CUSA00810': N_('Latin American'), 'CUSA01077': N_('North American'), 'CUSA00601': N_('Japanese'),
+              'CUSA00693': N_('Asian'), 'CUSA00738': N_('Asian')}
 # The update folder beside the game when the player didn't choose one (shadPS4's and PS4 dump tools' names).
 UPDATE_SUFFIXES = ('-UPDATE', '-update', '-Update', '-patch', '-PATCH', '-Patch', '_patch', '_update', '_UPDATE')
 SYSTEM_FILES = ('npbind.dat', 'playgo-chunk.dat')  # needed by online co-op (NP sign-in, the game's chunks)

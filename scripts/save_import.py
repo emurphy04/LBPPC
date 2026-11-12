@@ -25,7 +25,8 @@ except ImportError:
         return text.format(**fields) if fields else text
 
 TITLE_ID = 'CUSA00473'
-LBP3 = {'CUSA00473', 'CUSA00063', 'CUSA00693', 'CUSA00810', 'CUSA00762', 'CUSA01077'}
+LBP3 = {'CUSA00473', 'CUSA00063', 'CUSA00693', 'CUSA00810', 'CUSA00762', 'CUSA01077', 'CUSA00601', 'CUSA00738',
+        'CUSA01072'}
 KINDS = ((re.compile(r'^bigfart'), 'LBPxSAVE'), (re.compile(r'^littlefart'), 'LBPxSAVExLITTLE'))
 PLAY = re.compile(r'^playfart_(\d+)_(\d+)_')
 

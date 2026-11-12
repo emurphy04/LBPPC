@@ -374,3 +374,5 @@
 372|{folder}: det ligner ikke et LittleBigPlanet 3-gemt spil ({name}).
 373|Intet LittleBigPlanet 3-gemt spil i denne mappe. Vælg et dekrypteret gemt spil (med en mappe 00000001 med bigfart-, littlefart- eller playfart-filer), eller en mappe med flere.
 374|spilsession
+375|latinamerikanske
+376|nordamerikanske

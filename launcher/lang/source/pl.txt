@@ -374,3 +374,5 @@
 372|{folder}: to nie wygląda na zapis LittleBigPlanet 3 ({name}).
 373|W tym folderze nie ma zapisu LittleBigPlanet 3. Wybierz odszyfrowany zapis (z folderem 00000001 z plikami bigfart, littlefart lub playfart) albo folder z kilkoma.
 374|sesja gry
+375|latynoamerykańska
+376|północnoamerykańska

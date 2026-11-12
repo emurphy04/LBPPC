@@ -27,6 +27,8 @@ import urllib.error
 import urllib.request
 import zipfile
 
+import tls_trust
+
 try:  # the launcher's language (launcher/i18n.py); run on its own, English
     from i18n import N_, t
 except ImportError:
@@ -56,7 +58,7 @@ def version_tuple(text):
 
 def _get(url, timeout=10, accept='application/vnd.github+json'):
     request = urllib.request.Request(url, headers={'User-Agent': USER_AGENT, 'Accept': accept})
-    return urllib.request.urlopen(request, timeout=timeout)
+    return urllib.request.urlopen(request, timeout=timeout, context=tls_trust.context())
 
 
 class Release:

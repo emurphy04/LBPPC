@@ -374,3 +374,5 @@
 372|{folder}: Das sieht nicht nach einem LittleBigPlanet 3-Spielstand aus ({name}).
 373|Kein LittleBigPlanet 3-Spielstand in diesem Ordner. Wähle einen entschlüsselten Spielstand (mit einem Ordner 00000001 mit bigfart-, littlefart- oder playfart-Dateien) oder einen Ordner mit mehreren.
 374|Spielsitzung
+375|lateinamerikanische
+376|nordamerikanische

@@ -26,7 +26,7 @@ from tkinter import filedialog, font as tkfont, messagebox, ttk
 
 from PIL import Image, ImageTk
 
-VERSION = '0.1.1'
+VERSION = '0.1.2'
 DISCORD = 'https://discord.gg/YqfBQCU4vc'  # the permanent invite: help, bug reports, finding co-op partners
 # Discord Rich Presence (scripts/discord_presence.py): LBPPC's application on the Discord Developer Portal, whose name
 # Discord shows ("Playing LBPPC") and whose art asset "lbppc" is the picture. Empty: no presence.
@@ -91,12 +91,12 @@ OPTIONS = [('resolution', N_('Resolution'), RESOLUTIONS, N_('Wider than 16:9 sho
            ('sharpening', N_('Sharpening'), SHARPENING, N_('How much FSR 1 sharpens the scaled picture.')),
            ('language', N_('Language'), None, N_('The game and this launcher. Automatic follows Windows.'))]
 # The game's language: the PS4 system language LittleBigPlanet 3 reads (BB_LANGUAGE, runtime_services.c), numbered as
-# the game's own E_LANG list and the PS4's. Only the languages this release has voices for (gamedata/audio/<language>).
+# the game's own E_LANG list and the PS4's. The US edition allows only English and French by itself; LBPPC lifts that
+# (language_install, probe.c), so every language with text in the copy works. Arabic has none (only a subtitle stub).
 LANGUAGES = [(N_('Automatic'), 'auto'), ('English (US)', '1'), ('English (UK)', '18'), ('Français', '2'),
              ('Español (España)', '3'), ('Español (Latinoamérica)', '20'), ('Deutsch', '4'), ('Italiano', '5'),
              ('Nederlands', '6'), ('Português (Portugal)', '7'), ('Português (Brasil)', '17'), ('Русский', '8'),
-             ('Suomi', '12'), ('Svenska', '13'), ('Dansk', '14'), ('Norsk', '15'), ('Polski', '16'),
-             ('العربية', '21')]
+             ('Suomi', '12'), ('Svenska', '13'), ('Dansk', '14'), ('Norsk', '15'), ('Polski', '16')]
 OPTIONS[-1] = OPTIONS[-1][:2] + (LANGUAGES,) + OPTIONS[-1][3:]
 
 
@@ -115,7 +115,7 @@ def windows_language():
     if primary == 0x16:  # Portuguese: Brazil's, or Portugal's
         return '17' if full == 0x0416 else '7'
     return {0x0c: '2', 0x07: '4', 0x10: '5', 0x13: '6', 0x19: '8', 0x0b: '12', 0x1d: '13', 0x06: '14',
-            0x14: '15', 0x15: '16', 0x01: '21'}.get(primary, '1')
+            0x14: '15', 0x15: '16'}.get(primary, '1')
 # The Debug page's Diagnostics: (key, environment variable, title, hint, default). Each is passed to the game on
 # Play as 1 or 0.
 DIAGNOSTICS = [('frame_stats', 'BB_FRAME_STATS', N_('Frame log'), N_('Frame rate, pacing and every slow frame in the log.'),
@@ -1602,12 +1602,14 @@ class Launcher(tk.Tk):
     def game_language(self):
         """The PS4 language number the game gets (and the launcher's language follows): the setting, or Windows'."""
         language = self.settings.get('language', 'auto')
+        if language not in {code for _name, code in LANGUAGES}:  # Arabic (21), offered in 0.1.1 only, among others
+            language = self.settings['language'] = 'auto'
         return windows_language() if language == 'auto' else language
 
     def language_changed(self):
         """The launcher draws its text once: a new language takes a restart, done here unless the game is running."""
         if i18n.LOCALES.get(self.game_language(), 'en') == i18n.locale:
-            return  # the same launcher language (English US to UK, or Arabic, which keeps it in English)
+            return  # the same launcher language (English US to UK)
         if self.process:
             self.set_state(t('The launcher changes language the next time it starts.'), MUTED)
             return

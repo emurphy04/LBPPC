@@ -2,8 +2,7 @@
 {name} fields filled in. The English text is the key; each language is launcher/lang/<code>.json, {English: text}.
 Anything a language doesn't have stays English, so a missing or partial translation never breaks the launcher.
 
-The language follows the game's (the launcher's Language setting, or Windows' when Automatic). Arabic plays the game in
-Arabic with the launcher in English: the launcher draws its text without Arabic shaping or right-to-left layout.
+The language follows the game's (the launcher's Language setting, or Windows' when Automatic).
 Translations are first drafts, checked by players who speak each language (launcher/lang/README.md).
 
 tools: python launcher/i18n.py --extract   (lists every t() text in the launcher's code: launcher/lang/strings.json)
@@ -16,7 +15,7 @@ import sys
 
 # The launcher language for each game language (the PS4 numbers in lbppc_launcher.LANGUAGES).
 LOCALES = {'1': 'en', '18': 'en', '2': 'fr', '3': 'es', '20': 'es', '4': 'de', '5': 'it', '6': 'nl', '7': 'pt',
-           '17': 'pt-BR', '8': 'ru', '12': 'fi', '13': 'sv', '14': 'da', '15': 'nb', '16': 'pl', '21': 'en'}
+           '17': 'pt-BR', '8': 'ru', '12': 'fi', '13': 'sv', '14': 'da', '15': 'nb', '16': 'pl'}
 FOLDER = Path(getattr(sys, '_MEIPASS', Path(__file__).resolve().parent)) / 'lang'
 _table = {}
 locale = 'en'

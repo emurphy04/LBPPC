@@ -374,3 +374,5 @@
 372|{folder}: no parece una partida de LittleBigPlanet 3 ({name}).
 373|No hay ninguna partida de LittleBigPlanet 3 en esta carpeta. Elige una partida descifrada (con una carpeta 00000001 con archivos bigfart, littlefart o playfart), o una carpeta con varias.
 374|sesión de juego
+375|latinoamericana
+376|norteamericana

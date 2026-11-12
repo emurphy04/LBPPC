@@ -374,3 +374,5 @@
 372|{folder}: dette ser ikke ut som en LittleBigPlanet 3-lagring ({name}).
 373|Ingen LittleBigPlanet 3-lagring i denne mappen. Velg en dekryptert lagring (med en mappe 00000001 med bigfart-, littlefart- eller playfart-filer), eller en mappe med flere.
 374|spilløkt
+375|latinamerikanske
+376|nordamerikanske

@@ -373,5 +373,7 @@
  "This is a save for another game ({id}), not LittleBigPlanet 3.": "Dette er et gemt spil fra et andet spil ({id}), ikke LittleBigPlanet 3.",
  "{folder}: this doesn't look like a LittleBigPlanet 3 save ({name}).": "{folder}: det ligner ikke et LittleBigPlanet 3-gemt spil ({name}).",
  "No LittleBigPlanet 3 save in this folder. Choose a decrypted save (with a 00000001 folder holding bigfart, littlefart or playfart files), or a folder holding several.": "Intet LittleBigPlanet 3-gemt spil i denne mappe. Vælg et dekrypteret gemt spil (med en mappe 00000001 med bigfart-, littlefart- eller playfart-filer), eller en mappe med flere.",
- "play session": "spilsession"
+ "play session": "spilsession",
+ "Latin American": "latinamerikanske",
+ "North American": "nordamerikanske"
 }

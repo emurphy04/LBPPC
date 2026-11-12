@@ -374,3 +374,5 @@
 372|{folder}: det här ser inte ut som en LittleBigPlanet 3-sparfil ({name}).
 373|Ingen LittleBigPlanet 3-sparfil i den här mappen. Välj en dekrypterad sparfil (med en mapp 00000001 med bigfart-, littlefart- eller playfart-filer), eller en mapp med flera.
 374|spelomgång
+375|latinamerikanska
+376|nordamerikanska

@@ -19,7 +19,6 @@ file in `source/`, which you can edit in any text editor:
 | `nb.txt` | Norwegian (Bokmål) |
 | `pl.txt` | Polish |
 
-Arabic players get the game in Arabic and the launcher in English: the launcher can't draw Arabic script yet.
 
 ## The format
 

@@ -6,11 +6,12 @@ import hashlib
 import json
 import re
 import socket
-import ssl
 import struct
 import urllib.error
 import urllib.parse
 import urllib.request
+
+import tls_trust
 
 try:  # the launcher's language (launcher/i18n.py); run on its own, English
     from i18n import N_, t
@@ -92,7 +93,7 @@ def _shadnet_connect(server):
     if not tls:
         return sock
     try:
-        return ssl.create_default_context().wrap_socket(sock, server_hostname=host)
+        return tls_trust.context().wrap_socket(sock, server_hostname=host)
     except BaseException:
         sock.close()
         raise
@@ -257,7 +258,7 @@ def _call(url, body, token=None, method='POST'):
     headers = {'Content-Type': 'application/json', **({'Authorization': token} if token else {})}
     request = urllib.request.Request(url, data=json.dumps(body).encode(), method=method, headers=headers)
     try:
-        with urllib.request.urlopen(request, timeout=15) as reply:
+        with urllib.request.urlopen(request, timeout=15, context=tls_trust.context()) as reply:
             return json.load(reply)
     except urllib.error.HTTPError as error:
         try:

@@ -373,5 +373,7 @@
  "This is a save for another game ({id}), not LittleBigPlanet 3.",
  "{folder}: this doesn't look like a LittleBigPlanet 3 save ({name}).",
  "No LittleBigPlanet 3 save in this folder. Choose a decrypted save (with a 00000001 folder holding bigfart, littlefart or playfart files), or a folder holding several.",
- "play session"
+ "play session",
+ "Latin American",
+ "North American"
 ]

@@ -1020,6 +1020,21 @@ static void custom_server_install(void) {
     for (size_t i=0;i<sizeof(key)/sizeof(*key);++i) memcpy(image+key[i].at,key[i].custom,strlen(key[i].custom));
     printf("Online: custom server %s\n",server);
 }
+/* Every language the game has text for. LBP3's language picker (0x2a05e0) takes the system language (BB_LANGUAGE),
+   then keeps it only if the game's edition sold with it: the region table (0x12c8718) names the edition by its title
+   (CUSA00473_00, the US one: English and French; Latin American Spanish and Brazilian Portuguese were CUSA00810's,
+   the European languages CUSA00063's), and anything else falls back to English. Every edition carries all 22
+   languages' text (the .trans files in gamedata/languages), so the edition check at 0x2a0706 (a switch on the region) becomes a
+   jump to the picker's "accepted" path (0x2a07ab), which loads the language's own text. */
+static void language_install(void) {
+    static const unsigned char original[]={0x48,0x8d,0x0d,0x0b,0x80,0x02,0x01}; /* lea rcx, region (0x12c8718) */
+    static const unsigned char accept[]={0xe9,0xa0,0x00,0x00,0x00,0x90,0x90};  /* jmp 0x2a07ab; nop; nop */
+    if (memcmp(image+0x2a0706,original,sizeof(original))) {
+        fprintf(stderr,"Language: unexpected game code, the edition's languages only\n");
+        return;
+    }
+    memcpy(image+0x2a0706,accept,sizeof(accept));
+}
 /* Executable memory within 2 GiB of the image (for rel32 jumps and calls into stubs): any free 64 KiB, the space
    around the image being cut up by the GPU and network libraries. */
 /* Stub memory reserved at start (stub_pool_reserve), below the image's load address (LBPPC_LOW_BASE) while that
@@ -2744,6 +2759,7 @@ int main(int argc, char **argv) {
     { extern uintptr_t lbppc_image_base; lbppc_image_base=(uintptr_t)image; }
     render_res_install();
     custom_server_install();
+    language_install();
     quit_menu_install();
     friend_log_install();
     net_log_install();

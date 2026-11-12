@@ -374,3 +374,5 @@
 372|{folder} : cela ne ressemble pas à une sauvegarde de LittleBigPlanet 3 ({name}).
 373|Aucune sauvegarde de LittleBigPlanet 3 dans ce dossier. Choisissez une sauvegarde déchiffrée (avec un dossier 00000001 contenant des fichiers bigfart, littlefart ou playfart), ou un dossier qui en contient plusieurs.
 374|session de jeu
+375|latino-américaine
+376|nord-américaine

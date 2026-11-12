@@ -374,3 +374,5 @@
 372|{folder}: non sembra un salvataggio di LittleBigPlanet 3 ({name}).
 373|Nessun salvataggio di LittleBigPlanet 3 in questa cartella. Scegli un salvataggio decrittato (con una cartella 00000001 con file bigfart, littlefart o playfart), o una cartella che ne contiene diversi.
 374|sessione di gioco
+375|latinoamericana
+376|nordamericana

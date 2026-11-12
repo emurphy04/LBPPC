@@ -373,5 +373,7 @@
  "This is a save for another game ({id}), not LittleBigPlanet 3.": "Esta es una partida de otro juego ({id}), no de LittleBigPlanet 3.",
  "{folder}: this doesn't look like a LittleBigPlanet 3 save ({name}).": "{folder}: no parece una partida de LittleBigPlanet 3 ({name}).",
  "No LittleBigPlanet 3 save in this folder. Choose a decrypted save (with a 00000001 folder holding bigfart, littlefart or playfart files), or a folder holding several.": "No hay ninguna partida de LittleBigPlanet 3 en esta carpeta. Elige una partida descifrada (con una carpeta 00000001 con archivos bigfart, littlefart o playfart), o una carpeta con varias.",
- "play session": "sesión de juego"
+ "play session": "sesión de juego",
+ "Latin American": "latinoamericana",
+ "North American": "norteamericana"
 }

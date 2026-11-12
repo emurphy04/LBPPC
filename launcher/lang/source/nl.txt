@@ -374,3 +374,5 @@
 372|{folder}: dit lijkt geen LittleBigPlanet 3-save ({name}).
 373|Geen LittleBigPlanet 3-save in deze map. Kies een ontsleutelde save (met een map 00000001 met bigfart-, littlefart- of playfart-bestanden), of een map met meerdere.
 374|speelsessie
+375|Latijns-Amerikaanse
+376|Noord-Amerikaanse

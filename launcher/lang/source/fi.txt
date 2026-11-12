@@ -374,3 +374,5 @@
 372|{folder}: tämä ei näytä LittleBigPlanet 3 -tallennukselta ({name}).
 373|Tässä kansiossa ei ole LittleBigPlanet 3 -tallennusta. Valitse salauksesta purettu tallennus (jossa on kansio 00000001 ja bigfart-, littlefart- tai playfart-tiedostoja) tai kansio, jossa on useita.
 374|pelikerta
+375|latinalaisamerikkalainen
+376|pohjoisamerikkalainen
