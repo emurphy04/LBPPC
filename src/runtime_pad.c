@@ -89,31 +89,63 @@ static void touch_click(PadData *d, int right) {
     d->touches[0]=(PadTouch){.x=right ? 1440 : 480,.y=471,.id=0};
 }
 
-/* Opens the first gamepad SDL knows about; called under lock. */
+/* Every connected gamepad is kept open, and the game reads the one the player last used: a button pressed or a stick or
+ * trigger pushed past half on another switches to it. Taking the first one only went wrong when a virtual pad (Steam
+ * Input, DS4Windows, ViGEm) is listed before the real one: the game read the idle virtual pad (2026-11-12 report).
+ * Called under lock. */
+enum { MAX_PADS=8 };
+static SDL_Gamepad *pads[MAX_PADS];
+static int pad_count;
+static int pad_in_use(SDL_Gamepad *g) {
+    for (int b=0;b<SDL_GAMEPAD_BUTTON_COUNT;++b) if (SDL_GetGamepadButton(g,(SDL_GamepadButton)b)) return 1;
+    for (int a=0;a<SDL_GAMEPAD_AXIS_COUNT;++a) {
+        const int v=SDL_GetGamepadAxis(g,(SDL_GamepadAxis)a);
+        if (v>16384 || v<-16384) return 1;
+    }
+    return 0;
+}
+static void use_gamepad(SDL_Gamepad *g) {
+    if (!gamepad) ++connected_count; /* a connection for the game; switching pads is not one */
+    gamepad=g;
+    /* PC-03: the gyro and accelerometer, where the pad has them (DualShock 4, DualSense,
+     * Switch Pro, ...), feed the pad data's motion fields (runtime_motion.c). */
+    motion_sensors=SDL_GamepadHasSensor(gamepad,SDL_SENSOR_ACCEL) &&
+                   SDL_GamepadHasSensor(gamepad,SDL_SENSOR_GYRO) &&
+                   SDL_SetGamepadSensorEnabled(gamepad,SDL_SENSOR_ACCEL,true) &&
+                   SDL_SetGamepadSensorEnabled(gamepad,SDL_SENSOR_GYRO,true);
+    motion_reset(&motion);
+    printf("Runtime: gamepad connected: %s (motion sensors: %s)\n",SDL_GetGamepadName(gamepad),
+           motion_sensors ? "yes" : "none; tilt_* bindings in input.ini tilt it instead");
+    fflush(stdout);
+}
 static SDL_Gamepad *current_gamepad(void) {
     if (!sdl_ready) sdl_ready = SDL_WasInit(SDL_INIT_GAMEPAD) ? 1 : SDL_InitSubSystem(SDL_INIT_GAMEPAD) ? 1 : -1;
     if (sdl_ready<0) return NULL;
-    if (gamepad && !SDL_GamepadConnected(gamepad)) { SDL_CloseGamepad(gamepad); gamepad=NULL; }
-    if (!gamepad) {
-        int count=0;
-        SDL_JoystickID *ids=SDL_GetGamepads(&count);
-        if (ids && count>0) {
-            gamepad=SDL_OpenGamepad(ids[0]);
-            if (gamepad) {
-                ++connected_count;
-                /* PC-03: the gyro and accelerometer, where the pad has them (DualShock 4, DualSense,
-                 * Switch Pro, ...), feed the pad data's motion fields (runtime_motion.c). */
-                motion_sensors=SDL_GamepadHasSensor(gamepad,SDL_SENSOR_ACCEL) &&
-                               SDL_GamepadHasSensor(gamepad,SDL_SENSOR_GYRO) &&
-                               SDL_SetGamepadSensorEnabled(gamepad,SDL_SENSOR_ACCEL,true) &&
-                               SDL_SetGamepadSensorEnabled(gamepad,SDL_SENSOR_GYRO,true);
-                motion_reset(&motion);
-                printf("Runtime: gamepad connected: %s (motion sensors: %s)\n",SDL_GetGamepadName(gamepad),
-                       motion_sensors ? "yes" : "none; tilt_* bindings in input.ini tilt it instead");
-            }
-        }
-        SDL_free(ids);
+    /* Drop the pads that went away. */
+    for (int i=0;i<pad_count;) {
+        if (SDL_GamepadConnected(pads[i])) { ++i; continue; }
+        if (pads[i]==gamepad) gamepad=NULL;
+        SDL_CloseGamepad(pads[i]);
+        pads[i]=pads[--pad_count];
     }
+    /* Open the ones that arrived. */
+    int count=0;
+    SDL_JoystickID *ids=SDL_GetGamepads(&count);
+    for (int i=0;ids && i<count && pad_count<MAX_PADS;++i) {
+        int open=0;
+        for (int j=0;j<pad_count;++j) if (SDL_GetGamepadID(pads[j])==ids[i]) open=1;
+        if (!open) {
+            SDL_Gamepad *g=SDL_OpenGamepad(ids[i]);
+            if (g) pads[pad_count++]=g;
+        }
+    }
+    SDL_free(ids);
+    /* Follow the one in use, while the current one is idle (a pad mirrored onto a virtual one, as DS4Windows does,
+     * presses both at once: switching then would flip between them every read). */
+    if (!gamepad || !pad_in_use(gamepad))
+        for (int i=0;i<pad_count;++i)
+            if (pads[i]!=gamepad && pad_in_use(pads[i])) { use_gamepad(pads[i]); break; }
+    if (!gamepad && pad_count) use_gamepad(pads[0]);
     return gamepad;
 }
 /* Button-like outputs (not the stick/axis ones): the bit each sets in d->buttons, or 0 for
