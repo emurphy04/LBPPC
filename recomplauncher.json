@@ -1,0 +1,11 @@
+{
+    "$schema": "https://recomplauncher.com/schema/recomplauncher.json",
+    "format": 1,
+    "name": "LBPPC",
+    "repo": "emurphy04/LBPPC",
+    "start": {
+        "program": [
+            "LBPPC.exe"
+        ]
+    }
+}

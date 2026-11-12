@@ -1,5 +1,7 @@
 # LBPPC
 
+<a href="https://recomplauncher.com/game/lbppc"><picture><source media="(prefers-color-scheme: dark)" srcset="https://recomplauncher.com/assets/press/launcher/badge-light.svg"><img alt="Get it on RecompLauncher" src="https://recomplauncher.com/assets/press/launcher/badge-dark.svg" height="48"></picture></a>
+
 **LittleBigPlanet 3, running natively on PC, with its online world back.**
 
 LBPPC runs the PS4 game's own code directly on your PC's processor. It is a native port, not an emulator. The
