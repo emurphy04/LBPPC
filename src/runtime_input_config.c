@@ -651,7 +651,7 @@ int input_config_path(char *out, size_t out_size) {
         return 1;
     }
     const char *config = getenv("BB_CONFIG");
-    if (!config || !*config) config = "bbport.ini";
+    if (!config || !*config) config = "lbppc.ini";
     const char *slash = strrchr(config, '/');
 #ifdef _WIN32
     const char *bslash = strrchr(config, '\\');

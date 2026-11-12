@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 // bbport: user settings changed at run time from the in-game menu (bbport_overlay.h) and kept
-// in bbport.ini (BB_CONFIG overrides the path). Environment variables override the file at
+// in lbppc.ini (BB_CONFIG overrides the path). Environment variables override the file at
 // start. Readers load the atomics every frame; writers are the menu and Load().
 
 #pragma once
@@ -67,12 +67,12 @@ struct Values {
     std::atomic<float> reactive_threshold{0.2f};
     std::atomic<float> reactive_max{0.9f};
     std::atomic<int> debug_view{DebugNone};
-    /// The FPS overlay's readouts, one toggle each (bbport.ini: show_fps, show_frame_times,
+    /// The FPS overlay's readouts, one toggle each (lbppc.ini: show_fps, show_frame_times,
     /// show_latency, show_vram, show_gpu, show_cpu, show_ram, show_fps_graph).
     std::atomic<bool> show_fps{false};
     std::atomic<bool> show_frame_times{false};
     std::atomic<bool> show_latency{false}; ///< render latency (vk_low_latency.cpp), not frame time
-    /// The counter's values green / amber / red by how they stand (bbport.ini counter_colors=1),
+    /// The counter's values green / amber / red by how they stand (lbppc.ini counter_colors=1),
     /// or all in plain grey (0).
     std::atomic<bool> counter_colors{true};
     std::atomic<bool> show_vram{false};
@@ -81,7 +81,7 @@ struct Values {
     std::atomic<bool> show_ram{false};
     std::atomic<bool> show_fps_graph{false};
     /// lbppc: the graph plots the game's own frames (its flips: 30 a second in LBP3) instead of every
-    /// presented image, generated ones included, which hide the game's stutter (bbport.ini graph_game_frames).
+    /// presented image, generated ones included, which hide the game's stutter (lbppc.ini graph_game_frames).
     std::atomic<bool> graph_game_frames{true};
     /// Silence the game while its window does not have focus (bbgpu_audio_muted).
     std::atomic<bool> mute_unfocused{false};

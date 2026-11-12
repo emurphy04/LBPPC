@@ -30,32 +30,36 @@ PAD_BUTTONS = ['cross', 'circle', 'square', 'triangle', 'l1', 'r1', 'l2', 'r2', 
 PAD_HALF_AXES = ['axis_left_x_minus', 'axis_left_x_plus', 'axis_left_y_minus', 'axis_left_y_plus',
                  'axis_right_x_minus', 'axis_right_x_plus', 'axis_right_y_minus', 'axis_right_y_plus']
 PAD_NAMES = PAD_BUTTONS + PAD_HALF_AXES + ['axis_left_x', 'axis_left_y', 'axis_right_x', 'axis_right_y']
+from i18n import N_  # noqa: E402
+
 # Keys the game keeps for itself (runtime_input_config.c: the menu key, F9 recording) and the hotkeys' defaults.
-RESERVED_KEYS = {'insert': 'opens the in-game menu', 'f9': 'records input', 'f7': 'captures the mouse',
-                 'f8': 'reloads the controls'}
+RESERVED_KEYS = {'insert': N_('opens the in-game menu'), 'f9': N_('records input'), 'f7': N_('captures the mouse'),
+                 'f8': N_('reloads the controls')}
 
 # The actions the page shows: (output, label, what it does in LittleBigPlanet 3 where known).
 ACTIONS = [
-    ('cross', 'Cross', 'jump'), ('circle', 'Circle', ''), ('square', 'Square', 'Popit'), ('triangle', 'Triangle', ''),
-    ('l1', 'L1', ''), ('r1', 'R1', 'grab'), ('l2', 'L2', ''), ('r2', 'R2', ''), ('l3', 'L3', ''), ('r3', 'R3', ''),
-    ('options', 'Options', 'pause'), ('touchpad_left', 'Touchpad (left)', ''), ('touchpad_right', 'Touchpad (right)', ''),
-    ('pad_up', 'D-pad up', ''), ('pad_down', 'D-pad down', ''), ('pad_left', 'D-pad left', ''),
-    ('pad_right', 'D-pad right', ''),
-    ('axis_left_y_minus', 'Left stick up', 'move'), ('axis_left_y_plus', 'Left stick down', 'move'),
-    ('axis_left_x_minus', 'Left stick left', 'move'), ('axis_left_x_plus', 'Left stick right', 'move'),
-    ('axis_right_y_minus', 'Right stick up', ''), ('axis_right_y_plus', 'Right stick down', ''),
-    ('axis_right_x_minus', 'Right stick left', ''), ('axis_right_x_plus', 'Right stick right', ''),
-    ('tilt_left', 'Tilt left', 'head'), ('tilt_right', 'Tilt right', 'head'),
-    ('tilt_forward', 'Tilt forward', 'head'), ('tilt_back', 'Tilt back', 'head'),
-    ('leftjoystick_halfmode', 'Walk (half left stick)', ''),
+    ('cross', N_('Cross'), N_('jump')), ('circle', N_('Circle'), ''), ('square', N_('Square'), 'Popit'),
+    ('triangle', N_('Triangle'), ''),
+    ('l1', 'L1', ''), ('r1', 'R1', N_('grab')), ('l2', 'L2', ''), ('r2', 'R2', ''), ('l3', 'L3', ''), ('r3', 'R3', ''),
+    ('options', 'Options', N_('pause')), ('touchpad_left', N_('Touchpad (left)'), ''),
+    ('touchpad_right', N_('Touchpad (right)'), ''),
+    ('pad_up', N_('D-pad up'), ''), ('pad_down', N_('D-pad down'), ''), ('pad_left', N_('D-pad left'), ''),
+    ('pad_right', N_('D-pad right'), ''),
+    ('axis_left_y_minus', N_('Left stick up'), N_('move')), ('axis_left_y_plus', N_('Left stick down'), N_('move')),
+    ('axis_left_x_minus', N_('Left stick left'), N_('move')), ('axis_left_x_plus', N_('Left stick right'), N_('move')),
+    ('axis_right_y_minus', N_('Right stick up'), ''), ('axis_right_y_plus', N_('Right stick down'), ''),
+    ('axis_right_x_minus', N_('Right stick left'), ''), ('axis_right_x_plus', N_('Right stick right'), ''),
+    ('tilt_left', N_('Tilt left'), N_('head')), ('tilt_right', N_('Tilt right'), N_('head')),
+    ('tilt_forward', N_('Tilt forward'), N_('head')), ('tilt_back', N_('Tilt back'), N_('head')),
+    ('leftjoystick_halfmode', N_('Walk (half left stick)'), ''),
 ]
 ACTION_OUTPUTS = {output for output, _label, _hint in ACTIONS}
 # Stick directions take their controller binding from the whole stick (axis_left_x = axis_left_x and so on), so the
 # page edits only their keys.
 STICK_OUTPUTS = {output for output in ACTION_OUTPUTS if output.startswith('axis_')}
 
-MOUSE_MODES = [('off', 'Off'), ('right', 'Look around (right stick)'), ('left', 'Move (left stick)'),
-               ('touchpad', 'Touchpad (Create Mode)')]
+MOUSE_MODES = [('off', N_('Off')), ('right', N_('Look around (right stick)')), ('left', N_('Move (left stick)')),
+               ('touchpad', N_('Touchpad (Create Mode)'))]
 SPEED_RANGE = (0.2, 5.0)
 VERTICAL_RANGE = (0.25, 4.0)
 
@@ -157,15 +161,15 @@ KEY_LABELS = {
     'mousewheeldown': 'Wheel down', 'mousewheelleft': 'Wheel left', 'mousewheelright': 'Wheel right',
 }
 PAD_LABELS = {
-    'cross': 'Cross', 'circle': 'Circle', 'square': 'Square', 'triangle': 'Triangle', 'l1': 'L1', 'r1': 'R1',
-    'l2': 'L2', 'r2': 'R2', 'l3': 'L3', 'r3': 'R3', 'options': 'Options', 'back': 'Share / Back',
-    'pad_up': 'D-pad up', 'pad_down': 'D-pad down', 'pad_left': 'D-pad left', 'pad_right': 'D-pad right',
-    'lpaddle_high': 'Left paddle 1', 'lpaddle_low': 'Left paddle 2', 'rpaddle_high': 'Right paddle 1',
-    'rpaddle_low': 'Right paddle 2', 'qam': 'Extra button',
-    'axis_left_x_minus': 'Left stick left', 'axis_left_x_plus': 'Left stick right',
-    'axis_left_y_minus': 'Left stick up', 'axis_left_y_plus': 'Left stick down',
-    'axis_right_x_minus': 'Right stick left', 'axis_right_x_plus': 'Right stick right',
-    'axis_right_y_minus': 'Right stick up', 'axis_right_y_plus': 'Right stick down',
+    'cross': N_('Cross'), 'circle': N_('Circle'), 'square': N_('Square'), 'triangle': N_('Triangle'), 'l1': 'L1', 'r1': 'R1',
+    'l2': 'L2', 'r2': 'R2', 'l3': 'L3', 'r3': 'R3', 'options': N_('Options'), 'back': N_('Share / Back'),
+    'pad_up': N_('D-pad up'), 'pad_down': N_('D-pad down'), 'pad_left': N_('D-pad left'), 'pad_right': N_('D-pad right'),
+    'lpaddle_high': N_('Left paddle 1'), 'lpaddle_low': N_('Left paddle 2'), 'rpaddle_high': N_('Right paddle 1'),
+    'rpaddle_low': N_('Right paddle 2'), 'qam': N_('Extra button'),
+    'axis_left_x_minus': N_('Left stick left'), 'axis_left_x_plus': N_('Left stick right'),
+    'axis_left_y_minus': N_('Left stick up'), 'axis_left_y_plus': N_('Left stick down'),
+    'axis_right_x_minus': N_('Right stick left'), 'axis_right_x_plus': N_('Right stick right'),
+    'axis_right_y_minus': N_('Right stick up'), 'axis_right_y_plus': N_('Right stick down'),
 }
 
 

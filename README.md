@@ -8,11 +8,11 @@ LBPPC runs the PS4 game's own code directly on your PC's processor. It is a nati
 community servers bring back creating, sharing and playing levels together, which ended when the original servers
 shut down.
 
-**Status:** 0.1.0, the first public beta. It supports LittleBigPlanet 3 US (CUSA00473), version 1.28. You need your
-own copy, dumped from your PS4.
+**Status:** 0.1.1, a public beta. It supports LittleBigPlanet 3 US (CUSA00473), version 1.28. You need your
+own copy and its 1.28 update, extracted to folders on your PC.
 
 [Download and guide](https://lbppc.com/download) · [Discord](https://discord.gg/YqfBQCU4vc) ·
-[Release notes](docs/releases/0.1.0.md)
+[Release notes](docs/releases/0.1.1.md)
 
 ## What you get
 
@@ -49,7 +49,10 @@ LittleBigPlanet 3 (CUSA00473, version 1.28).
 
 1. Unzip a release anywhere except Program Files, for example `C:\Games\LBPPC`.
 2. Start `LBPPC.exe`. If Windows SmartScreen warns about a new app, click **More info**, then **Run anyway**.
-3. Choose your game dump's folder and press **Play**. The first start prepares the game, which takes about a minute.
+3. The launcher opens **Set up your game**: choose your game's folder and its 1.28 update's folder (both must be
+   extracted), and LBPPC puts the update into the game folder for you. Tick **Delete the update files when done** to
+   move them instead of copying. Already have one folder at version 1.28? Just choose it. Then press **Play**.
+   The first start prepares the game, which takes about a minute.
    The first time you see something new, it may hitch once while its shaders are built.
 4. To play online, choose a name and password under Online, press **Create account**, tick **Play online on the LBPPC
    server**, and add your friends by their online names.

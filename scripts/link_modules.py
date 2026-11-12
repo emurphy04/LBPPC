@@ -32,7 +32,6 @@ sys.modules['prepare'] = _prepare
 _prepare_spec.loader.exec_module(_prepare)
 parse_self, span, unpack = _prepare.parse_self, _prepare.span, _prepare.unpack
 from link_libc import encode_id
-import gameview
 from cpu_compat import atomic_output, patch_image, patch_libc
 
 DEFAULT_MODULES = ('libc.prx', 'libSceFios2.prx')
@@ -257,7 +256,7 @@ def link(game, out, module_names=DEFAULT_MODULES):
     for filename in module_names:
         # A bare name is a system module of sce_module/; a path is a module the game loads itself
         # (sceKernelLoadStartModule), such as LBP3's gamedata_orbis/spu/*.prx.
-        m = module(game / (filename if '/' in filename else f'sce_module/{filename}'))  # one lookup: through the layers
+        m = module(game / filename if '/' in filename else game / 'sce_module' / filename)
         if filename == 'libc.prx':
             libc_changes = patch_libc(m)
         loads = [p for p in m['ph'] if p['type'] in (1, 0x61000010)]
@@ -403,4 +402,4 @@ if __name__ == '__main__':
     p.add_argument('--out', type=Path, default=Path(__file__).resolve().parent.parent / 'out')
     p.add_argument('--modules', nargs='*', default=list(DEFAULT_MODULES))
     a = p.parse_args()
-    link(gameview.view(a.game), a.out, a.modules)
+    link(a.game, a.out, a.modules)

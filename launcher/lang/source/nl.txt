@@ -1,0 +1,376 @@
+# Nederlands. Concept: nog na te kijken door Nederlandstalige spelers.
+0|LBPPC {version} is een bèta. Het grootste deel van LittleBigPlanet 3 speelt goed, maar je kunt effecten tegenkomen die in sommige levels verkeerd worden getekend, af en toe een crash, of wat ruwe randjes online.
+1|Elk rapport helpt ons te repareren wat stuk is. Bedankt voor het testen!
+2|LBPPC start LittleBigPlanet 3 versie 1.28 (US, CUSA00473) vanuit één map. Kies je game en zijn update 1.28: LBPPC zet de update voor je in de gamemap, en voegt je DLC toe. Kies mappen die je zelf hebt uitgepakt (een .pkg moet eerst worden uitgepakt).
+3|1280 x 720 (lichter voor de GPU)
+4|1920 x 1080 (origineel)
+5|Venster
+6|Randloos volledig scherm
+7|Exclusief volledig scherm
+8|Uit (30 FPS)
+9|FSR 3.1 (elke GPU)
+10|Uit (gewoon schalen)
+11|FSR 1 (elke GPU)
+12|Uit
+13|Laag
+14|Middel
+15|Hoog
+16|Maximaal
+17|Aan (NVIDIA Reflex / AMD Anti-Lag 2)
+18|Aan + Boost (NVIDIA)
+19|Resolutie
+20|Breder dan 16:9 laat meer van het level zien.
+21|Weergave
+22|Randloos past bij bijna elk scherm.
+23|Framegeneratie
+24|De game draait 30 stappen per seconde; dit toont er 60.
+25|Lage latentie
+26|Minder vertraging tussen je invoer en het scherm.
+27|Opschalen
+28|Scherper als de resolutie lager is dan die van je scherm.
+29|Verscherping
+30|Hoeveel FSR 1 het geschaalde beeld verscherpt.
+31|Taal
+32|De game en deze launcher. Automatisch volgt Windows.
+33|Automatisch
+34|Framelog
+35|Framerate, regelmaat en elk traag frame in het log.
+36|Profiler voor trage frames
+37|Waar de game op wachtte bij elk traag frame, en hoeveel CPU elke thread gebruikte.
+38|Spelersposities
+39|De positie en knoppen van elke speler bij elke stap. Grote logs: om een bug op te sporen.
+40|GPU-terugleesacties overslaan
+41|Sneller in drukke levels. Zet het uit als iets flikkert of er verkeerd uitziet.
+42|Optimalisatieschakelaars
+43|Zet optimalisaties uit terwijl de game draait, vanuit user/toggles.txt. Om een bug op te sporen.
+44|Log van het vriendenmenu
+45|Wat het vriendenmenu van de game bevat, elke 5 seconden als je online bent.
+46|Framerate
+47|Frametijden
+48|Renderlatentie
+49|Videogeheugen
+50|GPU-gebruik
+51|CPU-gebruik
+52|RAM-gebruik
+53|Grafiek van frametijden
+54|De eigen frames van de game tonen
+55|Gekleurde waarden
+56|Sluit de game af.
+57|Klik onderaan in de launcher op Rapport maken. Het bewaart een zip met de logs van de game en opent de map. Je wachtwoord en Windows-gebruikersnaam worden weggelaten.
+58|Plaats de zip in het bugrapportforum op onze Discord, met het level en wat je aan het doen was.
+59|Kies de map van je game, of klik op Instellen... om je erdoorheen te laten leiden.
+60|Begrepen
+61|Word lid van de Discord
+62|Welkom bij de bèta!
+63|Een probleem gevonden?
+64|Instellen
+65|Annuleren
+66|Je game instellen
+67|Bijwerken
+68|Later
+69|Wat is er nieuw
+70|LBPPC {version} is uit!
+71|Je hebt {version}. Bijwerken duurt een paar minuten: LBPPC downloadt het, sluit af en opent opnieuw met de nieuwe versie.
+72|LBPPC {version} downloaden...
+73|Besturing
+74|Game
+75|Bladeren...
+76|Instellen...
+77|Online spelen op de LBPPC-server
+78|Op Discord tonen wat ik speel
+79|Onlinenaam
+80|Wachtwoord
+81|3 tot 16 letters, cijfers, - of _, en een wachtwoord van 8 of meer tekens. Alleen je vrienden kunnen meedoen in je game.
+82|Account maken
+83|Nieuw hier? Kies een naam en wachtwoord en klik op Account maken.
+84|Spelen
+85|Stoppen
+86|Klaar
+87|Speel je eigen exemplaar. LBPPC bevat geen gamebestanden. Hulp, nieuws en co-op-partners op de Discord.
+88|Kies je game
+89|Rapport opgeslagen: {file}
+90|Account maken...
+91|Starten...
+92|Rechtsboven in de game getoond. Insert in de game verandert dit terwijl je speelt.
+93|Gebruikt de volgende keer dat je op Spelen drukt. Logs gaan in het rapport van Rapport maken.
+94|Opgeslagen. Gebruikt bij de volgende start van de game, of druk op Insert in de game.
+95|Opgeslagen.
+96|Opgeslagen. Gebruikt de volgende keer dat je op Spelen drukt.
+97|Standaardwaarden herstellen
+98|Muis in de game
+99|Gevoeligheid
+100|Omhoog en omlaag, vergeleken met opzij
+101|Omhoog en omlaag omkeren
+102|F7 in de game vangt de muis en laat hem los.
+103|Muis: {mode}.
+104|Gevoeligheid {value}x.
+105|Gevoeligheid omhoog/omlaag {value}x die van opzij.
+106|Besturing teruggezet naar standaard.
+107|Druk op een toets...
+108|{action}: {button} op de controller.
+109|Druk op de nieuwe toets of muisknop voor {action} (Esc annuleert).
+110|Vriendschapsverzoeken
+111|Vrienden
+112|Verzonden verzoeken
+113|Toevoegen
+114|Verzoek verzonden naar {name}. Zodra die accepteert, verschijnt die als vriend.
+115|, met {count} DLC
+116|Niet meer tonen
+117|Gamemap (met eboot.bin)
+118|Updatemap (de update 1.28)
+119|DLC-map (een uitgepakte DLC, of een map met meerdere)
+120|Updatebestanden na afloop verwijderen
+121|Sneller en geen extra ruimte nodig. Uit: de updatemap wordt gekopieerd en blijft zoals hij is.
+122|Je gamemap
+123|De map van update 1.28
+124|Je DLC (optioneel)
+125|Optioneel. Kies een uitgepakte DLC, of een map met meerdere.
+126|Deze map gebruiken
+127|Updatebestanden verwijderen?
+128|Als het instellen klaar is, wordt deze map verwijderd:\n\n{folder}\n\nJe gamemap houdt alles wat hij nodig heeft. Doorgaan?
+129|Je saves, instellingen en besturing blijven bewaard.
+130|Sluit eerst de game af: de update vervangt zijn bestanden.
+131|{version} bèta
+132|Debug
+133|Bijgewerkt naar LBPPC {version}
+134|Bijwerken mislukt; nog steeds op {version}
+135|Gamemap
+136|Instellingen
+137|Online
+138|De launcher wisselt van taal bij de volgende start.
+139|Stop de game voordat je zijn bestanden instelt
+140|Account {name} gemaakt: druk op Spelen.
+141|Gesloten
+142|Gestopt met een fout: zie het log
+143|Prestatie-overlay
+144|Diagnose
+145|Knoppen
+146|Gameknop
+147|Tweede toets
+148|Controller
+149|Klik op een toets en druk dan op de nieuwe toets of muisknop. Rechtsklik op een toets om hem te wissen.
+150|Klik op een toets en druk dan op de nieuwe toets. Rechtsklik op een toets om hem te wissen.
+151|Muis
+152|Omhoog en omlaag omgekeerd.
+153|Omhoog en omlaag niet omgekeerd.
+154|Druk in de game op F8 om het meteen te gebruiken.
+155|Geen
+156|Niet gewijzigd.
+157|Die toets ({key}) kan niet worden gebruikt. Druk op een andere, of Esc.
+158|{key} {what} in de game. Druk op een andere toets, of Esc.
+159|{key} verplaatst van {old} naar {new}.
+160|{action}: {key}.
+161|Voeg een vriend toe met zijn onlinenaam.
+162|Vind mensen om mee te spelen, hulp en nieuws over updates:
+163|De lijst wordt weer bijgewerkt als de game sluit.
+164|Typ de onlinenaam van een andere speler.
+165|{name} verwijderd.
+166|Maak een account (Online, links) en je vrienden verschijnen hier: verzoeken om te beantwoorden, vrienden en verzonden verzoeken.
+167|Aanmelden...
+168|{count} DLC gevonden: {names}
+169|Gestopt. Je game is nog de oude versie: klik op Instellen om het af te maken.
+170|LBPPC {version} downloaden... {done} van {total} MB
+171|Log tonen
+172|Rapport maken
+173|Logbestand
+174|Saves
+175|Het rapport kon niet worden gemaakt: {error}
+176|Log verbergen
+177|Toets of muis
+178|Toets
+179|De game gebruikt de muis niet.
+180|F7 vangt hem. Wieltje verandert de grootte, Ctrl + wieltje draait.
+181|input.ini kon niet worden opgeslagen: {error}
+182|Alles terugzetten? Klik nog eens
+183|Maak een account (Online, links) om vrienden toe te voegen.
+184|Bezig...
+185|Aanmelden mislukt: {error}
+186|{count} online
+187|Nog niet gekozen.
+188|Niet nodig als je game al versie 1.28 is.
+189|Gevonden: {what}
+190| en nog {count}
+191|Die map kan niet worden gelezen: {error}
+192|Kies eerst je gamemap.
+193|De mappen kunnen niet worden gelezen: {error}
+194|Gecontroleerd. Uitpakken...
+195|Online op LBPPC
+196|Speelt offline
+197|Online: {error}
+198|Actief
+199|lbppc.ini kon niet worden opgeslagen: {error}
+200|De stick zelf
+201|Aanmelden mislukt.
+202|Aangemeld als {name}.
+203|Nog geen vrienden. Typ hierboven de onlinenaam van een vriend en druk op Toevoegen; zodra die accepteert, verschijnt die hier en kan meedoen in je game.
+204|Accepteren
+205|Weigeren
+206| (in {folder})
+207|Verbeter de rood gemarkeerde map hierboven.
+208|Updatemap verwijderen...
+209|Instellen gestopt: {error} ({file}). Sluit programma's die de gamebestanden gebruiken en probeer het opnieuw.
+210|Installeren: LBPPC sluit en opent zo meteen opnieuw.
+211|LBPPC downloaden
+212|Jij en {name} zijn vrienden.
+213|{name} geweigerd.
+214|Verwijderen?
+215|Verwijderen
+216|De nieuwe versie kon niet worden gestart: {error}
+217|Bijwerken geannuleerd.
+218|online
+219|offline
+220|Verzoek aan {name} ingetrokken.
+221|opent het menu in de game
+222|neemt invoer op
+223|vangt de muis
+224|laadt de besturing opnieuw
+225|Kruis
+226|Cirkel
+227|Vierkant
+228|Driehoek
+229|Options
+230|Share / Terug
+231|D-pad omhoog
+232|D-pad omlaag
+233|D-pad links
+234|D-pad rechts
+235|Linkerpeddel 1
+236|Linkerpeddel 2
+237|Rechterpeddel 1
+238|Rechterpeddel 2
+239|Extra knop
+240|Linkerstick links
+241|Linkerstick rechts
+242|Linkerstick omhoog
+243|Linkerstick omlaag
+244|Rechterstick links
+245|Rechterstick rechts
+246|Rechterstick omhoog
+247|Rechterstick omlaag
+248|springen
+249|grijpen
+250|pauze
+251|Touchpad (links)
+252|Touchpad (rechts)
+253|bewegen
+254|Naar links kantelen
+255|hoofd
+256|Naar rechts kantelen
+257|Naar voren kantelen
+258|Naar achteren kantelen
+259|Lopen (halve linkerstick)
+260|Rondkijken (rechterstick)
+261|Bewegen (linkerstick)
+262|Touchpad (Maakmodus)
+263|Europese
+264|Aziatische
+265|Japanse
+266|Koreaanse
+267|LittleBigPlanet 3 versie 1.28, klaar om te spelen
+268|Die map bestaat niet.
+269|Geen eboot.bin in deze map. Kies de map waarin hij is uitgepakt (met eboot.bin erin).
+270|Geen param.sfo gevonden (sce_sys of Sc0). Het uitpakken lijkt onvolledig.
+271|Dit is geen LittleBigPlanet 3 ({id}). LBPPC heeft {us} nodig.
+272|LittleBigPlanet 3-update, versie {version}
+273|LittleBigPlanet 3-game, versie {version}
+274|Niets te doen: je gamemap is klaar.
+275|{folder}: zijn param.sfo heeft geen DLC-label (CONTENT_ID {id}).
+276|Die DLC-map bestaat niet.
+277|Geen DLC in deze map. Kies een uitgepakte DLC (met sce_sys/param.sfo erin), of een map met meerdere.
+278|Na het instellen is de game versie {version}, niet 1.28. Probeer het opnieuw; als het blijft gebeuren, vraag het op de Discord.
+279|Dit is alleen de update, niet de game. Klik op Instellen... om beide te kiezen.
+280|Versie {version}: LBPPC heeft update 1.28 nodig. Klik op Instellen... om die toe te voegen.
+281|Klaar. {files} ontbreekt: online co-op werkt niet.
+282|Kies je gamemap.
+283|Kies je updatemap.
+284|Dat is een .pkg-bestand. Het moet eerst worden uitgepakt: kies de map waarin het is uitgepakt.
+285|Dit is de {region} LittleBigPlanet 3 ({id}). LBPPC draait voorlopig alleen de US-versie ({us}).
+286|Dit is de update, niet de game (er is geen base_001.farc). Kies eerst de map van de basisgame, dan de update.
+287|{count} systeembestanden toegevoegd aan sce_sys
+288|{folder} is DLC voor de {region} LittleBigPlanet 3 ({id}). LBPPC draait de US-versie ({us}), dus de DLC moet de US-DLC zijn.
+289|{folder} is DLC voor een andere game ({id}).
+290|Die DLC-map kan niet worden gelezen: {error}
+291|Dat is de game of zijn update, geen DLC. Kies de map waarin je DLC is uitgepakt.
+292|Deze map bevat {count} .pkg-bestanden. DLC moet eerst worden uitgepakt: kies de map waarin ze zijn uitgepakt.
+293|{files} ontbreekt (in Sc0). Klik op Instellen... om ze toe te voegen.
+294|Deze map bevat {count} gamemappen. Kies de gamemap zelf.
+295|Deze map bevat {count} gamemappen. Kies de updatemap zelf.
+296|Je game is versie {version}. Kies ook de map van update 1.28.
+297|Kies twee aparte mappen: de game, en de update ernaast (niet erin).
+298|Dat is een game, geen update. Kies de map waarin update 1.28 is uitgepakt.
+299|Die update is versie {version}. LBPPC heeft update 1.28 nodig.
+300|Geen LBPPC-map om de DLC in te zetten.
+301|Niet genoeg ruimte op de schijf van de game: {needed} nodig, {free} vrij. Maak ruimte vrij, of vink "Updatebestanden na afloop verwijderen" aan als de update op dezelfde schijf staat als de game.
+302|Niet genoeg ruimte op de schijf van LBPPC (voor de DLC): {needed} nodig, {free} vrij. Maak ruimte vrij.
+303|{count} updatebestanden verplaatst ({size})
+304|{count} updatebestanden gekopieerd ({size})
+305|{count} DLC ({names}) gekopieerd ({size})
+306|{count} DLC ({names}) al ingesteld
+307|De download klopt niet met de controlesom van de versie: niet geïnstalleerd. Probeer het later opnieuw.
+308|De update bevat geen LBPPC.exe: niet geïnstalleerd.
+309|Kon niet controleren op updates: {error}
+310|Downloaden mislukt: {error}
+311|De update bevat een bestand buiten zijn map: niet geïnstalleerd.
+312|De download is veel groter dan een LBPPC-versie: gestopt.
+313|{name} is in gebruik (draait de game nog?). Sluit het en probeer de update opnieuw.
+314|het verzoek was misvormd
+315|het verzoek was ongeldig
+316|de naam, het wachtwoord of het e-mailadres wordt niet geaccepteerd
+317|te veel pogingen, probeer het over een minuut opnieuw
+318|de server kon het niet maken
+319|die onlinenaam is al bezet
+320|die e-mailprovider is niet toegestaan
+321|dat e-mailadres wordt al gebruikt
+322|Aanmelden mislukt.
+323|Dit account is al aangemeld (sluit eerst de game).
+324|Geen account met die naam.
+325|Verkeerd wachtwoord.
+326|Niet aangemeld.
+327|Geen speler met die naam.
+328|Die speler is geblokkeerd.
+329|Al vrienden.
+330|De onlinenaam moet 3 tot 16 letters, cijfers, - of _ hebben.
+331|Het wachtwoord moet minstens {count} tekens hebben.
+332|shadNet: {reason}.
+333|Refresh: {reason}.
+334|Refresh: geregistreerd, maar inloggen vanuit de game is nog niet toegestaan: {reason}.
+335|Typ het serveradres (bijvoorbeeld play.lbppc.com).
+336|"{server}" is geen serveradres.
+337|Kan de shadNet-server {server} niet bereiken: {error}
+338|Kan de Refresh-server {server} niet bereiken: {error}
+339|Het shadNet-account is gemaakt, maar het Refresh-account niet. {error}
+340|De shadNet-server heeft de verbinding gesloten.
+341|{server} lijkt geen shadNet-server.
+342|Aanmelden bij {server} mislukt: {error}
+343|De verbinding met {server} is verbroken: {error}
+344|shadNet-fout {code}.
+345|fout {code}
+346|registratie mislukt
+347|De shadNet-server stuurde iets wat deze launcher niet begrijpt.
+348|Bestanden controleren
+349|Sluit de game voordat je een save importeert
+350|Je ontsleutelde LittleBigPlanet 3-save (of een map met meerdere)
+351|Save importeren
+352|{what} uit deze map importeren?\n\nJe huidige LBPPC-save van dezelfde soort wordt eerst bewaard in user\save_backups.
+353|Save geïmporteerd: {what}
+354|De save kon niet worden geïmporteerd: {error}
+355| (de oude staat in {folder})
+356|Gamebestanden controleren... {percent}%
+357|Controle gestopt.
+358|De bestanden konden niet worden gecontroleerd: {error}
+359|Europese (PAL)
+360|Dit is de {region} versie van LittleBigPlanet 3 ({id}). LBPPC heeft de US-versie van de game nodig ({us}): andere versies werken niet.
+361|{folder} is DLC voor de {region} versie van LittleBigPlanet 3 ({id}). LBPPC heeft de US-versie ({us}) en de bijbehorende DLC nodig.
+362|Gamebestanden: {problems} (bijvoorbeeld {file}). Pak de game en update 1.28 opnieuw uit.
+363|Alle {count} gamebestanden gecontroleerd: ze komen overeen met LittleBigPlanet 3 1.28.
+364|Alle {count} gamebestanden zijn er.
+365|{count} ontbreken
+366|{count} met de verkeerde grootte
+367|{count} beschadigd of gewijzigd
+368|profiel en verhaal
+369|instellingen
+370|Deze save is nog versleuteld (sdimg_-bestanden). LBPPC heeft een ontsleutelde save nodig: de bestanden die de game schreef, zoals 00000001/bigfart.
+371|Dit is een save van een andere game ({id}), niet van LittleBigPlanet 3.
+372|{folder}: dit lijkt geen LittleBigPlanet 3-save ({name}).
+373|Geen LittleBigPlanet 3-save in deze map. Kies een ontsleutelde save (met een map 00000001 met bigfart-, littlefart- of playfart-bestanden), of een map met meerdere.
+374|speelsessie

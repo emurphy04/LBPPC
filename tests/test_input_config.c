@@ -378,7 +378,7 @@ static void TestLoadRestoresMissingControllerAndKeyboard(void) {
     unlink(path);
 }
 
-/* CFG-001: BB_INPUT_CONFIG wins over a bbport.ini-derived path. */
+/* CFG-001: BB_INPUT_CONFIG wins over a lbppc.ini-derived path. */
 static void TestPathPrefersEnvOverride(void) {
     char out[512];
     setenv("BB_INPUT_CONFIG", "/tmp/explicit-input.ini", 1);
@@ -386,13 +386,13 @@ static void TestPathPrefersEnvOverride(void) {
     assert(!strcmp(out, "/tmp/explicit-input.ini"));
     unsetenv("BB_INPUT_CONFIG");
 
-    setenv("BB_CONFIG", "/tmp/data/bbport.ini", 1);
+    setenv("BB_CONFIG", "/tmp/data/lbppc.ini", 1);
     assert(input_config_path(out, sizeof(out)));
     assert(!strcmp(out, "/tmp/data/input.ini"));
     unsetenv("BB_CONFIG");
 
     assert(input_config_path(out, sizeof(out)));
-    assert(!strcmp(out, "input.ini")); /* no env at all: alongside a bare "bbport.ini" */
+    assert(!strcmp(out, "input.ini")); /* no env at all: alongside a bare "lbppc.ini" */
 }
 
 int main(void) {

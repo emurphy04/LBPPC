@@ -21,7 +21,7 @@ Then, in the repository:
 
 ```bash
 git submodule update --init --recursive
-bash build.sh                      # out/bb-probe.exe, out/bb-gpu-capabilities.exe
+bash build.sh                      # out/LBPPC-Game.exe, out/bb-gpu-capabilities.exe
 python run.py F:/path/to/CUSA00473 # the game, without the launcher
 python launcher/lbppc_launcher.py  # the launcher
 bash packaging/windows/package.sh  # dist/LBPPC-<version>-windows.zip
@@ -34,7 +34,7 @@ no Python.
 
 DLSS (optional): `packaging/windows/import_dlss.py` puts `bbport_dlss.dll` (the bridge in
 `gpu/dlss_bridge`, the only code that uses the NVIDIA SDK) and NVIDIA's `nvngx_dlss.dll` /
-`nvngx_dlssg.dll` next to `out/bb-probe.exe`; `build_dlss.sh` builds the bridge with MSVC 2022
+`nvngx_dlssg.dll` next to `out/LBPPC-Game.exe`; `build_dlss.sh` builds the bridge with MSVC 2022
 instead. `package.sh` ships them when present. `BB_DLSS=0` turns DLSS off.
 
 ## What is different from Linux
@@ -47,7 +47,7 @@ instead. `package.sh` ships them when present. `BB_DLSS=0` turns DLSS off.
 | SIGSEGV handler, `sigsetjmp` recovery | Vectored exception handler; `bb_setjmp`/`bb_longjmp` (`src/compat_win.c`) restore all Win64 callee-saved registers without SEH unwinding (guest frames have no unwind data; clang's `__builtin_longjmp` restores a wrong frame pointer on Win64). |
 | Guest thread stacks from `runtime_low_map` | Windows allocates them, fully committed (`pthread_attr_setstacksize`): guest code has no stack probes and would skip the guard page. The main thread stack is 16 MiB committed. |
 | glibc `nanosleep`, monotonic condition variables | High-resolution waitable timers (`compat_sleep_ns`; winpthreads' sleep rounds to 15.6 ms); semaphore deadlines use `CLOCK_REALTIME` (winpthreads rejects monotonic condition variables). |
-| `libbbgpu.so` | `libbbgpu.a`, linked into `bb-probe.exe` by CMake (`gpu/CMakeLists.txt`), with a manifest for UTF-8 paths and long paths. |
+| `libbbgpu.so` | `libbbgpu.a`, linked into `LBPPC-Game.exe` by CMake (`gpu/CMakeLists.txt`), with a manifest for UTF-8 paths and long paths. |
 
 Not ported: userfaultfd tracking (`BB_UFFD`), PGO (GCC flags) and the `tests/` programs (several
 use Linux-only APIs).

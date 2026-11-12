@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Start the game: read its eboot, link it with its bundled modules, run bb-probe.
+"""Start the game: read its eboot, link it with its bundled modules, run the game (LBPPC-Game).
 
-usage: python run.py <game folder> [--timeout seconds] [more bb-probe options]
+usage: python run.py <game folder> [--timeout seconds] [more LBPPC-Game options]
 The game folder is the player's own dump (eboot.bin, sce_module, sce_sys). Generated files go to out/,
 saves to user/. The log goes to the console and out/last_run.log.
 """
@@ -15,8 +15,9 @@ import time
 HERE = Path(__file__).resolve().parent
 OUT = HERE / 'out'
 sys.path.insert(0, str(HERE / 'scripts'))
-import gameview  # noqa: E402
 import prepare as dump  # noqa: E402  (param.sfo)
+import log_privacy  # noqa: E402
+import game_files  # noqa: E402
 
 SUPPORTED = {'CUSA00473': '01.28'}  # title ID: the version LBPPC's patches are made for
 MSYS2_BIN = Path(r'C:\msys64\clang64\bin')  # development builds: SDL3 and the other CLANG64 DLLs
@@ -134,37 +135,39 @@ def main(argv):
     if not argv or argv[0].startswith('-'):
         sys.exit(__doc__)
     game = Path(argv[0]).resolve()
-    # The game as the PS4 sees it: the update over the game, each with its Sc0 (scripts/gameview.py). LBPPC_UPDATE
-    # is the launcher's Update folder; without one, an update folder beside the game (CUSA00473-UPDATE) is used.
-    update = Path(os.environ['LBPPC_UPDATE']).resolve() if os.environ.get('LBPPC_UPDATE') else gameview.find_update(game)
-    layers = gameview.layers(game, update)
-    os.environ['LBPPC_APP0_LAYERS'] = gameview.encode(layers)
-    view = gameview.GameView(game, layer_list=layers)
-    print('LBPPC: game files from ' + ', '.join(f'{folder}' + (f' (for {prefix})' if prefix else '')
-                                                for prefix, folder in layers), flush=True)
-    if not (view / 'eboot.bin').is_file():
-        sys.exit(f'No eboot.bin in {game}' + (f' or {update}' if update else ''))
+    if not (game / 'eboot.bin').is_file():
+        sys.exit(f'No eboot.bin in {game}')
     # Only the version the patches are made for runs: another one has different code at every patched spot.
     try:
-        info = dump.sfo((view / 'sce_sys/param.sfo').read_bytes())
+        info = dump.sfo((game / 'sce_sys' / 'param.sfo').read_bytes())
     except (OSError, ValueError):
         info = {}
     title, version = info.get('TITLE_ID', '?'), info.get('APP_VER', '?')
+    if title.startswith('CUSA') and title not in SUPPORTED:
+        sys.exit(f'LBPPC: this copy is {title}, not the US version of LittleBigPlanet 3. LBPPC needs the US version '
+                 f'({", ".join(SUPPORTED)}): the European (PAL) and other versions won\'t run.')
     if title in SUPPORTED and version != SUPPORTED[title]:
         sys.exit(f'LBPPC: this copy of LittleBigPlanet 3 is version {version}; LBPPC needs version {SUPPORTED[title]}. '
-                 'Choose the 1.28 update in the launcher (Update folder), or update your copy.')
+                 'Open the launcher and use Set up... to add the 1.28 update to your game folder.')
+    # Every file of the game at the right size (scripts/game_files.py): a broken or incomplete copy is said in the log.
+    try:
+        files = game_files.check(game)
+        files_line = 'Game files: ' + ('all present' if files.ok else files.summary(False) + ' ' +
+                                       ', '.join((files.missing + files.wrong_size)[:10]))
+    except (OSError, ValueError):
+        files_line = 'Game files: not checked (no file list)'
     # Packaged releases keep the runtime in bin/; development builds in out/.
-    # A release ships the game as bin/LBPPC-Game.exe; a checkout builds out/bb-probe.exe.
-    probe = HERE / 'bin' / 'LBPPC-Game.exe' if (HERE / 'bin' / 'LBPPC-Game.exe').is_file() else OUT / 'bb-probe.exe'
+    # A release ships the game as bin/LBPPC-Game.exe; a checkout builds out/LBPPC-Game.exe (out/LBPPC-Game elsewhere).
+    probe = HERE / 'bin' / 'LBPPC-Game.exe' if (HERE / 'bin' / 'LBPPC-Game.exe').is_file() else OUT / ('LBPPC-Game.exe' if os.name == 'nt' else 'LBPPC-Game')
     if not probe.is_file():
-        sys.exit('out/bb-probe.exe not found: build it with build.sh (MSYS2 CLANG64)')
+        sys.exit(f'{probe.relative_to(HERE).as_posix()} not found: build it with build.sh (MSYS2 CLANG64 on Windows)')
     # LBPPC_USER_DIR (tests): saves and settings somewhere other than user/.
     user = Path(os.environ['LBPPC_USER_DIR']) if os.environ.get('LBPPC_USER_DIR') else HERE / 'user'
     user.mkdir(exist_ok=True)
     clear_download_cache(user)
     script('prepare.py', game, '--out', OUT)
     # The game's own modules (LBP3's FMOD plugins) are linked too; sceKernelLoadStartModule hands them out.
-    plugins = view.glob('gamedata_orbis/spu/*.prx')
+    plugins = sorted(p.relative_to(game).as_posix() for p in game.glob('gamedata_orbis/spu/*.prx'))
     script('link_modules.py', game, '--out', OUT, '--modules', 'libc.prx', 'libSceFios2.prx', *plugins)
     script('content_profile.py', game, '--out', OUT)
     # Quit Game in the pause menu: the game files it changes are shown changed by the runtime (out/file_edits.bin).
@@ -253,14 +256,18 @@ def main(argv):
     command = [str(probe), str(OUT / 'boot-linked.bin'), '--content-profile', str(OUT / 'content.bin'),
                '--app0', str(game), '--user', str(user), '--timeout', '0', *argv[1:]]
     keep_previous_log()
+    # Players post their logs: every line loses the player's own details (IP addresses, names, the Windows user)
+    # before it is written or shown (scripts/log_privacy.py).
+    scrub = log_privacy.from_environment(env)
     with (OUT / 'last_run.log').open('wb') as log:
-        summary = system_summary()
+        summary = scrub(system_summary() + files_line + '\n')
         log.write(summary.encode())
         sys.stdout.write(summary)
         while True:
             process = subprocess.Popen(command, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
                                        stderr=subprocess.STDOUT, env=env, cwd=HERE)
-            for line in process.stdout:
+            for raw in process.stdout:
+                line = scrub(raw.decode('utf-8', 'replace')).encode('utf-8')
                 log.write(line)
                 sys.stdout.buffer.write(line)
                 sys.stdout.flush()

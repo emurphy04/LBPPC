@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # Builds dist/LBPPC-<version>-windows.zip: LBPPC.exe (the launcher, frozen with PyInstaller so players need no Python;
-# it also runs run.py and the preparation scripts with --script), bin/LBPPC-Game.exe (the game, built as out/bb-probe.exe) with the MSYS2 CLANG64 DLLs it
+# it also runs run.py and the preparation scripts with --script), bin/LBPPC-Game.exe (the game, built as out/LBPPC-Game.exe) with the MSYS2 CLANG64 DLLs it
 # loads, DLSS when imported (import_dlss.py), the scripts, tools and documents. No game files: players point the
 # launcher at their own dump. Run from an MSYS2 CLANG64 shell after `bash build.sh`.
 # Freezing uses a Windows Python 3.10+ (python.org; WINPYTHON overrides) and a private venv in out/pyenv.
 set -euo pipefail
 cd -- "$(dirname -- "$0")/../.."
 source ./msys2-env.sh
-[[ -f out/bb-probe.exe ]] || { echo 'Build first: bash build.sh' >&2; exit 1; }
+[[ -f out/LBPPC-Game.exe ]] || { echo 'Build first: bash build.sh' >&2; exit 1; }
 version=$(sed -n "s/^VERSION = '\(.*\)'$/\1/p" launcher/lbppc_launcher.py)
 
 # A Windows Python (not MSYS2's) for PyInstaller.
@@ -35,6 +35,7 @@ out/pyenv/Scripts/python.exe -m PyInstaller --noconfirm --clean --log-level WARN
     --distpath out/pyi-dist --workpath out/pyi-work --specpath out/pyi-work \
     --paths "$(cygpath -w "$PWD/scripts")" "${hidden[@]}" \
     --add-data "$(cygpath -w "$PWD/launcher/fonts");fonts" --add-data "$(cygpath -w "$PWD/launcher/assets");assets" \
+    --add-data "$(cygpath -w "$PWD/launcher/lang");lang" \
     --icon "$(cygpath -w "$PWD/launcher/assets/lbppc.ico")" "$(cygpath -w "$PWD/launcher/lbppc_launcher.py")"
 
 dest=out/stage/LBPPC
@@ -42,19 +43,19 @@ rm -rf -- out/stage
 mkdir -p "$dest/bin" "$dest/docs" "$dest/licenses" "$dest/tools"
 cp -r out/pyi-dist/LBPPC/. "$dest/"
 # The runtime without debug information (out/ keeps the symbols for crash reports).
-# The game, under the name players see (bb-probe is the build's own name).
-llvm-strip --strip-debug -o "$dest/bin/LBPPC-Game.exe" out/bb-probe.exe
+# The game, stripped of its debug information.
+llvm-strip --strip-debug -o "$dest/bin/LBPPC-Game.exe" out/LBPPC-Game.exe
 # Every DLL it loads from the CLANG64 tree (SDL3, FFmpeg, OpenSSL, protobuf, ...). Not the Vulkan loader: the one
 # the graphics driver installs in System32 is used.
 ldd "$dest/bin/LBPPC-Game.exe" | awk '/\/clang64\/bin\// && !/vulkan-1\.dll/ {print $3}' | sort -u | while read -r dll; do
     cp -u "$dll" "$dest/bin/"
 done
 # DLSS (NVIDIA RTX): the bridge and NVIDIA's runtime (packaging/windows/import_dlss.py or build_dlss.sh).
-if [[ -f out/bbport_dlss.dll && -f out/nvngx_dlss.dll ]]; then
-    cp out/bbport_dlss.dll out/nvngx_dlss.dll "$dest/bin/"
+if [[ -f out/lbppc_dlss.dll && -f out/nvngx_dlss.dll ]]; then
+    cp out/lbppc_dlss.dll out/nvngx_dlss.dll "$dest/bin/"
     [[ -f out/nvngx_dlssg.dll ]] && cp out/nvngx_dlssg.dll "$dest/bin/"
     cp out/NVIDIA-DLSS-LICENSE.txt "$dest/licenses/"
-    cp gpu/dlss_bridge/LICENSE.txt "$dest/licenses/bbport_dlss-LICENSE.txt"
+    cp gpu/dlss_bridge/LICENSE.txt "$dest/licenses/lbppc_dlss-LICENSE.txt"
 else
     echo 'No DLSS in this package (packaging/windows/import_dlss.py)' >&2
 fi
@@ -78,3 +79,7 @@ zip=dist/LBPPC-$version-windows
 rm -f "$zip.zip"
 out/pyenv/Scripts/python.exe -c "import shutil; shutil.make_archive('$zip', 'zip', 'out/stage')"
 du -sh "$dest" "$zip.zip"
+# The launcher's updater (scripts/updater.py) installs a release only when its SHA-256 matches: GitHub's own digest
+# of the uploaded zip, or this file, uploaded to the release beside the zip.
+sha256sum "$zip.zip" | cut -d' ' -f1 > "$zip.zip.sha256"
+echo "Release: upload $zip.zip and $zip.zip.sha256 to a GitHub release (not a pre-release) of emurphy04/LBPPC"

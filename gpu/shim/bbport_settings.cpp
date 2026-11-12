@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <filesystem>
 #include <string>
 #include <string_view>
 
@@ -14,7 +15,19 @@ namespace {
 
 const char* Path() {
     const char* env = std::getenv("BB_CONFIG");
-    return env && env[0] ? env : "bbport.ini";
+    if (env && env[0]) {
+        return env;
+    }
+    // lbppc: the settings file was bbport.ini (the Bloodborne port's name) before 0.1.1: renamed once, settings kept.
+    static const bool renamed = [] {
+        std::error_code error;
+        if (!std::filesystem::exists("lbppc.ini", error) && std::filesystem::exists("bbport.ini", error)) {
+            std::filesystem::rename("bbport.ini", "lbppc.ini", error);
+        }
+        return true;
+    }();
+    (void)renamed;
+    return "lbppc.ini";
 }
 
 float Clamp(float v, float lo, float hi) {
@@ -256,7 +269,7 @@ void ConfigureDlssSupport(bool available, const char* problem) {
     v.dlss_problem = available || kept.empty() ? nullptr : kept.c_str();
     if (v.upscaler == UpscalerDlss && !available) {
         std::printf("Upscaler: DLSS unavailable (%s); falling back to FSR 3.1\n",
-                    kept.empty() ? "bbport_dlss.dll or nvngx_dlss.dll missing" : kept.c_str());
+                    kept.empty() ? "lbppc_dlss.dll or nvngx_dlss.dll missing" : kept.c_str());
         v.upscaler = UpscalerFsr3;
     }
 }

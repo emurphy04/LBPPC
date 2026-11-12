@@ -5,6 +5,7 @@ Everything is drawn here with Pillow, at twice the size and scaled down for smoo
 the launcher puts on its canvas. Nothing of the game is used: the banner is the player's own dump's artwork.
 """
 import math
+import struct
 from pathlib import Path
 import random
 import sys
@@ -46,8 +47,42 @@ def hex_colour(rgb):
     return '#%02x%02x%02x' % rgb[:3]
 
 
-def font(size, weight='SemiBold'):
-    """Fredoka at `size` points (the drawing scale applied), one of its named weights."""
+_FREDOKA = None
+
+
+def fredoka_has(text):
+    """Can Fredoka draw all of `text`? It has Western European letters, not Polish, Cyrillic or Arabic ones."""
+    global _FREDOKA
+    if _FREDOKA is None:
+        _FREDOKA = set()
+        data = (FONTS / 'Fredoka.ttf').read_bytes()
+        count = struct.unpack('>H', data[4:6])[0]
+        tables = {data[12 + i * 16:16 + i * 16]: struct.unpack('>I', data[20 + i * 16:24 + i * 16])[0]
+                  for i in range(count)}
+        cmap = tables[b'cmap']
+        for i in range(struct.unpack('>H', data[cmap + 2:cmap + 4])[0]):
+            sub = cmap + struct.unpack('>I', data[cmap + 8 + i * 8:cmap + 12 + i * 8])[0]
+            if struct.unpack('>H', data[sub:sub + 2])[0] == 4:  # the BMP map
+                pairs = struct.unpack('>H', data[sub + 6:sub + 8])[0]
+                ends = struct.unpack(f'>{pairs // 2}H', data[sub + 14:sub + 14 + pairs])
+                starts = struct.unpack(f'>{pairs // 2}H', data[sub + 16 + pairs:sub + 16 + 2 * pairs])
+                for a, b in zip(starts, ends):
+                    _FREDOKA.update(range(a, min(b, 0xfffe) + 1))
+    return all(ord(c) in _FREDOKA or c.isspace() for c in text)
+
+
+# Windows' own fonts for the letters Fredoka hasn't (Polish, Russian): the nearest weight of Segoe UI.
+SEGOE = {'Regular': 'segoeui.ttf', 'Medium': 'seguisb.ttf', 'SemiBold': 'seguisb.ttf', 'Bold': 'segoeuib.ttf'}
+
+
+def font(size, weight='SemiBold', text=''):
+    """Fredoka at `size` points (the drawing scale applied), one of its named weights; Segoe UI when `text` has
+    letters Fredoka can't draw (a translation's)."""
+    if text and not fredoka_has(text):
+        try:
+            return ImageFont.truetype(SEGOE.get(weight, 'segoeui.ttf'), size * S)
+        except OSError:
+            pass  # no Segoe UI (Proton, Linux): Fredoka, with its missing letters
     f = ImageFont.truetype(str(FONTS / 'Fredoka.ttf'), size * S)
     f.set_variation_by_name(weight)
     return f
@@ -142,7 +177,7 @@ def rgb(colour):
 
 def text_image(text, size, colour=TEXT, weight='SemiBold', outline=None):
     """A line of Fredoka (with a sticker outline when `outline` is a colour)."""
-    f = font(size, weight)
+    f = font(size, weight, text)
     if outline:
         return finish(sticker_text(text, f, rgb(colour), rgb(outline), (size // 6) * S))
     l, t, r, b = f.getbbox(text)
@@ -157,7 +192,7 @@ def panel(w, h, title, radius=20):
     img = Image.new('RGBA', (w2, h2), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
     d.rounded_rectangle((0, 0, w2 - 1, h2 - 1), r, fill=PANEL_FILL, outline=LIME + (255,), width=3 * S)
-    f = font(14, 'Medium')
+    f = font(14, 'Medium', title)
     d.text((20 * S, 11 * S), title.upper(), font=f, fill=(250, 248, 236))
     end = 20 * S + d.textlength(title.upper(), font=f) + 36 * S
     x = 20 * S
@@ -211,7 +246,7 @@ def tab(text, fill, size=15, pad=(12, 9), tilt=0.0, weight='Bold', fg=(255, 255,
     a faint shadow; `scale` draws it larger (the hover pop). The same text gives the same shape at every scale.
     The text is centred on its capitals' height, not its full outline: a descender ("y" in Play) would push it up.
     Returns (image, the shadow margin around the shape in pixels)."""
-    f = font(max(1, round(size * scale)), weight)
+    f = font(max(1, round(size * scale)), weight, text)
     px, py = round(pad[0] * scale * S), round(pad[1] * scale * S)
     l, _t, r, _b = f.getbbox(text)
     cap = f.getbbox('H')[3] - f.getbbox('H')[1]
@@ -293,7 +328,7 @@ def title_bar(w, h, subtitle):
     img.alpha_composite(logo, (x, (h * S - logo.height) // 2))
     if subtitle:
         x += logo.width + 6 * S
-        d.text((x, h // 2 * S + S), subtitle, font=font(12, 'Medium'), fill=(170, 178, 196), anchor='lm')
+        d.text((x, h // 2 * S + S), subtitle, font=font(12, 'Medium', subtitle), fill=(170, 178, 196), anchor='lm')
     return finish(img)
 
 
@@ -312,7 +347,7 @@ def card(w, h, accent):
 
 def paragraph(text, size, width, colour=TEXT, weight='Regular', spacing=1.35):
     """`text` in Fredoka, wrapped to `width` pixels (lines kept apart by `spacing` x size)."""
-    f = font(size, weight)
+    f = font(size, weight, text)
     lines, line = [], ''
     for word in text.split():
         trial = f'{line} {word}'.strip()

@@ -39,7 +39,7 @@ inline bool ViewportIs(float width, float height, float target_width, float targ
            std::abs(std::abs(height) - target_height) < 0.5f;
 }
 
-// Sharp UI (bbport.ini sharp_ui, patches.py ui_viewport; from Awaken's Lantern Engine): the UI
+// Sharp UI (lbppc.ini sharp_ui, patches.py ui_viewport; from Awaken's Lantern Engine): the UI
 // viewport has the output's size, larger than the 1920x1080 stage both ways, and Scaleform draws
 // the stage scaled up to it - text and shapes for the output's pixels instead of 1080 lines
 // stretched afterwards.

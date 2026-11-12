@@ -184,7 +184,7 @@ set(COMMON
 file(GLOB AVPLAYER CONFIGURE_DEPENDS shadps4/core/libraries/avplayer/*.cpp)
 pkg_check_modules(FFMPEG REQUIRED IMPORTED_TARGET libavformat libavcodec libavutil libswscale libswresample)
 file(GLOB SHIM_SOURCES CONFIGURE_DEPENDS shim/*.cpp shim/*/*.cpp)
-# Windows: a DLL cannot leave the runtime_* symbols for bb-probe.exe to resolve, so the
+# Windows: a DLL cannot leave the runtime_* symbols for LBPPC-Game.exe to resolve, so the
 # library is static there and linked into the executable.
 if (WIN32)
     set(BBGPU_KIND STATIC)
@@ -266,7 +266,7 @@ set_source_files_properties(shim/bbport_overlay.cpp PROPERTIES
 target_include_directories(bbgpu PRIVATE shim shadps4 ${SHADER_INCLUDE} third_party/gcn/include third_party/half/include)
 target_compile_definitions(bbgpu PRIVATE BOOST_ASIO_STANDALONE NDEBUG)
 target_compile_options(bbgpu PRIVATE -Wno-deprecated-declarations -Wno-missing-field-initializers)
-# Runtime symbols (runtime_memory_*, runtime_process_*) resolve against bb-probe.
+# Runtime symbols (runtime_memory_*, runtime_process_*) resolve against LBPPC-Game.
 if (NOT WIN32)
     target_link_options(bbgpu PRIVATE -Wl,--allow-shlib-undefined)
 endif()
@@ -299,23 +299,23 @@ if (WIN32)
     add_library(atrac9 STATIC ${BB_ATRAC9})
     target_compile_options(atrac9 PRIVATE -w)
     set_target_properties(atrac9 PROPERTIES C_STANDARD 99 INTERPROCEDURAL_OPTIMIZATION OFF)
-    add_executable(bb-probe ../src/probe.c ${BB_RUNTIME} ../src/compat_win.c ../src/vulkan_smoke.c
-        ../packaging/windows/bb-probe.rc)
+    add_executable(LBPPC-Game ../src/probe.c ${BB_RUNTIME} ../src/compat_win.c ../src/vulkan_smoke.c
+        ../packaging/windows/LBPPC-Game.rc)
     # The overlay's GPU usage comes from Windows' GPU Engine counters (pdh), the CPU name from the
     # registry (advapi32).
     target_link_libraries(bbgpu INTERFACE pdh advapi32)
-    set_target_properties(bb-probe PROPERTIES C_STANDARD 11 C_EXTENSIONS OFF)
-    target_compile_options(bb-probe PRIVATE $<$<COMPILE_LANGUAGE:C>:-Wall -Wextra -Werror>)
+    set_target_properties(LBPPC-Game PROPERTIES C_STANDARD 11 C_EXTENSIONS OFF)
+    target_compile_options(LBPPC-Game PRIVATE $<$<COMPILE_LANGUAGE:C>:-Wall -Wextra -Werror>)
     # Clang 23 added -Wunused-but-set-global (on with -Wall): the runtime keeps a few
     # set-only state flags (e.g. common_initialized), so it stays a warning there.
     include(CheckCCompilerFlag)
     check_c_compiler_flag(-Wno-error=unused-but-set-global BB_HAS_UNUSED_SET_GLOBAL)
     if (BB_HAS_UNUSED_SET_GLOBAL)
-        target_compile_options(bb-probe PRIVATE
+        target_compile_options(LBPPC-Game PRIVATE
             $<$<COMPILE_LANGUAGE:C>:-Wno-error=unused-but-set-global>)
     endif()
-    target_include_directories(bb-probe PRIVATE .. ../src)
-    target_link_libraries(bb-probe PRIVATE bbgpu atrac9 onecore bcrypt ws2_32 -pthread)
+    target_include_directories(LBPPC-Game PRIVATE .. ../src)
+    target_link_libraries(LBPPC-Game PRIVATE bbgpu atrac9 onecore bcrypt ws2_32 -pthread)
     add_executable(fsr411-compare EXCLUDE_FROM_ALL ../tests/test_fsr411_compare.cpp ${BB_RUNTIME} ../src/compat_win.c)
     target_include_directories(fsr411-compare PRIVATE .. ../src shim shadps4 third_party/gcn/include)
     target_link_libraries(fsr411-compare PRIVATE bbgpu atrac9 onecore bcrypt ws2_32 -pthread)
@@ -327,7 +327,7 @@ if (WIN32)
     target_link_libraries(object-motion-cache-test PRIVATE bbgpu atrac9 onecore bcrypt ws2_32 -pthread)
     # The PS4 range (64 GiB - 1 TiB) must stay free: no high-entropy ASLR for heaps and stacks.
     # The guest main thread runs on the process stack: 16 MiB, committed (no stack probes).
-    target_link_options(bb-probe PRIVATE -Wl,--disable-high-entropy-va "SHELL:-Xlinker --stack -Xlinker 16777216,16777216")
+    target_link_options(LBPPC-Game PRIVATE -Wl,--disable-high-entropy-va "SHELL:-Xlinker --stack -Xlinker 16777216,16777216")
     add_executable(bb-gpu-capabilities ../tools/gpu_capabilities.c ../tools/fsr411_capabilities.cpp
         fsr411_dx12/fsr411_support.cpp ../packaging/windows/bb-gpu-capabilities.rc)
     target_include_directories(bb-gpu-capabilities PRIVATE shim fsr411_dx12

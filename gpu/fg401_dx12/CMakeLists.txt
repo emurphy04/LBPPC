@@ -20,7 +20,7 @@ target_sources(bbgpu PRIVATE
 target_include_directories(bbgpu PRIVATE "${FG401_DIR}" "${FG401_HEADERS}")
 set_source_files_properties(fg401_dx12/native_fg401.cpp fg401_dx12/fg401_support.cpp
     PROPERTIES COMPILE_DEFINITIONS _WINDOWS)
-target_sources(bb-probe PRIVATE "${FG401_DIR}/agility.cpp")
+target_sources(LBPPC-Game PRIVATE "${FG401_DIR}/agility.cpp")
 target_sources(bb-gpu-capabilities PRIVATE "${FG401_DIR}/agility.cpp")
 
 add_executable(bb-fg401-capabilities "${FG401_DIR}/fg401_capabilities.cpp"

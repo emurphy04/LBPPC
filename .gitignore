@@ -53,4 +53,5 @@ fsr4_shaders/
 
 # Created by the runtime at start
 input.ini
+lbppc.ini
 bbport.ini

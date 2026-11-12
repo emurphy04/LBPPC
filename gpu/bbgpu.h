@@ -41,7 +41,7 @@ int bbgpu_overlay_captures_input(void);
 /* lbppc: joins the newest invitation waiting (bbport_invite.h), from LBP3's own prompt; 0 when none. Any
  * thread. */
 int bbgpu_invite_accept_shown(void);
-/* 1 while the game should be silent: bbport.ini mute_unfocused is on and the window does not
+/* 1 while the game should be silent: lbppc.ini mute_unfocused is on and the window does not
  * have focus. Safe from any thread (the audio ports read it for every buffer). */
 int bbgpu_audio_muted(void);
 

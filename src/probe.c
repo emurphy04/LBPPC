@@ -1253,9 +1253,9 @@ static void quit_menu_install(void) {
     if (image[site]!=0xe8 || site+5+(int64_t)rel!=lookup) {
         /* The executable isn't LittleBigPlanet 3 1.28 (US), which every patch here is made for: stop with a message the
          * player can act on, rather than at the first system call that version makes and this one doesn't. Often a
-         * merge that took the update's param.sfo but the base game's eboot.bin. */
-        fputs("LBPPC: this copy's eboot.bin isn't LittleBigPlanet 3 version 1.28 (US). LBPPC runs only that version: choose "
-              "the 1.28 update in the launcher (Update folder), or check how the update was merged into your copy.\n",stderr);
+         * merge that took the update's param.sfo but kept the base game's eboot.bin. */
+        fputs("LBPPC: this copy's eboot.bin isn't LittleBigPlanet 3 version 1.28 (US). LBPPC runs only that version: "
+              "open the launcher and use Set up... to add the 1.28 update to your game folder.\n",stderr);
         exit(3);
     }
     unsigned char *s=near_image_alloc();
@@ -1528,14 +1528,14 @@ static void exact_math_install(void) {
 static void hooks_install(const char *spec) {
     if (!spec || !*spec) return;
     unsigned char *stubs=near_image_alloc();
-    if (!stubs) { fprintf(stderr,"BB_HOOK: no memory near the image\n"); return; }
+    if (!stubs) { fprintf(stderr,"Hook: no memory near the image\n"); return; }
     unsigned char *o=stubs;
     for (const char *p=spec; *p;) {
         char *end;
         uint64_t offset=strtoull(p,&end,0);
         unsigned length=*end==':' ? (unsigned)strtoul(end+1,&end,0) : 0;
         p=*end==',' ? end+1 : end+strlen(end);
-        if (length<5 || length>32) { fprintf(stderr,"BB_HOOK: %llx needs a length of 5-32\n",(unsigned long long)offset); continue; }
+        if (length<5 || length>32) { fprintf(stderr,"Hook: %llx needs a length of 5-32\n",(unsigned long long)offset); continue; }
         unsigned char *site=image+offset, *s=o;
         /* Safe in the middle of a function too: below the red zone, the flags, every scratch register and
            xmm0-15 saved on an aligned stack, and back through a memory jump (no register touched). */
@@ -1583,7 +1583,7 @@ static void hooks_install(const char *spec) {
         for (unsigned i=5;i<length;++i) site[i]=0x90;
         VirtualProtect(site,length,old,&old);
         o=(unsigned char *)(((uintptr_t)o+15)&~(uintptr_t)15);
-        fprintf(stderr,"BB_HOOK: guest 0x%llx hooked (%u bytes moved)\n",(unsigned long long)offset,length);
+        fprintf(stderr,"Hook: guest 0x%llx hooked (%u bytes moved)\n",(unsigned long long)offset,length);
     }
 }
 /* lbppc: performance diagnostics (LBPPC_PROFILE=1; the thread lines also online). The frame lines say a frame waited
@@ -1660,7 +1660,7 @@ static DWORD WINAPI thread_load_monitor(LPVOID arg) {
     return 0;
 }
 /* A place is the host module the main thread was in (or guest code), the nearest return address into the port's own
- * code (bb-probe.exe, offset from its base: llvm-symbolizer names it) and the three nearest guest return addresses. */
+ * code (LBPPC-Game.exe, offset from its base: llvm-symbolizer names it) and the three nearest guest return addresses. */
 typedef struct { int64_t qpc; uint64_t where; uint32_t port; uint32_t guest[3]; } ProfileSample;
 typedef struct { uint64_t where; uint32_t port; uint32_t guest[3]; uint32_t slow, all; } ProfilePlace;
 typedef struct { int64_t from, to; float frame_ms, game_ms; } SlowFrame;
@@ -2312,7 +2312,7 @@ static void watchdog(int sig, siginfo_t *info, void *context) {
 }
 #endif
 /* param.sfo lookup: string or integer value of key, 0 when absent. */
-static int sfo_value(const char *path, const char *key, char *text, size_t text_size, uint32_t *number) {
+int runtime_sfo_value(const char *path, const char *key, char *text, size_t text_size, uint32_t *number) {
     FILE *f=fopen(path,"rb");
     if (!f) return 0;
     unsigned char data[65536];
@@ -2518,15 +2518,13 @@ int main(int argc, char **argv) {
     if (app0) {
         runtime_file_configure(app0, user_dir ? user_dir : "user");
         char sfo[4096], id[16]="";
-        /* Through the game's layers (an update's or Sc0's param.sfo when there is one; runtime_file.c). */
-        if (runtime_file_translate("/app0/sce_sys/param.sfo",sfo,sizeof(sfo)))
-            snprintf(sfo,sizeof(sfo),"%s/sce_sys/param.sfo",app0);
-        if (sfo_value(sfo,"INSTALL_DIR_SAVEDATA",id,sizeof(id),NULL) || sfo_value(sfo,"TITLE_ID",id,sizeof(id),NULL))
+        snprintf(sfo,sizeof(sfo),"%s/sce_sys/param.sfo",app0);
+        if (runtime_sfo_value(sfo,"INSTALL_DIR_SAVEDATA",id,sizeof(id),NULL) || runtime_sfo_value(sfo,"TITLE_ID",id,sizeof(id),NULL))
             runtime_savedata_configure(id);
         char serial[16]="", title[128]="", version[16]="";
-        sfo_value(sfo,"TITLE_ID",serial,sizeof(serial),NULL);
-        sfo_value(sfo,"TITLE",title,sizeof(title),NULL);
-        sfo_value(sfo,"APP_VER",version,sizeof(version),NULL);
+        runtime_sfo_value(sfo,"TITLE_ID",serial,sizeof(serial),NULL);
+        runtime_sfo_value(sfo,"TITLE",title,sizeof(title),NULL);
+        runtime_sfo_value(sfo,"APP_VER",version,sizeof(version),NULL);
         bbnet_configure(app0,serial,title,version);
     }
     bbgpu_register_kernel();
@@ -2666,11 +2664,10 @@ int main(int argc, char **argv) {
     }
     char title[128]="LBPPC", serial[16]="UNKNOWN", sfo[4096];
     uint32_t attributes=0;
-    if (!app0 || runtime_file_translate("/app0/sce_sys/param.sfo",sfo,sizeof(sfo)))
-        snprintf(sfo,sizeof(sfo),"%s/sce_sys/param.sfo",app0 ? app0 : ".");
-    sfo_value(sfo,"TITLE",title,sizeof(title),NULL);
-    sfo_value(sfo,"TITLE_ID",serial,sizeof(serial),NULL);
-    sfo_value(sfo,"ATTRIBUTE",NULL,0,&attributes);
+    snprintf(sfo,sizeof(sfo),"%s/sce_sys/param.sfo",app0 ? app0 : ".");
+    runtime_sfo_value(sfo,"TITLE",title,sizeof(title),NULL);
+    runtime_sfo_value(sfo,"TITLE_ID",serial,sizeof(serial),NULL);
+    runtime_sfo_value(sfo,"ATTRIBUTE",NULL,0,&attributes);
     image = allocate(round_page(size));
     if (fread(image, 1, size, f) != size || fgetc(f) != EOF) fail("incorrect memory image size");
     fclose(f);

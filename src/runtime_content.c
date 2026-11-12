@@ -1,6 +1,6 @@
 /* Offline AppContent provider for the configured base-game profile.
- * No package/DLC mounting, downloads, entitlement or license emulation; add-on folders in
- * <user>/addcont/<title id> and BB_DLC_DIR are reported as installed (see addon_list). */
+ * No package mounting, downloads or license emulation. The player's own DLC, set up by the launcher into
+ * <user>/addcont/<title id>/<entitlement label>/ (scripts/game_setup.py), is reported as installed (see addon_list). */
 #include "runtime.h"
 #include <dirent.h>
 #include <stdio.h>
@@ -74,11 +74,34 @@ static ABI int32_t param_int(uint32_t id,int32_t *out) {
 }
 /* SceAppContentAddcontInfo: entitlement label (16 chars + NUL), padding, download status. */
 #define LABEL_SIZE 17
-#define ADDON_INSTALLED 4u
+#define ADDON_NO_EXTRA_DATA 0u  /* an add-on that is only an entitlement (LittleBigPlanet 3's DLC) */
+#define ADDON_INSTALLED 4u      /* an add-on with data, installed */
 #define MAX_ADDONS 64
 typedef struct { char label[LABEL_SIZE]; char padding[3]; uint32_t status; } AddonInfo;
+/* A DLC counts only as the player's own dump: <label>/sce_sys/param.sfo is additional content ("ac") whose
+ * CONTENT_ID (UP9000-CUSA00473_00-LBPDLCSONYCO0001) ends in the folder's label. A bare folder named after a label
+ * is not DLC, and is said so once. */
+static int real_addon(const char *folder,const char *label) {
+    char sfo[4200], content[64]="", category[8]="";
+    if (snprintf(sfo,sizeof(sfo),"%s/sce_sys/param.sfo",folder)>=(int)sizeof(sfo)) return 0;
+    runtime_sfo_value(sfo,"CONTENT_ID",content,sizeof(content),NULL);
+    runtime_sfo_value(sfo,"CATEGORY",category,sizeof(category),NULL);
+    size_t n=strlen(content), l=strlen(label);
+    int ok=!strncmp(category,"ac",2) && n>l && content[n-l-1]=='-' && !strcmp(content+n-l,label);
+    static char warned[MAX_ADDONS][LABEL_SIZE];
+    static unsigned warnings;
+    if (!ok) {
+        int seen=0;
+        for (unsigned i=0;i<warnings;++i) seen|=!strcmp(warned[i],label);
+        if (!seen && warnings<MAX_ADDONS) {
+            memcpy(warned[warnings++],label,l+1);
+            printf("Runtime: DLC %s left out: not a DLC dump (no matching sce_sys/param.sfo)\n",label);
+        }
+    }
+    return ok;
+}
 /* The add-on folders of one folder: each subfolder is named by its entitlement label (up to 16
- * characters), as dumped (SPEXPANSIONDLC03/sce_sys/...). Labels seen before are skipped. */
+ * characters), as the launcher sets them up. Labels seen before are skipped. */
 static void scan_labels(const char *folder,char labels[][LABEL_SIZE],uint32_t *count) {
     DIR *dir=opendir(folder);
     for (struct dirent *e; dir && (e=readdir(dir));) {
@@ -87,45 +110,67 @@ static void scan_labels(const char *folder,char labels[][LABEL_SIZE],uint32_t *c
         size_t n=strlen(e->d_name);
         if (e->d_name[0]=='.' || n>=LABEL_SIZE || *count>=MAX_ADDONS) continue;
         if (snprintf(path,sizeof(path),"%s/%s",folder,e->d_name)>=(int)sizeof(path) ||
-            stat(path,&entry) || !S_ISDIR(entry.st_mode)) continue;
+            stat(path,&entry) || !S_ISDIR(entry.st_mode) || !real_addon(path,e->d_name)) continue;
         int seen=0;
         for (uint32_t i=0;i<*count;++i) seen|=!strcmp(labels[i],e->d_name);
         if (!seen) memcpy(labels[(*count)++],e->d_name,n+1);
     }
     if (dir) closedir(dir);
 }
-/* Add-ons are the folders <user>/addcont/<title id>/<entitlement label> (shadPS4's layout) and
- * those of BB_DLC_DIR (the launcher's DLC folder: <label> folders), each reported as installed.
- * No add-on data is mounted: Bloodborne: The Old Hunters (SPEXPANSIONDLC03) needs only the
- * entitlement, its data ships with patch 1.09. Without a list the count is returned, with one
- * at most capacity entries are written. Never touch unused list slots. */
+/* This game's add-on folder: <user>/addcont/<title id>. */
+static int addon_root(char *out,size_t size) {
+    return (size_t)snprintf(out,size,"%s/addcont/CUSA00473",runtime_file_user_dir())<size;
+}
+int runtime_content_addon(const char *label,char *folder,size_t size) {
+    char root[4096];
+    if (!label || !*label || strlen(label)>=LABEL_SIZE || strchr(label,'/') || strchr(label,'\\') ||
+        !addon_root(root,sizeof(root))) return 0;
+    char path[4096];
+    struct stat entry;
+    if ((size_t)snprintf(path,sizeof(path),"%s/%s",root,label)>=sizeof(path) || stat(path,&entry) ||
+        !S_ISDIR(entry.st_mode) || !real_addon(path,label)) return 0;
+    if (folder && size) snprintf(folder,size,"%s",path);
+    return 1;
+}
+/* Does the add-on have data besides its sce_sys (a DLC that is more than an entitlement)? */
+static int has_data(const char *folder) {
+    DIR *dir=opendir(folder);
+    int data=0;
+    for (struct dirent *e; dir && !data && (e=readdir(dir));)
+        data=e->d_name[0]!='.' && strcmp(e->d_name,"sce_sys");
+    if (dir) closedir(dir);
+    return data;
+}
+/* Add-ons are the folders <user>/addcont/CUSA00473/<entitlement label>. No add-on data is mounted: LittleBigPlanet
+ * 3 imports no sceAppContentAddcontMount; its DLC is an entitlement. Its check (eboot 0x2463d0) lists the add-ons
+ * for each store service label, asks each one's entitlement key (runtime_extra.c), and grants only those whose
+ * download status is 0, "no extra data": an add-on of sce_sys alone reports that, one with data "installed" (4).
+ * Without a list the count is returned, with one at most capacity entries are written. Never touch unused list
+ * slots. */
 static ABI int32_t addon_list(uint32_t service,void *list,uint32_t capacity,uint32_t *hits) {
     require_initialized();
-    (void)service; /* a store service label (LBP3 asks with one) selects from the same add-on folders */
     if ((!capacity || !list) && !hits) return PARAMETER;
     static char labels[MAX_ADDONS][LABEL_SIZE];
     uint32_t found=0;
     char root[4096];
-    int fits=snprintf(root,sizeof(root),"%s/addcont",runtime_file_user_dir())<(int)sizeof(root);
-    DIR *titles=fits ? opendir(root) : NULL;
-    for (struct dirent *t; titles && (t=readdir(titles));) {
-        char title[4096];
-        if (t->d_name[0]=='.' || snprintf(title,sizeof(title),"%s/%s",root,t->d_name)>=(int)sizeof(title)) continue;
-        scan_labels(title,labels,&found);
-    }
-    if (titles) closedir(titles);
-    const char *dlc=getenv("BB_DLC_DIR");
-    if (dlc && *dlc) scan_labels(dlc,labels,&found);
+    if (addon_root(root,sizeof(root))) scan_labels(root,labels,&found);
     uint32_t count=list && capacity && found>capacity ? capacity : found;
+    static unsigned logged;
+    if (logged<8) {  /* what the game asks, for chasing DLC problems (each call after these is the same) */
+        ++logged;
+        printf("Runtime: AppContent add-on list (service %u, room for %u): %u installed",service,capacity,(unsigned)found);
+        for (uint32_t i=0;i<found;++i) printf("%s%s",i ? ", " : ": ",labels[i]);
+        putchar('\n');
+    }
     if (list && capacity) for (uint32_t i=0;i<count;++i) {
         AddonInfo info;
         memset(&info,0,sizeof(info)); memcpy(info.label,labels[i],strlen(labels[i]));
-        info.status=ADDON_INSTALLED;
+        char folder[4200];
+        info.status=runtime_content_addon(labels[i],folder,sizeof(folder)) && has_data(folder) ? ADDON_INSTALLED
+                                                                                              : ADDON_NO_EXTRA_DATA;
         memcpy((unsigned char *)list+(size_t)i*sizeof(info),&info,sizeof(info));
     }
     if (hits) *hits=count;
-    static uint32_t reported=0;
-    if (found!=reported) printf("Runtime: AppContent add-ons reported installed: %u\n",(unsigned)(reported=found));
     ++lists; return 0;
 }
 uintptr_t runtime_content_resolve(const char *name) {

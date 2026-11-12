@@ -1,0 +1,376 @@
+# Dansk. Udkast: skal gennemgås af dansktalende spillere.
+0|LBPPC {version} er en beta. Det meste af LittleBigPlanet 3 kører fint, men du kan møde effekter, der tegnes forkert i nogle baner, et nedbrud en gang imellem eller lidt ujævnheder online.
+1|Hver rapport hjælper os med at rette det, der er i stykker. Tak fordi du tester!
+2|LBPPC kører LittleBigPlanet 3 version 1.28 (US, CUSA00473) fra én mappe. Vælg dit spil og dets opdatering 1.28: LBPPC lægger opdateringen ind i spilmappen for dig, og dine DLC også. Vælg mapper, du selv har pakket ud (en .pkg skal pakkes ud først).
+3|1280 x 720 (lettere for grafikkortet)
+4|1920 x 1080 (original)
+5|Vindue
+6|Kantløs fuld skærm
+7|Eksklusiv fuld skærm
+8|Fra (30 FPS)
+9|FSR 3.1 (alle grafikkort)
+10|Fra (almindelig skalering)
+11|FSR 1 (alle grafikkort)
+12|Fra
+13|Lav
+14|Mellem
+15|Høj
+16|Maksimum
+17|Til (NVIDIA Reflex / AMD Anti-Lag 2)
+18|Til + Boost (NVIDIA)
+19|Opløsning
+20|Bredere end 16:9 viser mere af banen.
+21|Skærm
+22|Kantløs passer til næsten alle skærme.
+23|Billedgenerering
+24|Spillet kører 30 trin i sekundet; dette viser 60.
+25|Lav forsinkelse
+26|Mindre forsinkelse mellem dine tryk og skærmen.
+27|Opskalering
+28|Skarpere, når opløsningen er lavere end skærmens.
+29|Skarphed
+30|Hvor meget FSR 1 skærper det skalerede billede.
+31|Sprog
+32|Spillet og denne launcher. Automatisk følger Windows.
+33|Automatisk
+34|Billedlog
+35|Billedfrekvens, jævnhed og hvert langsomt billede i loggen.
+36|Profiler for langsomme billeder
+37|Hvad spillet ventede på i hvert langsomt billede, og hvor meget processor hver tråd brugte.
+38|Spillerpositioner
+39|Hver spillers position og knapper ved hvert trin. Store logs: til at jagte en fejl.
+40|Spring grafikkortets tilbagelæsninger over
+41|Hurtigere i fyldte baner. Slå det fra, hvis noget flimrer eller ser forkert ud.
+42|Optimeringskontakter
+43|Slår optimeringer fra, mens spillet kører, fra user/toggles.txt. Til at jagte en fejl.
+44|Log for vennemenuen
+45|Hvad spillets vennemenu indeholder, hvert 5. sekund online.
+46|Billedfrekvens
+47|Billedtider
+48|Gengivelsesforsinkelse
+49|Videohukommelse
+50|Grafikkortforbrug
+51|Processorforbrug
+52|RAM-forbrug
+53|Graf over billedtider
+54|Vis spillets egne billeder
+55|Farvekodede værdier
+56|Luk spillet.
+57|Klik på Lav en rapport nederst i launcheren. Den gemmer en zip med spillets logs og åbner mappen. Din adgangskode og dit Windows-brugernavn udelades.
+58|Læg zip-filen op i forummet for fejlrapporter på vores Discord, med banen og hvad du lavede.
+59|Vælg dit spils mappe, eller klik på Opsæt... for at blive guidet.
+60|Forstået
+61|Bliv medlem af Discord
+62|Velkommen til betaen!
+63|Fundet et problem?
+64|Opsæt
+65|Annuller
+66|Opsæt dit spil
+67|Opdater
+68|Senere
+69|Nyheder
+70|LBPPC {version} er ude!
+71|Du har {version}. Opdateringen tager et minut eller to: LBPPC henter den, lukker og åbner igen med den nye version.
+72|Henter LBPPC {version}...
+73|Styring
+74|Spil
+75|Gennemse...
+76|Opsæt...
+77|Spil online på LBPPC-serveren
+78|Vis på Discord, hvad jeg spiller
+79|Onlinenavn
+80|Adgangskode
+81|3 til 16 bogstaver, tal, - eller _, og en adgangskode på mindst 8 tegn. Kun dine venner kan deltage i dit spil.
+82|Opret konto
+83|Ny her? Vælg et navn og en adgangskode, og klik på Opret konto.
+84|Spil
+85|Stop
+86|Klar
+87|Spil din egen kopi. LBPPC indeholder ingen spilfiler. Hjælp, nyheder og co-op-partnere på Discord.
+88|Vælg dit spil
+89|Rapport gemt: {file}
+90|Opretter kontoen...
+91|Starter...
+92|Vises øverst til højre i spillet. Insert i spillet ændrer det, mens du spiller.
+93|Bruges næste gang du trykker på Spil. Logs kommer med i rapporten fra Lav en rapport.
+94|Gemt. Bruges næste gang spillet starter, eller tryk på Insert i spillet.
+95|Gemt.
+96|Gemt. Bruges næste gang du trykker på Spil.
+97|Nulstil til standard
+98|Musen i spillet
+99|Følsomhed
+100|Op og ned i forhold til sidelæns
+101|Vend op og ned
+102|F7 i spillet fanger musen og slipper den.
+103|Mus: {mode}.
+104|Følsomhed {value}x.
+105|Følsomhed op/ned {value}x den sidelæns.
+106|Styringen er nulstillet til standard.
+107|Tryk på en tast...
+108|{action}: {button} på controlleren.
+109|Tryk på den nye tast eller museknap for {action} (Esc annullerer).
+110|Venneanmodninger
+111|Venner
+112|Sendte anmodninger
+113|Tilføj
+114|Anmodning sendt til {name}. Personen vises som ven, når den accepterer.
+115|, med {count} DLC
+116|Vis ikke igen
+117|Spilmappe (med eboot.bin)
+118|Opdateringsmappe (opdatering 1.28)
+119|DLC-mappe (en udpakket DLC, eller en mappe med flere)
+120|Slet opdateringsfilerne bagefter
+121|Hurtigere og kræver ikke ekstra plads. Fra: opdateringsmappen kopieres og efterlades som den er.
+122|Din spilmappe
+123|Mappen med opdatering 1.28
+124|Dine DLC (valgfrit)
+125|Valgfrit. Vælg en udpakket DLC, eller en mappe med flere.
+126|Brug denne mappe
+127|Slet opdateringsfilerne?
+128|Når opsætningen er færdig, slettes denne mappe:\n\n{folder}\n\nSpilmappen beholder alt, hvad den har brug for. Fortsæt?
+129|Dine gemte spil, indstillinger og styring bevares.
+130|Luk spillet først: opdateringen erstatter dets filer.
+131|{version} beta
+132|Fejlfinding
+133|Opdateret til LBPPC {version}
+134|Opdateringen mislykkedes; stadig {version}
+135|Spilmappe
+136|Indstillinger
+137|Online
+138|Launcheren skifter sprog næste gang, den starter.
+139|Stop spillet, før du opsætter dets filer
+140|Kontoen {name} er oprettet: tryk på Spil.
+141|Lukket
+142|Sluttede med en fejl: se loggen
+143|Ydelsesoverlay
+144|Diagnosticering
+145|Knapper
+146|Spilknap
+147|Anden tast
+148|Controller
+149|Klik på en tast, og tryk så på den nye tast eller museknap. Højreklik på en tast for at rydde den.
+150|Klik på en tast, og tryk så på den nye tast. Højreklik på en tast for at rydde den.
+151|Mus
+152|Op og ned vendt.
+153|Op og ned ikke vendt.
+154|Tryk på F8 i spillet for at bruge det med det samme.
+155|Ingen
+156|Ikke ændret.
+157|Den tast ({key}) kan ikke bruges. Tryk på en anden, eller Esc.
+158|{key} {what} i spillet. Tryk på en anden tast, eller Esc.
+159|{key} flyttet fra {old} til {new}.
+160|{action}: {key}.
+161|Tilføj en ven med deres onlinenavn.
+162|Find nogen at spille med, hjælp og nyt om opdateringer:
+163|Listen opdateres igen, når spillet lukker.
+164|Skriv en anden spillers onlinenavn.
+165|{name} fjernet.
+166|Opret en konto (Online, til venstre), så vises dine venner her: anmodninger at svare på, venner og sendte anmodninger.
+167|Logger ind...
+168|{count} DLC fundet: {names}
+169|Stoppet. Dit spil er stadig den gamle version: klik på Opsæt for at gøre det færdigt.
+170|Henter LBPPC {version}... {done} af {total} MB
+171|Vis log
+172|Lav en rapport
+173|Logfil
+174|Gemte spil
+175|Rapporten kunne ikke laves: {error}
+176|Skjul log
+177|Tast eller mus
+178|Tast
+179|Spillet bruger ikke musen.
+180|F7 fanger den. Hjulet ændrer størrelse, Ctrl + hjul drejer.
+181|input.ini kunne ikke gemmes: {error}
+182|Nulstil alt? Klik igen
+183|Opret en konto (Online, til venstre) for at tilføje venner.
+184|Arbejder...
+185|Login mislykkedes: {error}
+186|{count} online
+187|Ikke valgt endnu.
+188|Ikke nødvendigt, hvis dit spil allerede er version 1.28.
+189|Fundet: {what}
+190| og {count} mere
+191|Kan ikke læse den mappe: {error}
+192|Vælg din spilmappe for at begynde.
+193|Kan ikke læse mapperne: {error}
+194|Kontrolleret. Pakker ud...
+195|Online på LBPPC
+196|Spiller offline
+197|Online: {error}
+198|Kører
+199|lbppc.ini kunne ikke gemmes: {error}
+200|Selve pinden
+201|Login mislykkedes.
+202|Logget ind som {name}.
+203|Ingen venner endnu. Skriv en vens onlinenavn ovenfor, og tryk på Tilføj; når de accepterer, vises de her og kan deltage i dit spil.
+204|Accepter
+205|Afvis
+206| (i {folder})
+207|Ret den mappe, der er markeret med rødt ovenfor.
+208|Sletter opdateringsmappen...
+209|Opsætningen stoppede: {error} ({file}). Luk programmer, der bruger spilfilerne, og prøv igen.
+210|Installerer: LBPPC lukker og åbner igen om et øjeblik.
+211|Hent LBPPC
+212|Du og {name} er venner.
+213|{name} afvist.
+214|Fjern?
+215|Fjern
+216|Den nye version kunne ikke startes: {error}
+217|Opdatering annulleret.
+218|online
+219|offline
+220|Anmodningen til {name} er trukket tilbage.
+221|åbner menuen i spillet
+222|optager input
+223|fanger musen
+224|genindlæser styringen
+225|Kryds
+226|Cirkel
+227|Firkant
+228|Trekant
+229|Options
+230|Share / Tilbage
+231|Retningsknap op
+232|Retningsknap ned
+233|Retningsknap venstre
+234|Retningsknap højre
+235|Venstre pagaj 1
+236|Venstre pagaj 2
+237|Højre pagaj 1
+238|Højre pagaj 2
+239|Ekstra knap
+240|Venstre pind venstre
+241|Venstre pind højre
+242|Venstre pind op
+243|Venstre pind ned
+244|Højre pind venstre
+245|Højre pind højre
+246|Højre pind op
+247|Højre pind ned
+248|hop
+249|grib
+250|pause
+251|Touchpad (venstre)
+252|Touchpad (højre)
+253|bevæg dig
+254|Vip til venstre
+255|hoved
+256|Vip til højre
+257|Vip fremad
+258|Vip bagud
+259|Gå (halv venstre pind)
+260|Se dig omkring (højre pind)
+261|Bevæg dig (venstre pind)
+262|Touchpad (skabertilstand)
+263|europæiske
+264|asiatiske
+265|japanske
+266|koreanske
+267|LittleBigPlanet 3 version 1.28, klar til at spille
+268|Den mappe findes ikke.
+269|Ingen eboot.bin i denne mappe. Vælg mappen, den blev pakket ud til (med eboot.bin i).
+270|Ingen param.sfo fundet (sce_sys eller Sc0). Udpakningen ser ufuldstændig ud.
+271|Dette er ikke LittleBigPlanet 3 ({id}). LBPPC skal bruge {us}.
+272|LittleBigPlanet 3-opdatering, version {version}
+273|LittleBigPlanet 3-spil, version {version}
+274|Intet at gøre: din spilmappe er klar.
+275|{folder}: dens param.sfo har ingen DLC-mærkat (CONTENT_ID {id}).
+276|Den DLC-mappe findes ikke.
+277|Ingen DLC i denne mappe. Vælg en udpakket DLC (med sce_sys/param.sfo i), eller en mappe med flere.
+278|Efter opsætningen er spillet version {version}, ikke 1.28. Prøv igen; hvis det bliver ved, så spørg på Discord.
+279|Det er kun opdateringen, ikke spillet. Klik på Opsæt... for at vælge begge.
+280|Version {version}: LBPPC skal bruge opdatering 1.28. Klik på Opsæt... for at tilføje den.
+281|Klar. {files} mangler: online co-op virker ikke.
+282|Vælg din spilmappe.
+283|Vælg din opdateringsmappe.
+284|Det er en .pkg-fil. Den skal pakkes ud først: vælg mappen, den blev pakket ud til.
+285|Dette er den {region} udgave af LittleBigPlanet 3 ({id}). LBPPC kører kun US-versionen ({us}) indtil videre.
+286|Det er opdateringen, ikke spillet (der er ingen base_001.farc). Vælg først mappen med grundspillet, derefter opdateringen.
+287|{count} systemfiler tilføjet til sce_sys
+288|{folder} er DLC til den {region} udgave af LittleBigPlanet 3 ({id}). LBPPC kører US-versionen ({us}), så DLC skal være US-DLC.
+289|{folder} er DLC til et andet spil ({id}).
+290|Kan ikke læse den DLC-mappe: {error}
+291|Det er spillet eller dets opdatering, ikke DLC. Vælg mappen, din DLC blev pakket ud til.
+292|Denne mappe indeholder {count} .pkg-filer. DLC skal pakkes ud først: vælg mappen, de blev pakket ud til.
+293|{files} mangler (i Sc0). Klik på Opsæt... for at tilføje dem.
+294|Denne mappe indeholder {count} spilmapper. Vælg selve spilmappen.
+295|Denne mappe indeholder {count} spilmapper. Vælg selve opdateringsmappen.
+296|Dit spil er version {version}. Vælg også mappen med opdatering 1.28.
+297|Vælg to separate mapper: spillet og opdateringen ved siden af (ikke indeni).
+298|Det er et spil, ikke en opdatering. Vælg mappen, opdatering 1.28 blev pakket ud til.
+299|Den opdatering er version {version}. LBPPC skal bruge opdatering 1.28.
+300|Ingen LBPPC-mappe at lægge DLC i.
+301|Ikke nok plads på spillets drev: {needed} kræves, {free} ledigt. Frigør plads, eller sæt hak i "Slet opdateringsfilerne", hvis opdateringen ligger på samme drev som spillet.
+302|Ikke nok plads på LBPPC's drev (til DLC): {needed} kræves, {free} ledigt. Frigør plads.
+303|{count} opdateringsfiler flyttet ({size})
+304|{count} opdateringsfiler kopieret ({size})
+305|{count} DLC ({names}) kopieret ({size})
+306|{count} DLC ({names}) allerede opsat
+307|Overførslen passer ikke med versionens kontrolsum: ikke installeret. Prøv igen senere.
+308|Opdateringen har ingen LBPPC.exe: ikke installeret.
+309|Kunne ikke søge efter opdateringer: {error}
+310|Overførslen mislykkedes: {error}
+311|Opdateringen indeholder en fil uden for sin mappe: ikke installeret.
+312|Overførslen er meget større end en LBPPC-version: stoppet.
+313|{name} er i brug (kører spillet stadig?). Luk det, og prøv opdateringen igen.
+314|anmodningen var forkert udformet
+315|anmodningen var ugyldig
+316|navnet, adgangskoden eller e-mailen accepteres ikke
+317|for mange forsøg, prøv igen om et minut
+318|serveren kunne ikke oprette den
+319|det onlinenavn er taget
+320|den e-mailudbyder er ikke tilladt
+321|den e-mail er allerede i brug
+322|Login mislykkedes.
+323|Denne konto er allerede logget ind (luk spillet først).
+324|Ingen konto med det navn.
+325|Forkert adgangskode.
+326|Ikke logget ind.
+327|Ingen spiller med det navn.
+328|Den spiller er blokeret.
+329|Allerede venner.
+330|Onlinenavnet skal have 3 til 16 bogstaver, tal, - eller _.
+331|Adgangskoden skal have mindst {count} tegn.
+332|shadNet: {reason}.
+333|Refresh: {reason}.
+334|Refresh: registreret, men login fra spillet er ikke tilladt endnu: {reason}.
+335|Skriv serverens adresse (for eksempel play.lbppc.com).
+336|"{server}" er ikke en serveradresse.
+337|Kan ikke nå shadNet-serveren {server}: {error}
+338|Kan ikke nå Refresh-serveren {server}: {error}
+339|shadNet-kontoen blev oprettet, men ikke Refresh-kontoen. {error}
+340|shadNet-serveren lukkede forbindelsen.
+341|{server} ligner ikke en shadNet-server.
+342|Login på {server} mislykkedes: {error}
+343|Forbindelsen til {server} blev afbrudt: {error}
+344|shadNet-fejl {code}.
+345|fejl {code}
+346|registreringen mislykkedes
+347|shadNet-serveren sendte noget, som denne launcher ikke forstår.
+348|Kontrollér filer
+349|Luk spillet, før du importerer et gemt spil
+350|Dit dekrypterede LittleBigPlanet 3-gemte spil (eller en mappe med flere)
+351|Importér gemt spil
+352|Importér {what} fra denne mappe?\n\nDit nuværende LBPPC-gemte spil af samme slags gemmes først i user\save_backups.
+353|Gemt spil importeret: {what}
+354|Det gemte spil kunne ikke importeres: {error}
+355| (det gamle ligger i {folder})
+356|Kontrollerer spillets filer... {percent} %
+357|Kontrollen er stoppet.
+358|Filerne kunne ikke kontrolleres: {error}
+359|europæiske (PAL)
+360|Dette er den {region} version af LittleBigPlanet 3 ({id}). LBPPC skal bruge US-versionen af spillet ({us}): andre versioner virker ikke.
+361|{folder} er DLC til den {region} version af LittleBigPlanet 3 ({id}). LBPPC skal bruge US-versionen ({us}) og dens DLC.
+362|Spilfiler: {problems} (for eksempel {file}). Pak spillet og opdatering 1.28 ud igen.
+363|Alle {count} spilfiler kontrolleret: de passer med LittleBigPlanet 3 1.28.
+364|Alle {count} spilfiler er der.
+365|{count} mangler
+366|{count} har forkert størrelse
+367|{count} beskadiget eller ændret
+368|profil og historie
+369|indstillinger
+370|Dette gemte spil er stadig krypteret (sdimg_-filer). LBPPC skal bruge et dekrypteret gemt spil: de filer, spillet skrev, som 00000001/bigfart.
+371|Dette er et gemt spil fra et andet spil ({id}), ikke LittleBigPlanet 3.
+372|{folder}: det ligner ikke et LittleBigPlanet 3-gemt spil ({name}).
+373|Intet LittleBigPlanet 3-gemt spil i denne mappe. Vælg et dekrypteret gemt spil (med en mappe 00000001 med bigfart-, littlefart- eller playfart-filer), eller en mappe med flere.
+374|spilsession

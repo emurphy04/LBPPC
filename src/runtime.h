@@ -46,6 +46,10 @@ uintptr_t runtime_time_resolve(const char *name);
 void runtime_content_configure(const uint32_t values[5]);
 uintptr_t runtime_content_resolve(const char *name);
 void runtime_content_report(void);
+/* An installed add-on (DLC) by its entitlement label (runtime_content.c); its folder in out when it is. */
+int runtime_content_addon(const char *label,char *folder,size_t size);
+/* A param.sfo value (probe.c): text into `text`, or a number into `number`; 0 when the key or file is missing. */
+int runtime_sfo_value(const char *path,const char *key,char *text,size_t text_size,uint32_t *number);
 typedef struct { const char *name; void *function; } RuntimeExport;
 #define RUNTIME_LOOKUP(table, nid) runtime_lookup(table, sizeof(table)/sizeof(*(table)), nid)
 const char *runtime_symbol(const char *nid);

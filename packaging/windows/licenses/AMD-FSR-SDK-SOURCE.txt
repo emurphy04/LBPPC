@@ -11,7 +11,7 @@ Samples/Upscalers/FidelityFX_FSR/dx12/x64/Release/amd_fidelityfx_upscaler_dx12.d
 DLL SHA-256:
 d0dcccc74a43c44ba435b7a369b456e0970d8a4464e4bd683119b374f2c9fb46
 
-The DLL is unmodified and dynamically loaded beside bb-probe.exe.
+The DLL is unmodified and dynamically loaded beside LBPPC-Game.exe.
 Its binary redistribution terms are reproduced in AMD-FSR-SDK-LICENSE.md,
 with third-party notices in AMD-FSR-SDK-NOTICES.md. The API headers in the
 source tree carry AMD's MIT notice; the runtime is not covered by that notice.

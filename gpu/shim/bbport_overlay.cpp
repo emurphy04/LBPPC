@@ -57,7 +57,7 @@ asm(".section .rodata\n"
 extern "C" const unsigned char bb_font_ttf[];
 extern "C" const unsigned char bb_font_ttf_end[];
 
-extern "C" void runtime_restart(void); // bb-probe (probe.c)
+extern "C" void runtime_restart(void); // LBPPC-Game (probe.c)
 
 namespace BbOverlay {
 
@@ -859,7 +859,7 @@ void Menu() {
         quit_armed = false;
     }
     ImGui::SameLine();
-    ImGui::TextDisabled("Settings are saved to bbport.ini");
+    ImGui::TextDisabled("Settings are saved to lbppc.ini");
     ImGui::End();
     if (!keep_open) {
         SetOpen(false);
@@ -1292,7 +1292,7 @@ void Init(const Vulkan::Instance& instance, vk::Format format, u32 image_count) 
     io.IniFilename = nullptr; // window positions are not kept
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard | ImGuiConfigFlags_NavEnableGamepad;
     io.BackendFlags |= ImGuiBackendFlags_HasGamepad;
-    io.BackendPlatformName = "bbport";
+    io.BackendPlatformName = "lbppc";
 
     ImGui::StyleColorsDark();
     ImGuiStyle& style = ImGui::GetStyle();

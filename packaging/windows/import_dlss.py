@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Puts the DLSS files next to out/bb-probe.exe from a bbport Windows release (its zip or unpacked folder):
+"""Puts the DLSS files next to out/LBPPC-Game.exe from a bbport Windows release (its zip or unpacked folder):
 bbport_dlss.dll (gpu/dlss_bridge, the same source here), NVIDIA's nvngx_dlss.dll and nvngx_dlssg.dll, and their
 licenses. build_dlss.sh builds the same files from source but needs Visual Studio and the NVIDIA DLSS SDK.
 
@@ -12,7 +12,7 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / 'out'
-FILES = {'bin/bbport_dlss.dll': 'bbport_dlss.dll', 'bin/nvngx_dlss.dll': 'nvngx_dlss.dll',
+FILES = {'bin/bbport_dlss.dll': 'lbppc_dlss.dll', 'bin/nvngx_dlss.dll': 'nvngx_dlss.dll',
          'bin/nvngx_dlssg.dll': 'nvngx_dlssg.dll', 'licenses/NVIDIA-DLSS-LICENSE.txt': 'NVIDIA-DLSS-LICENSE.txt'}
 
 

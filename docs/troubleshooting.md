@@ -8,12 +8,25 @@
 3. Attach the zip to your report and say what you were doing, which level, and roughly when it went
    wrong.
 
-The report holds the last game logs, `bbport.ini`, `input.ini` and the launcher's settings. Your
-Windows user name is replaced in every file, your shadNet password is left out, and no game files
-are included.
+The report holds the last game logs, `lbppc.ini`, `input.ini` and the launcher's settings, and no
+game files.
 
 The launcher keeps the last ten logs in `out/logs/` (`run-<date>-<time>.log`). The current one is
 `out/last_run.log`.
+
+Logs are safe to share as they are, report or not: personal details are left out while the log is
+written. In their place you'll see labels, the same one every time for the same thing:
+
+| Label | Stands for |
+|---|---|
+| `<me>` | your online name |
+| `<player-1>`, `<player-2>`, ... | other players' names |
+| `<ip-1>`, `<ip-2>`, ... | internet (IP) addresses: yours, other players', the server's |
+| `<home>`, `<user>`, `<pc>` | your Windows user folder, user name and PC name |
+| `<account>`, `<password>` | account numbers, and your password if it ever showed up |
+
+Addresses on your own network (192.168..., 10...) stay: they say nothing about who you are. Logs
+from before 0.1.1 are cleaned the first time the new launcher starts.
 
 ## The log, line by line
 

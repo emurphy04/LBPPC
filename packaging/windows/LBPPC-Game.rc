@@ -1,13 +1,13 @@
 #include <winuser.h>
 #include <winver.h>
-CREATEPROCESS_MANIFEST_RESOURCE_ID RT_MANIFEST "bb-probe.manifest"
+CREATEPROCESS_MANIFEST_RESOURCE_ID RT_MANIFEST "LBPPC-Game.manifest"
 
 // What Windows shows for the game: Task Manager, the firewall prompt, Properties. Shipped as LBPPC-Game.exe.
 1 ICON "../../launcher/assets/lbppc.ico"
 
 1 VERSIONINFO
-FILEVERSION 0,1,0,0
-PRODUCTVERSION 0,1,0,0
+FILEVERSION 0,1,1,0
+PRODUCTVERSION 0,1,1,0
 FILEFLAGSMASK 0x3f
 FILEFLAGS 0
 FILEOS VOS_NT_WINDOWS32
@@ -20,11 +20,11 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "LBPPC"
             VALUE "FileDescription", "LBPPC (LittleBigPlanet 3)"
-            VALUE "FileVersion", "0.1.0"
+            VALUE "FileVersion", "0.1.1"
             VALUE "InternalName", "LBPPC-Game"
             VALUE "OriginalFilename", "LBPPC-Game.exe"
             VALUE "ProductName", "LBPPC"
-            VALUE "ProductVersion", "0.1.0"
+            VALUE "ProductVersion", "0.1.1"
             VALUE "LegalCopyright", "GPL-3.0-or-later. Not affiliated with Sony Interactive Entertainment."
         END
     END

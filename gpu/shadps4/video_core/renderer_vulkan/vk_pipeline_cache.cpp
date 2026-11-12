@@ -293,7 +293,7 @@ struct PipelineCache::BuildWorkers {
         const u32 count = std::clamp(std::thread::hardware_concurrency() / 4, 1u, 4u);
         for (u32 i = 0; i < count; ++i) {
             threads.emplace_back([this, &done](std::stop_token token) {
-                Common::SetCurrentThreadName("bbport:PipelineBuild");
+                Common::SetCurrentThreadName("lbppc:PipelineBuild");
                 while (true) {
                     GraphicsPipeline* pipeline;
                     {
@@ -501,7 +501,7 @@ void PipelineCache::CreateDriverCache() {
     // Saved while the game runs (it is usually ended, not shut down): every 20 seconds when
     // pipelines were made since.
     driver_cache_saver = std::jthread{[this](std::stop_token token) {
-        Common::SetCurrentThreadName("bbport:DriverPipelineCache");
+        Common::SetCurrentThreadName("lbppc:DriverPipelineCache");
         u32 seconds = 0;
         while (!token.stop_requested()) {
             std::this_thread::sleep_for(std::chrono::seconds(1));

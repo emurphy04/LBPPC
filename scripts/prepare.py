@@ -13,8 +13,6 @@ from pathlib import Path
 import struct
 import sys
 
-import gameview
-
 # Path.read_text()/write_text() default to the process locale encoding. Game
 # metadata and config files can contain characters that locale cannot encode
 # (e.g. U+2122); force UTF-8 and tolerate console encode errors when printing.
@@ -319,6 +317,6 @@ if __name__ == '__main__':
     parser.add_argument('--out', type=Path, default=Path(__file__).resolve().parent.parent / 'out')
     args = parser.parse_args()
     try:
-        prepare(gameview.view(args.game), args.out)
+        prepare(args.game, args.out)
     except (ValueError, OSError, StopIteration, KeyError, IndexError) as error:
         parser.exit(1, f'prepare failed: {error}\n')

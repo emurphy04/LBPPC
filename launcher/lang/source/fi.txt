@@ -1,0 +1,376 @@
+# Suomi. Luonnos: suomenkielisten pelaajien tarkistettavana.
+0|LBPPC {version} on beta. Suurin osa LittleBigPlanet 3:sta toimii hyvin, mutta joissain kentissä efektit voivat näkyä väärin, peli voi joskus kaatua ja verkossa on vielä karkeita reunoja.
+1|Jokainen raportti auttaa meitä korjaamaan vikoja. Kiitos testaamisesta!
+2|LBPPC käynnistää LittleBigPlanet 3:n version 1.28 (US, CUSA00473) yhdestä kansiosta. Valitse pelisi ja sen päivitys 1.28: LBPPC lisää päivityksen pelikansioon puolestasi, samoin DLC:si. Valitse kansiot, jotka olet purkanut itse (.pkg-tiedosto pitää ensin purkaa).
+3|1280 x 720 (kevyempi näytönohjaimelle)
+4|1920 x 1080 (alkuperäinen)
+5|Ikkuna
+6|Reunaton koko näyttö
+7|Yksinomainen koko näyttö
+8|Pois (30 FPS)
+9|FSR 3.1 (mikä tahansa näytönohjain)
+10|Pois (tavallinen skaalaus)
+11|FSR 1 (mikä tahansa näytönohjain)
+12|Pois
+13|Matala
+14|Keskitaso
+15|Korkea
+16|Maksimi
+17|Päällä (NVIDIA Reflex / AMD Anti-Lag 2)
+18|Päällä + Boost (NVIDIA)
+19|Resoluutio
+20|Leveämpi kuin 16:9 näyttää enemmän kenttää.
+21|Näyttö
+22|Reunaton sopii lähes kaikkiin näyttöihin.
+23|Kuvien luonti
+24|Peli toimii 30 askeleella sekunnissa; tämä näyttää 60.
+25|Matala viive
+26|Vähemmän viivettä ohjauksen ja näytön välillä.
+27|Skaalaus
+28|Terävämpi, kun resoluutio on näyttösi omaa pienempi.
+29|Terävöinti
+30|Kuinka paljon FSR 1 terävöittää skaalattua kuvaa.
+31|Kieli
+32|Peli ja tämä käynnistin. Automaattinen seuraa Windowsia.
+33|Automaattinen
+34|Kuvaloki
+35|Kuvataajuus, tasaisuus ja jokainen hidas kuva lokissa.
+36|Hitaiden kuvien profiloija
+37|Mitä peli odotti jokaisessa hitaassa kuvassa, ja kuinka paljon suoritinta kukin säie käytti.
+38|Pelaajien sijainnit
+39|Jokaisen pelaajan sijainti ja painikkeet jokaisella askeleella. Suuret lokit: vian jäljittämiseen.
+40|Ohita näytönohjaimen takaisinluvut
+41|Nopeampi täysissä kentissä. Kytke pois, jos jokin välkkyy tai näyttää väärältä.
+42|Optimointikytkimet
+43|Kytkee optimointeja pois pelin aikana tiedostosta user/toggles.txt. Vian jäljittämiseen.
+44|Kaverivalikon loki
+45|Mitä pelin kaverivalikossa on, 5 sekunnin välein verkossa.
+46|Kuvataajuus
+47|Kuva-ajat
+48|Renderöintiviive
+49|Videomuisti
+50|Näytönohjaimen käyttö
+51|Suorittimen käyttö
+52|Muistin käyttö
+53|Kuva-aikakaavio
+54|Näytä pelin omat kuvat
+55|Värikoodatut arvot
+56|Sulje peli.
+57|Napsauta Tee raportti käynnistimen alareunassa. Se tallentaa pelin lokit zip-tiedostoon ja avaa sen kansion. Salasanasi ja Windows-käyttäjänimesi jätetään pois.
+58|Julkaise zip Discordimme vikailmoitusfoorumilla ja kerro kenttä ja mitä olit tekemässä.
+59|Valitse pelisi kansio tai napsauta Asenna..., niin sinut opastetaan.
+60|Selvä
+61|Liity Discordiin
+62|Tervetuloa betaan!
+63|Löysitkö ongelman?
+64|Asenna
+65|Peruuta
+66|Asenna pelisi
+67|Päivitä
+68|Myöhemmin
+69|Uutta
+70|LBPPC {version} on julkaistu!
+71|Sinulla on {version}. Päivitys vie minuutin tai kaksi: LBPPC lataa sen, sulkeutuu ja avautuu uudessa versiossa.
+72|Ladataan LBPPC {version}...
+73|Ohjaus
+74|Peli
+75|Selaa...
+76|Asenna...
+77|Pelaa verkossa LBPPC-palvelimella
+78|Näytä Discordissa, mitä pelaan
+79|Verkkonimi
+80|Salasana
+81|3–16 kirjainta, numeroa, - tai _, ja vähintään 8 merkin salasana. Vain kaverisi voivat liittyä peliisi.
+82|Luo tili
+83|Uusi täällä? Valitse nimi ja salasana ja napsauta Luo tili.
+84|Pelaa
+85|Pysäytä
+86|Valmis
+87|Pelaa omaa kopiotasi. LBPPC ei sisällä pelitiedostoja. Apua, uutisia ja yhteispelikavereita Discordissa.
+88|Valitse pelisi
+89|Raportti tallennettu: {file}
+90|Luodaan tiliä...
+91|Käynnistetään...
+92|Näkyy pelin oikeassa yläkulmassa. Insert pelissä muuttaa näitä pelatessa.
+93|Käytetään, kun painat seuraavan kerran Pelaa. Lokit menevät Tee raportti -toiminnon raporttiin.
+94|Tallennettu. Käytetään seuraavalla pelin käynnistyksellä, tai paina pelissä Insert.
+95|Tallennettu.
+96|Tallennettu. Käytetään, kun painat seuraavan kerran Pelaa.
+97|Palauta oletukset
+98|Hiiri pelissä
+99|Herkkyys
+100|Ylös ja alas sivuttaiseen verrattuna
+101|Käännä ylös ja alas
+102|F7 pelissä kaappaa hiiren ja vapauttaa sen.
+103|Hiiri: {mode}.
+104|Herkkyys {value}x.
+105|Pystyherkkyys {value}x vaakaherkkyydestä.
+106|Ohjaus palautettu oletuksiin.
+107|Paina näppäintä...
+108|{action}: {button} ohjaimessa.
+109|Paina uutta näppäintä tai hiiren painiketta toiminnolle {action} (Esc peruuttaa).
+110|Kaveripyynnöt
+111|Kaverit
+112|Lähetetyt pyynnöt
+113|Lisää
+114|Pyyntö lähetetty pelaajalle {name}. Hän näkyy kaverina, kun hyväksyy sen.
+115|, {count} DLC:llä
+116|Älä näytä uudelleen
+117|Pelikansio (jossa eboot.bin)
+118|Päivityskansio (päivitys 1.28)
+119|DLC-kansio (yksi purettu DLC tai kansio, jossa on useita)
+120|Poista päivitystiedostot lopuksi
+121|Nopeampi, eikä vie lisätilaa. Pois: päivityskansio kopioidaan ja jätetään ennalleen.
+122|Pelikansiosi
+123|Päivityksen 1.28 kansio
+124|DLC:si (valinnainen)
+125|Valinnainen. Valitse purettu DLC tai kansio, jossa on useita.
+126|Käytä tätä kansiota
+127|Poistetaanko päivitystiedostot?
+128|Kun asennus on valmis, tämä kansio poistetaan:\n\n{folder}\n\nPelikansioon jää kaikki tarvittava. Jatketaanko?
+129|Tallennuksesi, asetuksesi ja ohjauksesi säilyvät.
+130|Sulje ensin peli: päivitys korvaa sen tiedostot.
+131|{version} beta
+132|Vianetsintä
+133|Päivitetty versioon LBPPC {version}
+134|Päivitys epäonnistui; edelleen {version}
+135|Pelikansio
+136|Asetukset
+137|Verkossa
+138|Käynnistimen kieli vaihtuu seuraavalla käynnistyksellä.
+139|Pysäytä peli ennen sen tiedostojen asentamista
+140|Tili {name} luotu: paina Pelaa.
+141|Suljettu
+142|Päättyi virheeseen: katso loki
+143|Suorituskykynäkymä
+144|Diagnostiikka
+145|Painikkeet
+146|Pelin painike
+147|Toinen näppäin
+148|Ohjain
+149|Napsauta näppäintä ja paina sitten uutta näppäintä tai hiiren painiketta. Napsauta näppäintä hiiren oikealla tyhjentääksesi sen.
+150|Napsauta näppäintä ja paina sitten uutta näppäintä. Napsauta näppäintä hiiren oikealla tyhjentääksesi sen.
+151|Hiiri
+152|Ylös ja alas käännetty.
+153|Ylös ja alas ei käännetty.
+154|Paina pelissä F8 ottaaksesi sen heti käyttöön.
+155|Ei mitään
+156|Ei muutettu.
+157|Tätä näppäintä ({key}) ei voi käyttää. Paina toista tai Esc.
+158|{key} {what} pelissä. Paina toista näppäintä tai Esc.
+159|{key} siirretty: {old} → {new}.
+160|{action}: {key}.
+161|Lisää kaveri hänen verkkonimellään.
+162|Löydä pelikavereita, apua ja uutisia päivityksistä:
+163|Lista päivittyy taas, kun peli suljetaan.
+164|Kirjoita toisen pelaajan verkkonimi.
+165|{name} poistettu.
+166|Luo tili (Verkossa, vasemmalla), niin kaverisi näkyvät täällä: vastattavat pyynnöt, kaverit ja lähettämäsi pyynnöt.
+167|Kirjaudutaan...
+168|DLC:itä löytyi {count}: {names}
+169|Pysäytetty. Pelisi on yhä vanhassa versiossa: napsauta Asenna viimeistelläksesi.
+170|Ladataan LBPPC {version}... {done}/{total} Mt
+171|Näytä loki
+172|Tee raportti
+173|Lokitiedosto
+174|Tallennukset
+175|Raporttia ei voitu tehdä: {error}
+176|Piilota loki
+177|Näppäin tai hiiri
+178|Näppäin
+179|Peli ei käytä hiirtä.
+180|F7 kaappaa sen. Rulla muuttaa kokoa, Ctrl + rulla kiertää.
+181|input.ini-tiedostoa ei voitu tallentaa: {error}
+182|Palautetaanko kaikki? Napsauta uudelleen
+183|Luo tili (Verkossa, vasemmalla) lisätäksesi kavereita.
+184|Työskennellään...
+185|Kirjautuminen epäonnistui: {error}
+186|{count} verkossa
+187|Ei vielä valittu.
+188|Ei tarvita, jos pelisi on jo versio 1.28.
+189|Löytyi: {what}
+190| ja {count} muuta
+191|Kansiota ei voi lukea: {error}
+192|Valitse ensin pelikansiosi.
+193|Kansioita ei voi lukea: {error}
+194|Tarkistettu. Puretaan...
+195|Verkossa LBPPC:ssä
+196|Pelaa offline-tilassa
+197|Verkossa: {error}
+198|Käynnissä
+199|lbppc.ini-tiedostoa ei voitu tallentaa: {error}
+200|Itse sauva
+201|Kirjautuminen epäonnistui.
+202|Kirjautunut nimellä {name}.
+203|Ei vielä kavereita. Kirjoita kaverin verkkonimi yllä ja paina Lisää; kun hän hyväksyy, hän näkyy täällä ja voi liittyä peliisi.
+204|Hyväksy
+205|Hylkää
+206| ({folder})
+207|Korjaa yllä punaisella merkitty kansio.
+208|Poistetaan päivityskansiota...
+209|Asennus pysähtyi: {error} ({file}). Sulje ohjelmat, jotka käyttävät pelin tiedostoja, ja yritä uudelleen.
+210|Asennetaan: LBPPC sulkeutuu ja avautuu hetken päästä uudelleen.
+211|Hanki LBPPC
+212|Sinä ja {name} olette kavereita.
+213|{name} hylätty.
+214|Poistetaanko?
+215|Poista
+216|Uutta versiota ei voitu käynnistää: {error}
+217|Päivitys peruttu.
+218|verkossa
+219|poissa
+220|Pyyntö pelaajalle {name} peruttu.
+221|avaa pelin valikon
+222|nauhoittaa syötteet
+223|kaappaa hiiren
+224|lataa ohjauksen uudelleen
+225|Risti
+226|Ympyrä
+227|Neliö
+228|Kolmio
+229|Options
+230|Share / Takaisin
+231|Ristiohjain ylös
+232|Ristiohjain alas
+233|Ristiohjain vasen
+234|Ristiohjain oikea
+235|Vasen siipi 1
+236|Vasen siipi 2
+237|Oikea siipi 1
+238|Oikea siipi 2
+239|Lisäpainike
+240|Vasen sauva vasemmalle
+241|Vasen sauva oikealle
+242|Vasen sauva ylös
+243|Vasen sauva alas
+244|Oikea sauva vasemmalle
+245|Oikea sauva oikealle
+246|Oikea sauva ylös
+247|Oikea sauva alas
+248|hyppää
+249|tartu
+250|tauko
+251|Kosketuslevy (vasen)
+252|Kosketuslevy (oikea)
+253|liiku
+254|Kallista vasemmalle
+255|pää
+256|Kallista oikealle
+257|Kallista eteen
+258|Kallista taakse
+259|Kävele (puolikas vasen sauva)
+260|Katsele ympärille (oikea sauva)
+261|Liiku (vasen sauva)
+262|Kosketuslevy (luontitila)
+263|eurooppalainen
+264|aasialainen
+265|japanilainen
+266|korealainen
+267|LittleBigPlanet 3 versio 1.28, valmis pelattavaksi
+268|Kansiota ei ole olemassa.
+269|Tässä kansiossa ei ole eboot.bin-tiedostoa. Valitse kansio, johon se purettiin (eboot.bin sisällä).
+270|param.sfo-tiedostoa ei löytynyt (sce_sys tai Sc0). Purku näyttää keskeneräiseltä.
+271|Tämä ei ole LittleBigPlanet 3 ({id}). LBPPC tarvitsee {us}.
+272|LittleBigPlanet 3 -päivitys, versio {version}
+273|LittleBigPlanet 3 -peli, versio {version}
+274|Ei tehtävää: pelikansiosi on valmis.
+275|{folder}: sen param.sfo-tiedostossa ei ole DLC-tunnistetta (CONTENT_ID {id}).
+276|DLC-kansiota ei ole olemassa.
+277|Tässä kansiossa ei ole DLC:tä. Valitse purettu DLC (sce_sys/param.sfo sisällä) tai kansio, jossa on useita.
+278|Asennuksen jälkeen peli on versio {version}, ei 1.28. Yritä uudelleen; jos se toistuu, kysy Discordissa.
+279|Tämä on vain päivitys, ei peli. Napsauta Asenna... valitaksesi molemmat.
+280|Versio {version}: LBPPC tarvitsee päivityksen 1.28. Napsauta Asenna... lisätäksesi sen.
+281|Valmis. Puuttuu {files}: verkkoyhteispeli ei toimi.
+282|Valitse pelikansiosi.
+283|Valitse päivityskansiosi.
+284|Tämä on .pkg-tiedosto. Se pitää ensin purkaa: valitse kansio, johon se purettiin.
+285|Tämä on {region} LittleBigPlanet 3 ({id}). LBPPC tukee toistaiseksi vain US-versiota ({us}).
+286|Tämä on päivitys, ei peli (siinä ei ole base_001.farc-tiedostoa). Valitse ensin peruspelin kansio, sitten päivitys.
+287|{count} järjestelmätiedostoa lisätty kansioon sce_sys
+288|{folder} on DLC LittleBigPlanet 3:n toiselle versiolle ({id}, {region}). LBPPC tukee US-versiota ({us}), joten DLC:n pitää olla US-version.
+289|{folder} on DLC toiselle pelille ({id}).
+290|DLC-kansiota ei voi lukea: {error}
+291|Tämä on peli tai sen päivitys, ei DLC. Valitse kansio, johon DLC purettiin.
+292|Tässä kansiossa on {count} .pkg-tiedostoa. DLC:t pitää ensin purkaa: valitse kansio, johon ne purettiin.
+293|Puuttuu {files} (Sc0:ssa). Napsauta Asenna... lisätäksesi ne.
+294|Tässä kansiossa on {count} pelikansiota. Valitse suoraan pelikansio.
+295|Tässä kansiossa on {count} pelikansiota. Valitse suoraan päivityskansio.
+296|Pelisi on versio {version}. Valitse myös päivityksen 1.28 kansio.
+297|Valitse kaksi erillistä kansiota: peli ja sen vieressä oleva päivitys (ei sen sisällä).
+298|Tämä on peli, ei päivitys. Valitse kansio, johon päivitys 1.28 purettiin.
+299|Tämä päivitys on versio {version}. LBPPC tarvitsee päivityksen 1.28.
+300|DLC:lle ei ole LBPPC-kansiota.
+301|Pelin asemalla ei ole tarpeeksi tilaa: tarvitaan {needed}, vapaana {free}. Vapauta tilaa tai valitse "Poista päivitystiedostot", jos päivitys on samalla asemalla kuin peli.
+302|LBPPC:n asemalla ei ole tarpeeksi tilaa (DLC:lle): tarvitaan {needed}, vapaana {free}. Vapauta tilaa.
+303|{count} päivitystiedostoa siirretty ({size})
+304|{count} päivitystiedostoa kopioitu ({size})
+305|{count} DLC:tä ({names}) kopioitu ({size})
+306|{count} DLC:tä ({names}) jo asennettu
+307|Lataus ei vastaa version tarkistussummaa: ei asennettu. Yritä myöhemmin uudelleen.
+308|Päivityksessä ei ole LBPPC.exe-tiedostoa: ei asennettu.
+309|Päivityksiä ei voitu tarkistaa: {error}
+310|Lataus epäonnistui: {error}
+311|Päivityksessä on tiedosto kansionsa ulkopuolella: ei asennettu.
+312|Lataus on paljon suurempi kuin LBPPC-versio: pysäytetty.
+313|{name} on käytössä (onko peli yhä käynnissä?). Sulje se ja yritä päivitystä uudelleen.
+314|pyyntö oli virheellinen
+315|pyyntö ei ollut kelvollinen
+316|nimeä, salasanaa tai sähköpostia ei hyväksytä
+317|liian monta yritystä, yritä minuutin päästä uudelleen
+318|palvelin ei voinut luoda sitä
+319|verkkonimi on jo varattu
+320|sähköpostipalvelu ei ole sallittu
+321|sähköposti on jo käytössä
+322|Kirjautuminen epäonnistui.
+323|Tälle tilille on jo kirjauduttu (sulje ensin peli).
+324|Sillä nimellä ei ole tiliä.
+325|Väärä salasana.
+326|Ei kirjautunut.
+327|Sillä nimellä ei ole pelaajaa.
+328|Pelaaja on estetty.
+329|Olette jo kavereita.
+330|Verkkonimessä pitää olla 3–16 kirjainta, numeroa, - tai _.
+331|Salasanassa pitää olla vähintään {count} merkkiä.
+332|shadNet: {reason}.
+333|Refresh: {reason}.
+334|Refresh: rekisteröity, mutta pelikirjautumisia ei vielä sallita: {reason}.
+335|Kirjoita palvelimen osoite (esimerkiksi play.lbppc.com).
+336|"{server}" ei ole palvelimen osoite.
+337|shadNet-palvelimeen {server} ei saada yhteyttä: {error}
+338|Refresh-palvelimeen {server} ei saada yhteyttä: {error}
+339|shadNet-tili luotiin, mutta Refresh-tiliä ei. {error}
+340|shadNet-palvelin sulki yhteyden.
+341|{server} ei näytä shadNet-palvelimelta.
+342|Kirjautuminen palvelimeen {server} epäonnistui: {error}
+343|Yhteys palvelimeen {server} katkesi: {error}
+344|shadNet-virhe {code}.
+345|virhe {code}
+346|rekisteröinti epäonnistui
+347|shadNet-palvelin lähetti jotain, mitä tämä käynnistin ei ymmärrä.
+348|Tarkista tiedostot
+349|Sulje peli ennen tallennuksen tuomista
+350|Purettu LittleBigPlanet 3 -tallennuksesi (tai kansio, jossa on useita)
+351|Tuo tallennus
+352|Tuodaanko tästä kansiosta: {what}?\n\nNykyinen saman tyypin LBPPC-tallennuksesi tallennetaan ensin kansioon user\save_backups.
+353|Tallennus tuotu: {what}
+354|Tallennusta ei voitu tuoda: {error}
+355| (vanha on kansiossa {folder})
+356|Tarkistetaan pelin tiedostoja... {percent} %
+357|Tarkistus pysäytetty.
+358|Tiedostoja ei voitu tarkistaa: {error}
+359|eurooppalainen (PAL)
+360|Tämä on LittleBigPlanet 3:n {region} versio ({id}). LBPPC tarvitsee pelin US-version ({us}): muut versiot eivät toimi.
+361|{folder} on DLC LittleBigPlanet 3:n toiselle versiolle ({id}, {region}). LBPPC tarvitsee US-version ({us}) ja sen DLC:t.
+362|Pelitiedostot: {problems} (esimerkiksi {file}). Pura peli ja päivitys 1.28 uudelleen.
+363|Kaikki {count} pelitiedostoa tarkistettu: ne vastaavat LittleBigPlanet 3:n versiota 1.28.
+364|Kaikki {count} pelitiedostoa ovat paikallaan.
+365|{count} puuttuu
+366|{count} väärän kokoisia
+367|{count} vioittunutta tai muutettua
+368|profiili ja tarina
+369|asetukset
+370|Tämä tallennus on yhä salattu (sdimg_-tiedostot). LBPPC tarvitsee salauksesta puretun tallennuksen: pelin kirjoittamat tiedostot, kuten 00000001/bigfart.
+371|Tämä on toisen pelin tallennus ({id}), ei LittleBigPlanet 3:n.
+372|{folder}: tämä ei näytä LittleBigPlanet 3 -tallennukselta ({name}).
+373|Tässä kansiossa ei ole LittleBigPlanet 3 -tallennusta. Valitse salauksesta purettu tallennus (jossa on kansio 00000001 ja bigfart-, littlefart- tai playfart-tiedostoja) tai kansio, jossa on useita.
+374|pelikerta

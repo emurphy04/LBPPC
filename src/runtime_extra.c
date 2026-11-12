@@ -204,7 +204,26 @@ static ABI int32_t temp_space(const MountPoint *point,uint64_t *kb) {
     *kb=1024*1024;
     return ORBIS_OK;
 }
-static ABI int32_t entitlement_key(const void *label,void *key) { (void)label; (void)key; return APP_CONTENT_NOT_FOUND; }
+/* sceAppContentGetEntitlementKey(service label, entitlement label, key): an add-on's 16-byte key. LittleBigPlanet
+ * 3 (eboot 0x2463d0) grants a DLC only when this succeeds, and never reads the key itself: an installed DLC (the
+ * player's own dump, set up by the launcher; runtime_content.c) gets an all-zero key, any other "not found". The
+ * label is a SceNpUnifiedEntitlementLabel (16 characters and a NUL); the service label comes first (an earlier
+ * two-argument version read it as the label's address and crashed on service 1). */
+static ABI int32_t entitlement_key(uint32_t service,const char *label,void *key) {
+    char name[17]="";
+    if (label) { memcpy(name,label,16); name[16]=0; }
+    const int installed=runtime_content_addon(name,NULL,0);
+    static unsigned logged;
+    if (logged<64) {
+        ++logged;
+        printf("Runtime: AppContent entitlement key for %s (service %u): %s\n",name[0] ? name : "(none)",service,
+               installed ? "granted (installed)" : "not found (not installed)");
+    }
+    if (!installed) return APP_CONTENT_NOT_FOUND;
+    if (!key) return APP_CONTENT_PARAMETER;
+    memset(key,0,16);
+    return ORBIS_OK;
+}
 
 /* IME: no hardware keyboard. */
 static ABI int32_t keyboard_open(int32_t user,const void *param) { (void)user; (void)param; return IME_NOT_CONNECTED; }

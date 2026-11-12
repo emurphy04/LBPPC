@@ -1,0 +1,376 @@
+# Español. Borrador: pendiente de revisión por jugadores hispanohablantes.
+0|LBPPC {version} es una beta. La mayor parte de LittleBigPlanet 3 funciona bien, pero puede que veas efectos que se muestran mal en algunos niveles, algún cierre inesperado o fallos en línea.
+1|Cada informe nos ayuda a arreglar lo que falla. ¡Gracias por probarlo!
+2|LBPPC ejecuta LittleBigPlanet 3 versión 1.28 (US, CUSA00473) desde una sola carpeta. Elige tu juego y su actualización 1.28: LBPPC añade la actualización a la carpeta del juego por ti, y también tus DLC. Elige carpetas que hayas extraído tú (un .pkg debe extraerse primero).
+3|1280 x 720 (más ligero para la GPU)
+4|1920 x 1080 (original)
+5|Ventana
+6|Pantalla completa sin bordes
+7|Pantalla completa exclusiva
+8|Desactivado (30 FPS)
+9|FSR 3.1 (cualquier GPU)
+10|Desactivado (escalado simple)
+11|FSR 1 (cualquier GPU)
+12|Desactivado
+13|Bajo
+14|Medio
+15|Alto
+16|Máximo
+17|Activado (NVIDIA Reflex / AMD Anti-Lag 2)
+18|Activado + Boost (NVIDIA)
+19|Resolución
+20|Más ancho que 16:9 muestra más del nivel.
+21|Pantalla
+22|Sin bordes va bien en casi todas las pantallas.
+23|Generación de fotogramas
+24|El juego va a 30 pasos por segundo; esto muestra 60.
+25|Baja latencia
+26|Menos retraso entre lo que pulsas y la pantalla.
+27|Escalado
+28|Más nítido cuando la resolución es menor que la de tu pantalla.
+29|Nitidez
+30|Cuánto aumenta FSR 1 la nitidez de la imagen escalada.
+31|Idioma
+32|El juego y este lanzador. Automático sigue a Windows.
+33|Automático
+34|Registro de fotogramas
+35|Fotogramas por segundo, ritmo y cada fotograma lento en el registro.
+36|Perfilador de fotogramas lentos
+37|Lo que esperó el juego en cada fotograma lento y la CPU que usó cada hilo.
+38|Posiciones de los jugadores
+39|La posición y los botones de cada jugador en cada paso. Registros grandes: para buscar un error.
+40|Omitir lecturas de la GPU
+41|Más rápido en niveles cargados. Desactívalo si algo parpadea o se ve mal.
+42|Interruptores de optimización
+43|Desactiva optimizaciones mientras el juego se ejecuta, desde user/toggles.txt. Para buscar un error.
+44|Registro del menú de amigos
+45|Lo que contiene el menú de amigos del juego, cada 5 segundos en línea.
+46|Fotogramas por segundo
+47|Tiempos de fotograma
+48|Latencia de renderizado
+49|Memoria de vídeo
+50|Uso de GPU
+51|Uso de CPU
+52|Uso de RAM
+53|Gráfico de tiempos de fotograma
+54|Mostrar los fotogramas propios del juego
+55|Valores con colores
+56|Cierra el juego.
+57|Haz clic en Crear informe en la parte inferior del lanzador. Guarda un zip con los registros del juego y abre su carpeta. Tu contraseña y tu nombre de usuario de Windows no se incluyen.
+58|Publica el zip en el foro de informes de errores de nuestro Discord, con el nivel y lo que estabas haciendo.
+59|Elige la carpeta de tu juego, o haz clic en Configurar... para que te guiemos.
+60|Entendido
+61|Únete al Discord
+62|¡Bienvenido a la beta!
+63|¿Has encontrado un problema?
+64|Configurar
+65|Cancelar
+66|Configura tu juego
+67|Actualizar
+68|Más tarde
+69|Novedades
+70|¡Ya está disponible LBPPC {version}!
+71|Tienes la {version}. Actualizar tarda uno o dos minutos: LBPPC la descarga, se cierra y se vuelve a abrir con la nueva versión.
+72|Descargando LBPPC {version}...
+73|Controles
+74|Juego
+75|Examinar...
+76|Configurar...
+77|Jugar en línea en el servidor de LBPPC
+78|Mostrar a qué juego en Discord
+79|Nombre en línea
+80|Contraseña
+81|De 3 a 16 letras, números, - o _, y una contraseña de 8 caracteres o más. Solo tus amigos pueden unirse a tu partida.
+82|Crear cuenta
+83|¿Eres nuevo? Elige un nombre y una contraseña y pulsa Crear cuenta.
+84|Jugar
+85|Detener
+86|Listo
+87|Juega con tu propia copia. LBPPC no incluye archivos del juego. Ayuda, novedades y compañeros de cooperativo en el Discord.
+88|Elige tu juego
+89|Informe guardado: {file}
+90|Creando la cuenta...
+91|Iniciando...
+92|Se muestra arriba a la derecha del juego. Insert en el juego los cambia mientras juegas.
+93|Se usa la próxima vez que pulses Jugar. Los registros van en el informe de Crear informe.
+94|Guardado. Se usa la próxima vez que se inicie el juego, o pulsa Insert en el juego.
+95|Guardado.
+96|Guardado. Se usa la próxima vez que pulses Jugar.
+97|Restablecer valores predeterminados
+98|El ratón en el juego
+99|Sensibilidad
+100|Arriba y abajo, comparado con los lados
+101|Invertir arriba y abajo
+102|F7 en el juego captura el ratón y lo libera.
+103|Ratón: {mode}.
+104|Sensibilidad {value}x.
+105|Sensibilidad vertical {value}x la horizontal.
+106|Controles restablecidos.
+107|Pulsa una tecla...
+108|{action}: {button} en el mando.
+109|Pulsa la nueva tecla o botón del ratón para {action} (Esc cancela).
+110|Solicitudes de amistad
+111|Amigos
+112|Solicitudes enviadas
+113|Añadir
+114|Solicitud enviada a {name}. Aparecerá como amigo cuando la acepte.
+115|, con {count} DLC
+116|No volver a mostrar
+117|Carpeta del juego (con eboot.bin)
+118|Carpeta de la actualización (la actualización 1.28)
+119|Carpeta de DLC (un DLC extraído, o una carpeta con varios)
+120|Borrar los archivos de la actualización al terminar
+121|Más rápido y sin espacio extra. Desactivado: la carpeta de la actualización se copia y se deja como está.
+122|Tu carpeta del juego
+123|La carpeta de la actualización 1.28
+124|Tus DLC (opcional)
+125|Opcional. Elige un DLC extraído, o una carpeta con varios.
+126|Usar esta carpeta
+127|¿Borrar los archivos de la actualización?
+128|Al terminar la configuración, se borrará esta carpeta:\n\n{folder}\n\nLa carpeta del juego conserva todo lo que necesita. ¿Continuar?
+129|Se conservan tus partidas, ajustes y controles.
+130|Cierra antes el juego: la actualización reemplaza sus archivos.
+131|{version} beta
+132|Depuración
+133|Actualizado a LBPPC {version}
+134|La actualización falló; sigues en la {version}
+135|Carpeta del juego
+136|Ajustes
+137|En línea
+138|El lanzador cambiará de idioma la próxima vez que se inicie.
+139|Detén el juego antes de configurar sus archivos
+140|Cuenta {name} creada: pulsa Jugar.
+141|Cerrado
+142|Terminó con un error: mira el registro
+143|Superposición de rendimiento
+144|Diagnóstico
+145|Botones
+146|Botón del juego
+147|Segunda tecla
+148|Mando
+149|Haz clic en una tecla y pulsa la nueva tecla o botón del ratón. Clic derecho en una tecla para borrarla.
+150|Haz clic en una tecla y pulsa la nueva tecla. Clic derecho en una tecla para borrarla.
+151|Ratón
+152|Arriba y abajo invertidos.
+153|Arriba y abajo sin invertir.
+154|Pulsa F8 en el juego para usarlo ya.
+155|Ninguno
+156|Sin cambios.
+157|Esa tecla ({key}) no se puede usar. Pulsa otra, o Esc.
+158|{key} {what} en el juego. Pulsa otra tecla, o Esc.
+159|{key} se ha movido de {old} a {new}.
+160|{action}: {key}.
+161|Añade a un amigo por su nombre en línea.
+162|Encuentra gente con quien jugar, ayuda y noticias de actualizaciones:
+163|La lista se actualiza cuando se cierra el juego.
+164|Escribe el nombre en línea de otro jugador.
+165|{name} eliminado.
+166|Crea una cuenta (En línea, a la izquierda) y tus amigos aparecerán aquí: solicitudes recibidas, amigos y solicitudes enviadas.
+167|Iniciando sesión...
+168|{count} DLC encontrados: {names}
+169|Detenido. Tu juego sigue en su versión anterior: haz clic en Configurar para terminar.
+170|Descargando LBPPC {version}... {done} de {total} MB
+171|Mostrar registro
+172|Crear informe
+173|Archivo de registro
+174|Partidas
+175|No se pudo crear el informe: {error}
+176|Ocultar registro
+177|Tecla o ratón
+178|Tecla
+179|El juego no usa el ratón.
+180|F7 lo captura. La rueda cambia el tamaño, Ctrl + rueda gira.
+181|No se pudo guardar input.ini: {error}
+182|¿Restablecer todo? Haz clic otra vez
+183|Crea una cuenta (En línea, a la izquierda) para añadir amigos.
+184|Trabajando...
+185|Error al iniciar sesión: {error}
+186|{count} en línea
+187|Aún no elegida.
+188|No hace falta si tu juego ya es la versión 1.28.
+189|Encontrado: {what}
+190| y {count} más
+191|No se puede leer esa carpeta: {error}
+192|Elige la carpeta de tu juego para empezar.
+193|No se pueden leer las carpetas: {error}
+194|Comprobado. Descomprimiendo...
+195|En línea en LBPPC
+196|Jugando sin conexión
+197|En línea: {error}
+198|En marcha
+199|No se pudo guardar lbppc.ini: {error}
+200|El propio stick
+201|Error al iniciar sesión.
+202|Sesión iniciada como {name}.
+203|Aún no tienes amigos. Escribe arriba el nombre en línea de un amigo y pulsa Añadir; cuando acepte, aparecerá aquí y podrá unirse a tu partida.
+204|Aceptar
+205|Rechazar
+206| (en {folder})
+207|Corrige la carpeta marcada en rojo arriba.
+208|Borrando la carpeta de la actualización...
+209|Configuración detenida: {error} ({file}). Cierra los programas que usen los archivos del juego e inténtalo de nuevo.
+210|Instalando: LBPPC se cierra y se vuelve a abrir en un momento.
+211|Consigue LBPPC
+212|{name} y tú sois amigos.
+213|{name} rechazado.
+214|¿Eliminar?
+215|Eliminar
+216|No se pudo iniciar la nueva versión: {error}
+217|Actualización cancelada.
+218|en línea
+219|desconectado
+220|Solicitud a {name} cancelada.
+221|abre el menú del juego
+222|graba los controles
+223|captura el ratón
+224|recarga los controles
+225|Cruz
+226|Círculo
+227|Cuadrado
+228|Triángulo
+229|Options
+230|Share / Atrás
+231|Cruceta arriba
+232|Cruceta abajo
+233|Cruceta izquierda
+234|Cruceta derecha
+235|Pala izquierda 1
+236|Pala izquierda 2
+237|Pala derecha 1
+238|Pala derecha 2
+239|Botón extra
+240|Stick izquierdo a la izquierda
+241|Stick izquierdo a la derecha
+242|Stick izquierdo arriba
+243|Stick izquierdo abajo
+244|Stick derecho a la izquierda
+245|Stick derecho a la derecha
+246|Stick derecho arriba
+247|Stick derecho abajo
+248|saltar
+249|agarrar
+250|pausa
+251|Panel táctil (izquierda)
+252|Panel táctil (derecha)
+253|moverse
+254|Inclinar a la izquierda
+255|cabeza
+256|Inclinar a la derecha
+257|Inclinar hacia delante
+258|Inclinar hacia atrás
+259|Caminar (medio stick izquierdo)
+260|Mirar alrededor (stick derecho)
+261|Moverse (stick izquierdo)
+262|Panel táctil (modo Crear)
+263|europeo
+264|asiático
+265|japonés
+266|coreano
+267|LittleBigPlanet 3 versión 1.28, listo para jugar
+268|Esa carpeta no existe.
+269|No hay eboot.bin en esta carpeta. Elige la carpeta donde se extrajo (con eboot.bin dentro).
+270|No se encontró param.sfo (sce_sys o Sc0). La extracción parece incompleta.
+271|Esto no es LittleBigPlanet 3 ({id}). LBPPC necesita {us}.
+272|Actualización de LittleBigPlanet 3, versión {version}
+273|Juego LittleBigPlanet 3, versión {version}
+274|Nada que hacer: la carpeta de tu juego está lista.
+275|{folder}: su param.sfo no tiene etiqueta de DLC (CONTENT_ID {id}).
+276|Esa carpeta de DLC no existe.
+277|No hay DLC en esta carpeta. Elige un DLC extraído (con sce_sys/param.sfo dentro), o una carpeta con varios.
+278|Tras la configuración el juego es la versión {version}, no la 1.28. Vuelve a intentarlo; si sigue pasando, pregunta en el Discord.
+279|Esto es solo la actualización, no el juego. Haz clic en Configurar... para elegir los dos.
+280|Versión {version}: LBPPC necesita la actualización 1.28. Haz clic en Configurar... para añadirla.
+281|Listo. Falta {files}: el cooperativo en línea no funcionará.
+282|Elige la carpeta de tu juego.
+283|Elige la carpeta de tu actualización.
+284|Eso es un archivo .pkg. Hay que extraerlo primero: elige la carpeta donde se extrajo.
+285|Este es el LittleBigPlanet 3 {region} ({id}). Por ahora LBPPC solo ejecuta la versión US ({us}).
+286|Esto es la actualización, no el juego (no tiene base_001.farc). Elige primero la carpeta del juego base y luego la actualización.
+287|{count} archivos del sistema añadidos a sce_sys
+288|{folder} es un DLC del LittleBigPlanet 3 {region} ({id}). LBPPC ejecuta la versión US ({us}), así que sus DLC tienen que ser los de la versión US.
+289|{folder} es un DLC de otro juego ({id}).
+290|No se puede leer esa carpeta de DLC: {error}
+291|Eso es el juego o su actualización, no un DLC. Elige la carpeta donde se extrajo tu DLC.
+292|Esta carpeta tiene {count} archivos .pkg. Los DLC deben extraerse primero: elige la carpeta donde se extrajeron.
+293|Falta {files} (en Sc0). Haz clic en Configurar... para añadirlos.
+294|Esta carpeta tiene {count} carpetas de juego. Elige directamente la carpeta del juego.
+295|Esta carpeta tiene {count} carpetas de juego. Elige directamente la carpeta de la actualización.
+296|Tu juego es la versión {version}. Elige también la carpeta de la actualización 1.28.
+297|Elige dos carpetas distintas: el juego y la actualización junto a él (no dentro).
+298|Eso es un juego, no una actualización. Elige la carpeta donde se extrajo la actualización 1.28.
+299|Esa actualización es la versión {version}. LBPPC necesita la actualización 1.28.
+300|No hay carpeta de LBPPC donde poner los DLC.
+301|No hay espacio suficiente en la unidad del juego: se necesitan {needed} y hay {free} libres. Libera espacio, o marca «Borrar los archivos de la actualización» si la actualización está en la misma unidad que el juego.
+302|No hay espacio suficiente en la unidad de LBPPC (para los DLC): se necesitan {needed} y hay {free} libres. Libera espacio.
+303|{count} archivos de la actualización movidos ({size})
+304|{count} archivos de la actualización copiados ({size})
+305|{count} DLC ({names}) copiados ({size})
+306|{count} DLC ({names}) ya configurados
+307|La descarga no coincide con la suma de comprobación de la versión: no se instala. Inténtalo más tarde.
+308|La actualización no contiene LBPPC.exe: no se instala.
+309|No se pudieron buscar actualizaciones: {error}
+310|La descarga falló: {error}
+311|La actualización contiene un archivo fuera de su carpeta: no se instala.
+312|La descarga es mucho más grande que una versión de LBPPC: detenida.
+313|{name} está en uso (¿sigue abierto el juego?). Ciérralo y vuelve a intentar la actualización.
+314|la solicitud estaba mal formada
+315|la solicitud no era válida
+316|el nombre, la contraseña o el correo no se aceptan
+317|demasiados intentos, vuelve a intentarlo en un minuto
+318|el servidor no pudo crearla
+319|ese nombre en línea ya está cogido
+320|ese proveedor de correo no está permitido
+321|ese correo ya está en uso
+322|Error al iniciar sesión.
+323|Esta cuenta ya tiene la sesión iniciada (cierra antes el juego).
+324|No hay ninguna cuenta con ese nombre.
+325|Contraseña incorrecta.
+326|Sin sesión iniciada.
+327|No hay ningún jugador con ese nombre.
+328|Ese jugador está bloqueado.
+329|Ya sois amigos.
+330|El nombre en línea necesita de 3 a 16 letras, números, - o _.
+331|La contraseña necesita al menos {count} caracteres.
+332|shadNet: {reason}.
+333|Refresh: {reason}.
+334|Refresh: registrado, pero aún no se permiten los inicios de sesión del juego: {reason}.
+335|Escribe la dirección del servidor (por ejemplo, play.lbppc.com).
+336|«{server}» no es una dirección de servidor.
+337|No se puede conectar con el servidor shadNet {server}: {error}
+338|No se puede conectar con el servidor Refresh {server}: {error}
+339|Se creó la cuenta de shadNet, pero no la de Refresh. {error}
+340|El servidor shadNet cerró la conexión.
+341|{server} no parece un servidor shadNet.
+342|Error al iniciar sesión en {server}: {error}
+343|Se perdió la conexión con {server}: {error}
+344|Error de shadNet {code}.
+345|error {code}
+346|el registro falló
+347|El servidor shadNet envió algo que este lanzador no entiende.
+348|Comprobar archivos
+349|Cierra el juego antes de importar una partida
+350|Tu partida de LittleBigPlanet 3 descifrada (o una carpeta con varias)
+351|Importar partida
+352|¿Importar {what} desde esta carpeta?\n\nTu partida actual de LBPPC del mismo tipo se guarda antes, en user\save_backups.
+353|Partida importada: {what}
+354|No se pudo importar la partida: {error}
+355| (la anterior está en {folder})
+356|Comprobando los archivos del juego... {percent} %
+357|Comprobación detenida.
+358|No se pudieron comprobar los archivos: {error}
+359|europea (PAL)
+360|Esta es la versión {region} de LittleBigPlanet 3 ({id}). LBPPC necesita la versión US del juego ({us}): las demás versiones no funcionan.
+361|{folder} es un DLC de la versión {region} de LittleBigPlanet 3 ({id}). LBPPC necesita la versión US ({us}) y sus DLC.
+362|Archivos del juego: {problems} (por ejemplo {file}). Vuelve a extraer el juego y la actualización 1.28.
+363|Se comprobaron los {count} archivos del juego: coinciden con LittleBigPlanet 3 1.28.
+364|Están los {count} archivos del juego.
+365|{count} faltan
+366|{count} con tamaño incorrecto
+367|{count} dañados o modificados
+368|perfil e historia
+369|ajustes
+370|Esta partida sigue cifrada (archivos sdimg_). LBPPC necesita una partida descifrada: los archivos que escribió el juego, como 00000001/bigfart.
+371|Esta es una partida de otro juego ({id}), no de LittleBigPlanet 3.
+372|{folder}: no parece una partida de LittleBigPlanet 3 ({name}).
+373|No hay ninguna partida de LittleBigPlanet 3 en esta carpeta. Elige una partida descifrada (con una carpeta 00000001 con archivos bigfart, littlefart o playfart), o una carpeta con varias.
+374|sesión de juego

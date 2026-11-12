@@ -15,7 +15,7 @@ let
   assetDirs = [ "scripts" "patches" "fsr4_shaders" "launcher" ] ++ lib.optional fsr411 "fsr4_411";
   # Only what the package needs (the tree also holds builds, profiles and captures).
   wanted = [
-    "run.sh" "out" "out/bb-probe" "out/bb-gpu-capabilities" "out/gpu" "out/gpu/libbbgpu.so"
+    "run.sh" "out" "out/LBPPC-Game" "out/bb-gpu-capabilities" "out/gpu" "out/gpu/libbbgpu.so"
   ] ++ assetDirs;
   src = builtins.path {
     name = "bbport-src";
@@ -95,7 +95,7 @@ pkgs.stdenv.mkDerivation {
     PY
       cp -r fsr4_411 $d/
     fi
-    install -m755 out/bb-probe $d/bin/bb-probe
+    install -m755 out/LBPPC-Game $d/bin/LBPPC-Game
     install -m755 out/bb-gpu-capabilities $d/bin/bb-gpu-capabilities
     install -Dm755 out/gpu/libbbgpu.so $d/bin/gpu/libbbgpu.so
     runHook postInstall
@@ -114,7 +114,7 @@ pkgs.stdenv.mkDerivation {
       --set BB_BUNDLED_VK_DRIVER_FILES ${icds} \
       --prefix PATH : ${lib.makeBinPath [ pkgs.bash pkgs.coreutils pkgs.util-linux ]} \
       --run 'export BB_DATA_DIR=''${BB_DATA_DIR:-''${XDG_DATA_HOME:-$HOME/.local/share}/bbport}; mkdir -p "$BB_DATA_DIR"'
-    # The game alone, without the launcher (settings from the data directory's bbport.ini).
+    # The game alone, without the launcher (settings from the data directory's lbppc.ini).
     makeShellWrapper ${pkgs.python3}/bin/python3 $out/bin/bbport-game \
       ${common}      --add-flags "$out/share/bbport/launcher/bbport_vulkan.py ${pkgs.bash}/bin/bash $out/share/bbport/run.sh" \
       --set BB_PREBUILT 1 \

@@ -3,7 +3,7 @@
 Original game files are never changed. The profile replaces the known strlen
 implementation and applies a versioned, source-hash-bound translation plan to a
 copy of the linked image. It turns on by itself when the CPU lacks BMI1, LZCNT
-or MOVBE (Intel 3rd generation and older); legacy_cpu=0/1 in bbport.ini or
+or MOVBE (Intel 3rd generation and older); legacy_cpu=0/1 in lbppc.ini or
 BB_LEGACY_CPU=0/1 override that. Analysis dependencies are not needed here.
 """
 import bisect
@@ -238,7 +238,7 @@ def enabled():
     override = os.environ.get('BB_LEGACY_CPU')
     if override is not None:
         return override == '1'
-    config = Path(os.environ.get('BB_CONFIG', Path(__file__).resolve().parent.parent / 'bbport.ini'))
+    config = Path(os.environ.get('BB_CONFIG', Path(__file__).resolve().parent.parent / 'lbppc.ini'))
     try:
         for line in config.read_text(encoding='utf-8').splitlines():
             if line.strip() in ('legacy_cpu=0', 'legacy_cpu=1'):

@@ -115,8 +115,8 @@ void input_config_defaults(InputConfig *out);
 /* Loads from `path`: creates it with the default text first if missing (CFG-002). On any
  * I/O failure, falls back to defaults in memory and returns 0 (never fails the caller). */
 int input_config_load(InputConfig *out, const char *path);
-/* BB_INPUT_CONFIG if set and non-empty; otherwise the directory of the bbport.ini path
- * (BB_CONFIG, or "bbport.ini" in the working directory) with "input.ini" appended. Writes
+/* BB_INPUT_CONFIG if set and non-empty; otherwise the directory of the lbppc.ini path
+ * (BB_CONFIG, or "lbppc.ini" in the working directory) with "input.ini" appended. Writes
  * into `out` (size `out_size`); returns 0 on truncation. */
 int input_config_path(char *out, size_t out_size);
 /* The default input.ini text (spec section 4.3), null-terminated, static storage. */
