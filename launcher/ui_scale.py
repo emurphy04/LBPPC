@@ -5,8 +5,8 @@ showing them scaled by one factor: positions and sizes going in are multiplied b
 bbox, the canvas's size, pointer events) are divided by it, images placed through the launcher's Scene are resized, and
 fonts follow Tk's scaling. So the launcher's own code keeps its numbers.
 
-The factor follows the screen's height (1440 is 1), at least 0.75 so text stays readable on small screens (1080p, the
-Steam Deck's 1280 x 800), and never more than fits the screen's work area. The launcher isn't DPI-aware, so on a 4K
+The factor follows the screen's height (1440 is 1), at least MIN_FACTOR (0.9) so text stays readable on smaller
+screens (1080p), and never more than fits the screen's work area (the Steam Deck's 1280 x 800 gets what fits). The launcher isn't DPI-aware, so on a 4K
 screen with Windows' usual 150% Windows already enlarges it and the screen reads as 1440 high here. LBPPC_UI_SCALE
 overrides the factor (tests).
 """
@@ -14,6 +14,8 @@ import os
 import tkinter as tk
 
 DESIGN_HEIGHT = 1440
+# The smallest factor while the launcher fits: 0.9 on a 1080p screen (at 0.75 its small text was about 9 pixels).
+MIN_FACTOR = 0.9
 U = 1.0
 
 
@@ -45,7 +47,7 @@ def choose(width, height):
             pass
     area_w, area_h = work_area()
     fit = min(area_w * 0.96 / width, area_h * 0.96 / height)
-    return round(min(fit, max(area_h / DESIGN_HEIGHT, 0.75)), 3)
+    return round(min(fit, max(area_h / DESIGN_HEIGHT, MIN_FACTOR)), 3)
 
 
 def s(value):
