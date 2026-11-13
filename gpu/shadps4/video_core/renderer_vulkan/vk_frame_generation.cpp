@@ -580,6 +580,14 @@ u32 FrameGenerator::Generate(vk::CommandBuffer& cmdbuf, vk::Image color, vk::Ima
         return 0;
     }
     // FSR 3.1 keeps the previous input: it cannot switch between frames with and without UI.
+    // lbppc: the picture before the UI is taken at the frame's first UI draw, so a frame that
+    // draws no UI has none; in LBP3's levels the UI (prompts, speech bubbles) comes and goes, and
+    // each switch started generation over (that frame got no interpolated one). Without UI the
+    // frame is its own picture before the UI, so it is used as that and generation goes on.
+    if (!(hudless && hudless_view) && last_hudless) {
+        hudless = color;
+        hudless_view = color_view;
+    }
     const bool with_hudless = hudless && hudless_view;
     if (with_hudless != last_hudless) {
         last_hudless = with_hudless;
