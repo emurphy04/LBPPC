@@ -2502,19 +2502,21 @@ int main(int argc, char **argv) {
 #endif
     int cpu_only = 0, strict_imports = 0;
     unsigned timeout_seconds = 10;
-    const char *content_profile=NULL, *app0=NULL, *user_dir=NULL, *patch_file=NULL;
+    const char *content_profile=NULL, *app0=NULL, *update=NULL, *system_files=NULL, *user_dir=NULL, *patch_file=NULL;
     for (int i = 2; i < argc; ++i) {
         if (!strcmp(argv[i], "--cpu-only")) cpu_only = 1;
         else if (!strcmp(argv[i], "--strict-imports")) strict_imports = 1;
         else if (!strcmp(argv[i], "--content-profile") && i+1<argc) content_profile=argv[++i];
         else if (!strcmp(argv[i], "--app0") && i+1<argc) app0=argv[++i];
+        else if (!strcmp(argv[i], "--update") && i+1<argc) update=argv[++i];
+        else if (!strcmp(argv[i], "--system") && i+1<argc) system_files=argv[++i];
         else if (!strcmp(argv[i], "--user") && i+1<argc) user_dir=argv[++i];
         else if (!strcmp(argv[i], "--patches") && i+1<argc) patch_file=argv[++i];
         else if (!strcmp(argv[i], "--timeout") && i+1<argc) timeout_seconds=(unsigned)strtoul(argv[++i],NULL,10);
         else { fprintf(stderr, "Unknown option: %s\n", argv[i]); return 1; }
     }
     if (argc < 2) {
-        fprintf(stderr, "Usage: %s boot.bin [--cpu-only] [--strict-imports] [--content-profile file] [--app0 dir] [--user dir] [--patches file] [--timeout seconds] | --vulkan-only\n", argv[0]);
+        fprintf(stderr, "Usage: %s boot.bin [--cpu-only] [--strict-imports] [--content-profile file] [--app0 dir] [--update dir] [--system dir] [--user dir] [--patches file] [--timeout seconds] | --vulkan-only\n", argv[0]);
         return 1;
     }
     if (content_profile) {
@@ -2530,17 +2532,34 @@ int main(int argc, char **argv) {
         }
         runtime_content_configure(values);
     }
+    /* lbppc: the update in a folder of its own (shadPS4's layout): its files over the game's, its sce_sys the one
+       read (param.sfo, npbind.dat). --system: the system files in a folder of their own (a PKG tool's Sc0), shown
+       as /app0/sce_sys. No folder is written. */
+    char sys_dir[4096]="";
+    if (app0) snprintf(sys_dir,sizeof(sys_dir),"%s/sce_sys",app0);
+    if (app0 && update) {
+        char probe_sfo[4096]; FILE *exists;
+        snprintf(probe_sfo,sizeof(probe_sfo),"%s/sce_sys/param.sfo",update);
+        if ((exists=fopen(probe_sfo,"rb"))) { fclose(exists); snprintf(sys_dir,sizeof(sys_dir),"%s/sce_sys",update); }
+        runtime_file_set_update(update);
+    }
+    if (app0 && system_files) snprintf(sys_dir,sizeof(sys_dir),"%s",system_files);
     if (app0) {
         runtime_file_configure(app0, user_dir ? user_dir : "user");
+        if (system_files) {
+            runtime_file_mount("/app0/sce_sys",system_files);
+            runtime_file_mount("/hostapp/sce_sys",system_files);
+            printf("Runtime: system files from %s\n",system_files);
+        }
         char sfo[4096], id[16]="";
-        snprintf(sfo,sizeof(sfo),"%s/sce_sys/param.sfo",app0);
+        snprintf(sfo,sizeof(sfo),"%s/param.sfo",sys_dir);
         if (runtime_sfo_value(sfo,"INSTALL_DIR_SAVEDATA",id,sizeof(id),NULL) || runtime_sfo_value(sfo,"TITLE_ID",id,sizeof(id),NULL))
             runtime_savedata_configure(id);
         char serial[16]="", title[128]="", version[16]="";
         runtime_sfo_value(sfo,"TITLE_ID",serial,sizeof(serial),NULL);
         runtime_sfo_value(sfo,"TITLE",title,sizeof(title),NULL);
         runtime_sfo_value(sfo,"APP_VER",version,sizeof(version),NULL);
-        bbnet_configure(app0,serial,title,version);
+        bbnet_configure(sys_dir,serial,title,version);
     }
     bbgpu_register_kernel();
 #ifdef _WIN32
@@ -2679,7 +2698,7 @@ int main(int argc, char **argv) {
     }
     char title[128]="LBPPC", serial[16]="UNKNOWN", sfo[4096];
     uint32_t attributes=0;
-    snprintf(sfo,sizeof(sfo),"%s/sce_sys/param.sfo",app0 ? app0 : ".");
+    snprintf(sfo,sizeof(sfo),"%s/param.sfo",sys_dir[0] ? sys_dir : "./sce_sys");
     runtime_sfo_value(sfo,"TITLE",title,sizeof(title),NULL);
     runtime_sfo_value(sfo,"TITLE_ID",serial,sizeof(serial),NULL);
     runtime_sfo_value(sfo,"ATTRIBUTE",NULL,0,&attributes);
