@@ -119,20 +119,22 @@ class Result:
                  problems=', '.join(parts), file=example)
 
 
-def check(folder, full=False, progress=None, cancelled=lambda: False):
-    """Result for `folder` (the one holding eboot.bin). progress(done_bytes, total_bytes) during a full check.
+def check(folder, full=False, progress=None, cancelled=lambda: False, update=None):
+    """Result for `folder` (the one holding eboot.bin), with `update`'s files over it when the update is kept in a
+    folder of its own (as shadPS4 keeps it). progress(done_bytes, total_bytes) during a full check.
     None when cancelled."""
     folder = Path(folder)
+    update = Path(update) if update else None
     result = Result()
     entries = manifest()
-    title = edition(folder)
+    title = edition(update or folder)
     total = sum(size for _rel, size, _sha in entries) if full else 0
     done = 0
     for rel, size, sha in entries:
         if cancelled():
             return None
         result.checked += 1
-        path = folder / rel
+        path = update / rel if update and (update / rel).is_file() else folder / rel
         try:
             actual = path.stat().st_size
         except OSError:

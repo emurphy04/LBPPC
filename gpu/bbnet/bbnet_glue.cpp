@@ -400,15 +400,17 @@ void Unregister() {}
 namespace Core {
 class Emulator {
 public:
-    static void SetGame(const char* app0, const char* serial, const char* title,
+    // lbppc: `system` is the game's sce_sys folder (the update's when it has one, or an extraction's Sc0).
+    static void SetGame(const char* system, const char* serial, const char* title,
                         const char* app_ver) {
         auto& info = Common::ElfInfo::Instance();
         info.game_serial = serial ? serial : "";
         info.title = title ? title : "";
         info.app_ver = app_ver ? app_ver : "";
-        info.game_folder = app0 ? app0 : "";
+        const std::filesystem::path system_dir = system ? system : "";
+        info.game_folder = system_dir.parent_path();
         info.initialized = true;
-        info.npCommIds = ReadNpCommIds(info.game_folder / "sce_sys" / "npbind.dat");
+        info.npCommIds = ReadNpCommIds(system_dir / "npbind.dat");
     }
 
 private:
@@ -437,9 +439,9 @@ private:
 };
 } // namespace Core
 
-extern "C" void bbnet_configure(const char* app0, const char* serial, const char* title,
+extern "C" void bbnet_configure(const char* system, const char* serial, const char* title,
                                 const char* app_ver) {
-    Core::Emulator::SetGame(app0, serial, title, app_ver);
+    Core::Emulator::SetGame(system, serial, title, app_ver);
     const auto& ids = Common::ElfInfo::Instance().GetNpCommIds();
     std::printf("Co-op: %s, NP communication id %s%s\n", serial ? serial : "?",
                 ids.empty() ? "missing" : ids.front().c_str(),
