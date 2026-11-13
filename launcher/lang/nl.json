@@ -375,5 +375,11 @@
  "No LittleBigPlanet 3 save in this folder. Choose a decrypted save (with a 00000001 folder holding bigfart, littlefart or playfart files), or a folder holding several.": "Geen LittleBigPlanet 3-save in deze map. Kies een ontsleutelde save (met een map 00000001 met bigfart-, littlefart- of playfart-bestanden), of een map met meerdere.",
  "play session": "speelsessie",
  "Latin American": "Latijns-Amerikaanse",
- "North American": "Noord-Amerikaanse"
+ "North American": "Noord-Amerikaanse",
+ "Background shader builds": "Shaders op de achtergrond bouwen",
+ "A shader the game hasn't used before is built without pausing the game. Off: no pop-in, but the game can freeze for a moment the first time.": "Een shader die het spel nog niet gebruikt heeft, wordt gebouwd zonder het spel te pauzeren. Uit: niets verschijnt te laat, maar het spel kan de eerste keer even haperen.",
+ "Preparing shaders ({percent}%)": "Shaders voorbereiden ({percent}%)",
+ "that name is not allowed, or the password or email is not accepted": "die naam is niet toegestaan, of het wachtwoord of e-mailadres wordt niet geaccepteerd",
+ "too many new accounts from this network today, try again tomorrow": "te veel nieuwe accounts vanaf dit netwerk vandaag, probeer het morgen opnieuw",
+ "Too many wrong passwords: sign-in is locked for up to 15 minutes.": "Te veel verkeerde wachtwoorden: inloggen is maximaal 15 minuten geblokkeerd."
 }

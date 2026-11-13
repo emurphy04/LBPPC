@@ -376,3 +376,9 @@
 374|session de jeu
 375|latino-américaine
 376|nord-américaine
+377|Compilation des shaders en arrière-plan
+378|Un shader que le jeu n'a pas encore utilisé est compilé sans mettre le jeu en pause. Désactivé : rien n'apparaît en retard, mais le jeu peut se figer un instant la première fois.
+379|Préparation des shaders ({percent} %)
+380|ce nom n'est pas autorisé, ou le mot de passe ou l'e-mail n'est pas accepté
+381|trop de nouveaux comptes depuis ce réseau aujourd'hui, réessayez demain
+382|Trop de mots de passe erronés : la connexion est bloquée pendant 15 minutes au plus.

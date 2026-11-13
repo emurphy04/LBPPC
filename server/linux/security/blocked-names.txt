@@ -1,0 +1,108 @@
+# Names nobody can register on LBPPC's servers (shadNet accounts and Refresh), read by both on every sign-up:
+# edit this file on the server (/etc/lbppc/blocked-names.txt) and it applies at once, no restart.
+#
+# Before comparing, a name is lower-cased, leetspeak is undone (0 o, 1 i, 3 e, 4 a, 5 s, 7 t, 8 b, @ a, $ s, ! i,
+# | i) and everything but letters is dropped, so F4gg0t, f.a.g.g.o.t and FAGGOT are the same. Each name is also
+# checked with repeated letters collapsed (faaaggot -> fagot).
+#
+#   word    blocked anywhere in a name (use for words with no innocent uses)
+#   =word   blocked only as the whole name (short words found inside normal names: rape in grape, nazi in Nazir)
+#   +word   an innocent word that contains a blocked one: taken out of the name before checking (badminton, Essex)
+#
+# Existing accounts are not changed by this list; it only stops new sign-ups.
+
+# Slurs
+nigger
+nigga
+niggr
+nigg
+faggot
+fagot
+tranny
+trannie
+retard
+kike
+chink
+wetback
+beaner
+=spic
+=gook
+=fag
+=fags
+=coon
+
+# Hate
+hitler
+heilhitler
+siegheil
+whitepower
+gasthejews
+=nazi
+=kkk
+1488
+
+# Sexual
+porn
+hentai
+pussy
+penis
+vagina
+dildo
+blowjob
+handjob
+cumshot
+orgasm
+masturbat
+rapist
+molest
+pedophile
+=pedo
+=loli
+onlyfans
+whore
+slut
+booty
+sex
+=rape
+=cum
+=cock
+=dick
+=tits
+=anal
+
+# People and memes the community doesn't want here
+diddy
+epstein
+babyoil
+
+# Abuse
+fuck
+=fuk
+shit
+bitch
+cunt
+=kys
+killyourself
+
+# Posing as the project, its servers or its staff (LBPPC's own accounts are made by hand)
+lbppc
+admin
+moderator
+=staff
+=support
+=system
+=official
+=refresh
+=shadnet
+=bonsai
+
+# Innocent words that contain a blocked one
++badminton
++essex
++sussex
++middlesex
++wessex
++scunthorpe
++shitake
++shiitake
++cockpit

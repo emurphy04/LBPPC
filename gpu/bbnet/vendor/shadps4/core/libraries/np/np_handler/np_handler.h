@@ -186,6 +186,9 @@ public:
 
     // Friend/block actions
     s32 SendFriendRequest(s32 user_id, const std::string& npid);
+    // lbppc: a single-use code from the user's shadNet session for the game server's login (it redeems it with
+    // shadNet to know whose login it is). Empty when the user isn't signed in or shadNet doesn't answer in time.
+    std::optional<std::string> GetLoginAuthorizationCode(s32 user_id);
     s32 RemoveFriend(s32 user_id, const std::string& npid);
     s32 BlockUser(s32 user_id, const std::string& npid);
     s32 UnblockUser(s32 user_id, const std::string& npid);

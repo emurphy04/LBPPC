@@ -285,6 +285,13 @@ int PS4_SYSV_ABI sceNetCtlGetNatInfo(OrbisNetCtlNatInfo* nat_info) {
             nat_info->nat_type = 2;
         }
     }
+    // lbppc: nothing determines a NAT type here (it stayed 0, "not determined yet"), and LittleBigPlanet 3 waits
+    // for one after signing in to the game server: every online start sat 30 seconds on the connecting screen
+    // (the game reads it once at 0x33d710 and waits until 30 s have passed while it is 0). Type 2, the usual
+    // home-router type; connecting players doesn't depend on it (UPnP and shadNet's relay do that).
+    if (nat_info->nat_type == 0) {
+        nat_info->nat_type = 2;
+    }
 
     LOG_DEBUG(Lib_NetCtl, "stun_status={} nat_type={} mapped_addr={:#x}", nat_info->stun_status,
               nat_info->nat_type, nat_info->mapped_addr);

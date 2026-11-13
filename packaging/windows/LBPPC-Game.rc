@@ -6,8 +6,8 @@ CREATEPROCESS_MANIFEST_RESOURCE_ID RT_MANIFEST "LBPPC-Game.manifest"
 1 ICON "../../launcher/assets/lbppc.ico"
 
 1 VERSIONINFO
-FILEVERSION 0,1,2,0
-PRODUCTVERSION 0,1,2,0
+FILEVERSION 0,1,3,0
+PRODUCTVERSION 0,1,3,0
 FILEFLAGSMASK 0x3f
 FILEFLAGS 0
 FILEOS VOS_NT_WINDOWS32
@@ -20,11 +20,11 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "LBPPC"
             VALUE "FileDescription", "LBPPC (LittleBigPlanet 3)"
-            VALUE "FileVersion", "0.1.2"
+            VALUE "FileVersion", "0.1.3"
             VALUE "InternalName", "LBPPC-Game"
             VALUE "OriginalFilename", "LBPPC-Game.exe"
             VALUE "ProductName", "LBPPC"
-            VALUE "ProductVersion", "0.1.2"
+            VALUE "ProductVersion", "0.1.3"
             VALUE "LegalCopyright", "GPL-3.0-or-later. Not affiliated with Sony Interactive Entertainment."
         END
     END

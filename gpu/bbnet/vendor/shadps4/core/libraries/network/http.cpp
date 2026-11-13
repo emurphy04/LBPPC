@@ -6,6 +6,7 @@
 #include <cctype>
 #include <chrono>
 #include <condition_variable>
+#include <cstdio>
 #include <cstring>
 #include <deque>
 #include <fstream>
@@ -27,6 +28,7 @@
 #include "common/logging/log.h"
 #include "common/path_util.h"
 #include "core/emulator_settings.h"
+#include "core/libraries/np/np_handler/np_handler.h"
 #include "core/libraries/error_codes.h"
 #include "core/libraries/kernel/kernel.h"
 #include "core/libraries/kernel/orbis_error.h"
@@ -434,9 +436,12 @@ bool ApplyHostOverride(std::string& scheme, std::string& host, u16& port, bool& 
 
 // lbppc: a PS3 NP ticket (version 2.1, the layout NPTicket reads: big-endian typed fields in a body and a
 // footer section) for the locally signed-in player, as LittleBigPlanet 3 (BCUS98362) on PS3. It is not
-// signed: a custom server accepts it with ticket verification off (a private server); public servers will
-// need a PS4 login of their own.
-static std::vector<u8> BuildLocalLoginTicket(const std::string& name) {
+// signed, so it proves nothing by itself: LBPPC's game server accepts it only with proof from shadNet that this
+// player sent it. The serial carries that proof, "lbppc-code:" and a single-use code from the player's own shadNet
+// session, which the server redeems with shadNet (server/linux/refresh/lbppc-refresh-security.patch). Without a
+// code (not signed in to shadNet) the server falls back to checking that the account is signed in to shadNet from
+// the same address, or refuses the login once it requires codes.
+static std::vector<u8> BuildLocalLoginTicket(const std::string& name, const std::string& code) {
     std::vector<u8> out;
     const auto u16be = [&](u16 v) { out.push_back(u8(v >> 8)); out.push_back(u8(v)); };
     const auto u32be = [&](u32 v) { u16be(u16(v >> 16)); u16be(u16(v)); };
@@ -458,7 +463,8 @@ static std::vector<u8> BuildLocalLoginTicket(const std::string& name) {
 
     std::vector<u8> body;
     std::swap(out, body);
-    field(8, "lbppc-local-ticket", 0x14); // serial
+    const std::string serial = code.empty() ? "lbppc-local-ticket" : "lbppc-code:" + code;
+    field(8, serial, 0x14); // serial (the code is 6 characters: 17 of the 20 bytes)
     u16be(1), u16be(4), u32be(0x100);     // issuer: PSN (PS3)
     u16be(7), u16be(8), u64be(now);       // issued
     u16be(7), u16be(8), u64be(now + 4ull * 3600 * 1000); // expires
@@ -1044,7 +1050,21 @@ static s32 RunRealHttpRequest(const SendRequestPlan& plan_in, HttpResponse& out_
             const bool game_disabled_verify =
                 (plan.settings.ssl_flags & ORBIS_HTTPS_FLAG_SERVER_VERIFY) == 0;
             bool verify_server = !config_disabled_verify && !game_disabled_verify;
-            if (verify_server && plan.ctx_has_loaded_certs) {
+            // lbppc: the game loads its own CA list for Sony's servers (libSceSsl, not implemented here), which
+            // turned verification off for every request, LBPPC's own servers included: a network in between
+            // could have posed as play.lbppc.com and read players' logins. Only Sony's hosts (which LBPPC never
+            // reaches) keep that; every other server is checked against Windows' trusted roots, with Windows' own
+            // chain check behind it (TrustWindowsRoots: antivirus HTTPS scanning, a root fetched on demand).
+            // BB_DISABLE_HTTPS=1 (config_disabled_verify; a test server with its own certificate) still turns it off.
+            const auto ends_with = [&](std::string_view suffix) {
+                return plan.host.size() >= suffix.size() &&
+                       plan.host.compare(plan.host.size() - suffix.size(), suffix.size(), suffix) == 0;
+            };
+            const bool sony_host = ends_with(".playstation.net") || ends_with(".playstation.com") ||
+                                   ends_with(".scee.com") || ends_with(".sonyentertainmentnetwork.com");
+            if (!sony_host && !config_disabled_verify) {
+                verify_server = true;
+            } else if (verify_server && plan.ctx_has_loaded_certs) {
                 verify_server = false;
                 LOG_INFO(Lib_Http,
                          "{}://{}: ctx loaded custom CAs (libSceSsl integration absent) -> "
@@ -2066,9 +2086,17 @@ int PS4_SYSV_ABI sceHttpSendRequest(int reqId, const void* postData, u64 size) {
         // locally, the login carries a ticket for the local player in that format.
         if (plan.method == ORBIS_HTTP_METHOD_POST && !EmulatorSettings.GetOnlineName().empty() &&
             plan.path.find("/login?") != std::string::npos) {
-            plan.body = BuildLocalLoginTicket(EmulatorSettings.GetOnlineName());
-            LOG_INFO(Lib_Http, "reqId={} login: a {}-byte ticket for '{}'", reqId, plan.body.size(),
-                     EmulatorSettings.GetOnlineName());
+            // The local player is user 1. The code comes from its shadNet session (a round trip, at the online
+            // screen); without one the ticket says so, and the server decides.
+            const auto code = Libraries::Np::NpHandler::GetInstance().GetLoginAuthorizationCode(1);
+            plan.body = BuildLocalLoginTicket(EmulatorSettings.GetOnlineName(), code.value_or(""));
+            LOG_INFO(Lib_Http, "reqId={} login: a {}-byte ticket for '{}' ({})", reqId, plan.body.size(),
+                     EmulatorSettings.GetOnlineName(),
+                     code ? "with a shadNet code" : "no shadNet code: not signed in to shadNet");
+            if (!code) {
+                std::printf("Online: no sign-in code from shadNet for the game server's login; it may refuse it\n");
+                std::fflush(stdout);
+            }
         }
     }
 

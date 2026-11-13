@@ -376,3 +376,9 @@
 374|spilløkt
 375|latinamerikanske
 376|nordamerikanske
+377|Bygg shadere i bakgrunnen
+378|En shader spillet ikke har brukt før, bygges uten å sette spillet på pause. Av: ingenting dukker opp for sent, men spillet kan fryse et øyeblikk første gang.
+379|Forbereder shadere ({percent} %)
+380|det navnet er ikke tillatt, eller passordet eller e-posten godtas ikke
+381|for mange nye kontoer fra dette nettverket i dag, prøv igjen i morgen
+382|For mange feil passord: innloggingen er sperret i opptil 15 minutter.

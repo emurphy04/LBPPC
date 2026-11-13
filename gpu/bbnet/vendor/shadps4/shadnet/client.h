@@ -4,6 +4,8 @@
 
 #pragma once
 #include <atomic>
+#include <chrono>
+#include <map>
 #include <condition_variable>
 #include <functional>
 #include <mutex>
@@ -93,6 +95,7 @@ enum class CommandType : u16 {
     GetToken = 39,
     SetAppearOffline = 40,
     LookupOnlineId = 41,
+    GetAuthorizationCode = 42,
     // Matchmaking
     ContextStart = 100,
     CreateRoom = 101,
@@ -396,6 +399,11 @@ public:
     u64 SetAppearOffline(bool enable);
     // Global online ID to account ID resolution
     u64 LookupOnlineId(const std::string& npid);
+    // lbppc: a single-use authorization code from the signed-in account's session (the game server redeems it with
+    // shadNet to know whose login it is), waiting up to `timeout` for the reply. Empty: not signed in, refused,
+    // timed out, or called on the reader thread (which delivers the reply, so it can't wait for it).
+    std::optional<std::string> RequestAuthorizationCode(const std::string& client_id, const std::string& scope,
+                                                        std::chrono::milliseconds timeout);
 
 private:
     void ConnectThread();
@@ -476,6 +484,17 @@ private:
     std::vector<FriendEntry> m_friends;
 
     std::atomic<u64> m_pkt_counter{1};
+
+    // lbppc: RequestAuthorizationCode's waiting callers, by packet id (the reply fills the code in, empty on an
+    // error; `done` is set either way).
+    struct AuthCodeWait {
+        bool done = false;
+        std::string code;
+    };
+    std::mutex m_mutex_auth_codes;
+    std::condition_variable m_cv_auth_codes;
+    std::map<u64, AuthCodeWait> m_auth_codes;
+    void HandleAuthorizationCodeReply(u64 pkt_id, const std::vector<u8>& payload);
 };
 
 } // namespace ShadNet

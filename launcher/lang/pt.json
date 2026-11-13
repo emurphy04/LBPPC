@@ -375,5 +375,11 @@
  "No LittleBigPlanet 3 save in this folder. Choose a decrypted save (with a 00000001 folder holding bigfart, littlefart or playfart files), or a folder holding several.": "Não há nenhum jogo guardado de LittleBigPlanet 3 nesta pasta. Escolhe um jogo guardado desencriptado (com uma pasta 00000001 com ficheiros bigfart, littlefart ou playfart), ou uma pasta com vários.",
  "play session": "sessão de jogo",
  "Latin American": "latino-americana",
- "North American": "norte-americana"
+ "North American": "norte-americana",
+ "Background shader builds": "Compilar shaders em segundo plano",
+ "A shader the game hasn't used before is built without pausing the game. Off: no pop-in, but the game can freeze for a moment the first time.": "Um shader que o jogo ainda não usou é compilado sem pausar o jogo. Desligado: nada aparece com atraso, mas o jogo pode congelar por um momento na primeira vez.",
+ "Preparing shaders ({percent}%)": "A preparar shaders ({percent}%)",
+ "that name is not allowed, or the password or email is not accepted": "esse nome não é permitido, ou a palavra-passe ou o e-mail não são aceites",
+ "too many new accounts from this network today, try again tomorrow": "demasiadas contas novas a partir desta rede hoje, tenta novamente amanhã",
+ "Too many wrong passwords: sign-in is locked for up to 15 minutes.": "Demasiadas palavras-passe erradas: o início de sessão está bloqueado até 15 minutos."
 }

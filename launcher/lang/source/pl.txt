@@ -376,3 +376,9 @@
 374|sesja gry
 375|latynoamerykańska
 376|północnoamerykańska
+377|Budowanie shaderów w tle
+378|Shader, którego gra jeszcze nie używała, jest budowany bez wstrzymywania gry. Wyłączone: nic nie pojawia się z opóźnieniem, ale gra może na chwilę się zatrzymać za pierwszym razem.
+379|Przygotowywanie shaderów ({percent}%)
+380|ta nazwa jest niedozwolona albo hasło lub e-mail nie są akceptowane
+381|zbyt wiele nowych kont z tej sieci dzisiaj, spróbuj jutro
+382|Zbyt wiele błędnych haseł: logowanie jest zablokowane na maksymalnie 15 minut.

@@ -401,9 +401,12 @@ PipelineCache::PipelineCache(const Instance& instance_, Scheduler& scheduler_,
 
 namespace {
 bool AsyncPipelines() {
+    // lbppc: on unless BB_ASYNC_PIPELINES=0 (the launcher's setting). A cold first level froze for
+    // up to 4.5 s building them on the GPU thread; in the background, 0.3 s at worst, and new
+    // things appear about a second late the first time they are seen.
     static const bool value = [] {
         const char* env = std::getenv("BB_ASYNC_PIPELINES");
-        return env && env[0] == '1' && !EmulatorSettings.IsShaderCollect();
+        return !(env && env[0] == '0') && !EmulatorSettings.IsShaderCollect();
     }();
     return value;
 }

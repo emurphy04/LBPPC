@@ -375,5 +375,11 @@
  "No LittleBigPlanet 3 save in this folder. Choose a decrypted save (with a 00000001 folder holding bigfart, littlefart or playfart files), or a folder holding several.",
  "play session",
  "Latin American",
- "North American"
+ "North American",
+ "Background shader builds",
+ "A shader the game hasn't used before is built without pausing the game. Off: no pop-in, but the game can freeze for a moment the first time.",
+ "Preparing shaders ({percent}%)",
+ "that name is not allowed, or the password or email is not accepted",
+ "too many new accounts from this network today, try again tomorrow",
+ "Too many wrong passwords: sign-in is locked for up to 15 minutes."
 ]

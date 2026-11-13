@@ -376,3 +376,9 @@
 374|spelomgång
 375|latinamerikanska
 376|nordamerikanska
+377|Bygg shaders i bakgrunden
+378|En shader som spelet inte har använt förut byggs utan att spelet pausas. Av: inget dyker upp sent, men spelet kan frysa en kort stund första gången.
+379|Förbereder shaders ({percent} %)
+380|det namnet är inte tillåtet, eller så godtas inte lösenordet eller e-postadressen
+381|för många nya konton från det här nätverket i dag, försök igen i morgon
+382|För många felaktiga lösenord: inloggningen är spärrad i upp till 15 minuter.

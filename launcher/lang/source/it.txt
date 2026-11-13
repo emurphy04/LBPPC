@@ -376,3 +376,9 @@
 374|sessione di gioco
 375|latinoamericana
 376|nordamericana
+377|Compilazione degli shader in background
+378|Uno shader che il gioco non ha ancora usato viene compilato senza mettere in pausa il gioco. Disattivato: niente compare in ritardo, ma il gioco può bloccarsi per un attimo la prima volta.
+379|Preparazione degli shader ({percent}%)
+380|quel nome non è consentito, oppure la password o l'e-mail non sono accettate
+381|troppi nuovi account da questa rete oggi, riprova domani
+382|Troppe password errate: l'accesso è bloccato per un massimo di 15 minuti.

@@ -376,3 +376,9 @@
 374|speelsessie
 375|Latijns-Amerikaanse
 376|Noord-Amerikaanse
+377|Shaders op de achtergrond bouwen
+378|Een shader die het spel nog niet gebruikt heeft, wordt gebouwd zonder het spel te pauzeren. Uit: niets verschijnt te laat, maar het spel kan de eerste keer even haperen.
+379|Shaders voorbereiden ({percent}%)
+380|die naam is niet toegestaan, of het wachtwoord of e-mailadres wordt niet geaccepteerd
+381|te veel nieuwe accounts vanaf dit netwerk vandaag, probeer het morgen opnieuw
+382|Te veel verkeerde wachtwoorden: inloggen is maximaal 15 minuten geblokkeerd.

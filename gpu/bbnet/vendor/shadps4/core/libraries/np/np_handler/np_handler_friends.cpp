@@ -119,6 +119,21 @@ NpHandler::FriendListSnapshot NpHandler::GetFriendList(s32 user_id) const {
     return it == m_friend_state.end() ? FriendListSnapshot{} : it->second;
 }
 
+std::optional<std::string> NpHandler::GetLoginAuthorizationCode(s32 user_id) {
+    std::shared_ptr<ShadNet::ShadNetClient> client;
+    {
+        std::lock_guard lock(m_mutex_clients);
+        const auto it = m_clients.find(user_id);
+        if (it == m_clients.end()) {
+            return std::nullopt;
+        }
+        client = it->second;
+    }
+    // The game server (Refresh, patched for LBPPC) redeems it under this client id; 5 s is far above a reply's
+    // round trip, and the login is one request at the online screen.
+    return client->RequestAuthorizationCode("lbppc-refresh", "login", std::chrono::seconds(5));
+}
+
 s32 NpHandler::SendFriendRequest(s32 user_id, const std::string& npid) {
     std::shared_ptr<ShadNet::ShadNetClient> client;
     {

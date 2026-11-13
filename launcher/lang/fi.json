@@ -375,5 +375,11 @@
  "No LittleBigPlanet 3 save in this folder. Choose a decrypted save (with a 00000001 folder holding bigfart, littlefart or playfart files), or a folder holding several.": "Tässä kansiossa ei ole LittleBigPlanet 3 -tallennusta. Valitse salauksesta purettu tallennus (jossa on kansio 00000001 ja bigfart-, littlefart- tai playfart-tiedostoja) tai kansio, jossa on useita.",
  "play session": "pelikerta",
  "Latin American": "latinalaisamerikkalainen",
- "North American": "pohjoisamerikkalainen"
+ "North American": "pohjoisamerikkalainen",
+ "Background shader builds": "Varjostimien kokoaminen taustalla",
+ "A shader the game hasn't used before is built without pausing the game. Off: no pop-in, but the game can freeze for a moment the first time.": "Varjostin, jota peli ei ole vielä käyttänyt, kootaan pysäyttämättä peliä. Pois: mikään ei ilmesty myöhässä, mutta peli voi jäätyä hetkeksi ensimmäisellä kerralla.",
+ "Preparing shaders ({percent}%)": "Valmistellaan varjostimia ({percent} %)",
+ "that name is not allowed, or the password or email is not accepted": "nimi ei ole sallittu, tai salasanaa tai sähköpostia ei hyväksytä",
+ "too many new accounts from this network today, try again tomorrow": "liian monta uutta tiliä tästä verkosta tänään, yritä huomenna uudelleen",
+ "Too many wrong passwords: sign-in is locked for up to 15 minutes.": "Liian monta väärää salasanaa: kirjautuminen on estetty enintään 15 minuutiksi."
 }

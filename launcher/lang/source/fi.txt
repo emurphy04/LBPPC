@@ -376,3 +376,9 @@
 374|pelikerta
 375|latinalaisamerikkalainen
 376|pohjoisamerikkalainen
+377|Varjostimien kokoaminen taustalla
+378|Varjostin, jota peli ei ole vielä käyttänyt, kootaan pysäyttämättä peliä. Pois: mikään ei ilmesty myöhässä, mutta peli voi jäätyä hetkeksi ensimmäisellä kerralla.
+379|Valmistellaan varjostimia ({percent} %)
+380|nimi ei ole sallittu, tai salasanaa tai sähköpostia ei hyväksytä
+381|liian monta uutta tiliä tästä verkosta tänään, yritä huomenna uudelleen
+382|Liian monta väärää salasanaa: kirjautuminen on estetty enintään 15 minuutiksi.

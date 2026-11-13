@@ -43,8 +43,8 @@ _HEADER = 15  # type u8, command u16, total size u32, packet id u64 (little-endi
 _REQUEST, _REPLY, _SERVER_INFO = 0, 1, 3
 _CREATE = 2
 _SHADNET_ERRORS = {1: N_('the request was malformed'), 2: N_('the request was invalid'),
-                   3: N_('the name, password or email is not accepted'),
-                   4: N_('too many attempts, try again in a minute'), 10: N_('the server could not create it'),
+                   3: N_('that name is not allowed, or the password or email is not accepted'),
+                   4: N_('too many new accounts from this network today, try again tomorrow'), 10: N_('the server could not create it'),
                    11: N_('that online name is taken'), 12: N_('that email provider is not allowed'),
                    13: N_('that email is already used')}
 
@@ -154,7 +154,8 @@ def _read_varint(data, pos):
 
 
 _LOGIN, _ADD_FRIEND, _REMOVE_FRIEND, _SET_CLIENT_VERSION = 0, 8, 9, 13
-_FRIEND_ERRORS = {5: N_('Sign-in failed.'), 6: N_('This account is signed in already (close the game first).'),
+_FRIEND_ERRORS = {4: N_('Too many wrong passwords: sign-in is locked for up to 15 minutes.'),
+                  5: N_('Sign-in failed.'), 6: N_('This account is signed in already (close the game first).'),
                   7: N_('No account with that name.'), 8: N_('Wrong password.'), 23: N_('Not signed in.'),
                   26: N_('No player with that name.'), 27: N_('That player is blocked.'), 28: N_('Already friends.')}
 

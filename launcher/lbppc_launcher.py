@@ -26,7 +26,7 @@ from tkinter import filedialog, font as tkfont, messagebox, ttk
 
 from PIL import Image, ImageTk
 
-VERSION = '0.1.2'
+VERSION = '0.1.3'
 DISCORD = 'https://discord.gg/YqfBQCU4vc'  # the permanent invite: help, bug reports, finding co-op partners
 # Discord Rich Presence (scripts/discord_presence.py): LBPPC's application on the Discord Developer Portal, whose name
 # Discord shows ("Playing LBPPC") and whose art asset "lbppc" is the picture. Empty: no presence.
@@ -116,6 +116,8 @@ def windows_language():
         return '17' if full == 0x0416 else '7'
     return {0x0c: '2', 0x07: '4', 0x10: '5', 0x13: '6', 0x19: '8', 0x0b: '12', 0x1d: '13', 0x06: '14',
             0x14: '15', 0x15: '16'}.get(primary, '1')
+# The game's progress through the shader list at its start: 'Shaders: preparing 120 of 464'.
+SHADER_PROGRESS = re.compile(r'^Shaders: (preparing|building) (\d+) of (\d+)$')
 # The Debug page's Diagnostics: (key, environment variable, title, hint, default). Each is passed to the game on
 # Play as 1 or 0.
 DIAGNOSTICS = [('frame_stats', 'BB_FRAME_STATS', N_('Frame log'), N_('Frame rate, pacing and every slow frame in the log.'),
@@ -129,7 +131,10 @@ DIAGNOSTICS = [('frame_stats', 'BB_FRAME_STATS', N_('Frame log'), N_('Frame rate
                ('toggles', 'LBPPC_TOGGLES', N_('Optimization switches'),
                 N_('Turns optimizations off while the game runs, from user/toggles.txt. For chasing a bug.'), False),
                ('friends_log', 'LBPPC_FRIENDS_LOG', N_('Friends menu log'),
-                N_('What the game\'s Friends menu holds, every 5 seconds while online.'), False)]
+                N_('What the game\'s Friends menu holds, every 5 seconds while online.'), False),
+               ('async_shaders', 'BB_ASYNC_PIPELINES', N_('Background shader builds'),
+                N_('A shader the game hasn\'t used before is built without pausing the game. Off: no pop-in, but '
+                   'the game can freeze for a moment the first time.'), True)]
 # The Debug page's Performance overlay: lbppc.ini switches, which the in-game menu (Insert) also changes.
 OVERLAY = [('show_fps', N_('Frame rate'), False), ('show_frame_times', N_('Frame times'), False),
            ('show_latency', N_('Render latency'), False), ('show_vram', N_('Video memory'), False),
@@ -1864,7 +1869,14 @@ class Launcher(tk.Tk):
                     self.finished(item[0])
                     break
                 shown.append(item)
-                if 'Frame rate' in item or 'Pipeline cache' in item:
+                progress = SHADER_PROGRESS.match(item)
+                if progress:
+                    # The shader list prepared before play (vk_pipeline_serialization.cpp): two passes, the
+                    # shaders and then the pipelines, shown as one.
+                    done, total = int(progress.group(2)), max(int(progress.group(3)), 1)
+                    percent = done * 50 // total + (50 if progress.group(1) == 'building' else 0)
+                    self.set_state(t('Preparing shaders ({percent}%)', percent=min(percent, 100)), WARN)
+                elif 'Frame rate' in item or 'Pipeline cache: preload took' in item:
                     self.set_state(t('Running'), GOOD)
         except queue.Empty:
             pass

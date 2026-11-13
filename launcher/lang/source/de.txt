@@ -376,3 +376,9 @@
 374|Spielsitzung
 375|lateinamerikanische
 376|nordamerikanische
+377|Shader im Hintergrund erstellen
+378|Ein Shader, den das Spiel noch nicht benutzt hat, wird erstellt, ohne das Spiel anzuhalten. Aus: nichts erscheint verspätet, aber das Spiel kann beim ersten Mal kurz einfrieren.
+379|Shader werden vorbereitet ({percent} %)
+380|dieser Name ist nicht erlaubt, oder Passwort oder E-Mail werden nicht akzeptiert
+381|zu viele neue Konten aus diesem Netzwerk heute, versuche es morgen erneut
+382|Zu viele falsche Passwörter: Die Anmeldung ist für bis zu 15 Minuten gesperrt.

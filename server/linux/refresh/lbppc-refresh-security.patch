@@ -1,0 +1,182 @@
+diff -ruN a/Refresh.Interfaces.Game/Endpoints/Handshake/AuthenticationEndpoints.cs b/Refresh.Interfaces.Game/Endpoints/Handshake/AuthenticationEndpoints.cs
+--- a/Refresh.Interfaces.Game/Endpoints/Handshake/AuthenticationEndpoints.cs	2026-11-13 03:07:22.989914700 -0330
++++ b/Refresh.Interfaces.Game/Endpoints/Handshake/AuthenticationEndpoints.cs	2026-11-13 11:21:20.759015800 -0330
+@@ -142,6 +142,44 @@
+             return null;
+         }
+ 
++        // LBPPC: a game login's ticket is made by the game itself and proves nothing about who sent
++        // it. The player's shadNet sign-in (with their password) does: a login is accepted only
++        // while the account is signed in to shadNet from the same address. Fails closed: without
++        // LBPPC_SHADNET_CHECK_URL (or when shadNet can't be asked) no game login is accepted;
++        // LBPPC_SHADNET_CHECK_URL=off turns the check off (a private test server).
++        //
++        // LBPPC 0.1.3 and later put a single-use code from the player's own shadNet session in the ticket's serial
++        // ("lbppc-code:" and the code), which shadNet confirms belongs to this account: that is the proof, and a
++        // code that doesn't check out is refused (no falling back). Earlier versions send no code: they get the
++        // address check above until LBPPC_REQUIRE_LOGIN_CODE=1 refuses them (once players have updated).
++        string shadnetCheck = Environment.GetEnvironmentVariable("LBPPC_SHADNET_CHECK_URL") ?? "";
++        if (shadnetCheck != "off")
++        {
++            const string codePrefix = "lbppc-code:";
++            string serial = (ticket.SerialId ?? "").TrimEnd('\0');
++            if (serial.StartsWith(codePrefix))
++            {
++                if (!ShadNetCodeValid(context, serial[codePrefix.Length..], ticket.Username))
++                {
++                    context.Logger.LogWarning(BunkumCategory.Authentication,
++                        $"Rejecting {user}'s login from {ipAddress}: its shadNet sign-in code isn't valid for this account");
++                    return null;
++                }
++            }
++            else if (Environment.GetEnvironmentVariable("LBPPC_REQUIRE_LOGIN_CODE") == "1")
++            {
++                context.Logger.LogWarning(BunkumCategory.Authentication,
++                    $"Rejecting {user}'s login from {ipAddress}: no shadNet sign-in code (LBPPC before 0.1.3, or not signed in to shadNet)");
++                return null;
++            }
++            else if (!ShadNetSessionMatches(context, shadnetCheck, ticket.Username, ipAddress))
++            {
++                context.Logger.LogWarning(BunkumCategory.Authentication,
++                    $"Rejecting {user}'s login from {ipAddress}: the account isn't signed in to shadNet from there");
++                return null;
++            }
++        }
++
+         bool ticketVerified = false;
+         if (config.UseTicketVerification)
+         {
+@@ -244,6 +282,69 @@
+         };
+     }
+ 
++    // LBPPC: shadNet's admin API on this machine (GET /admin/v1/sessions/check), with its AdminApiKey
++    // from LBPPC_SHADNET_KEY.
++    private static readonly HttpClient ShadNetClient = new() { Timeout = TimeSpan.FromSeconds(5) };
++
++    private static bool ShadNetSessionMatches(RequestContext context, string url, string username, string ipAddress)
++    {
++        if (string.IsNullOrEmpty(url))
++        {
++            context.Logger.LogWarning(BunkumCategory.Authentication, "LBPPC_SHADNET_CHECK_URL isn't set: no game login is accepted");
++            return false;
++        }
++        try
++        {
++            using HttpRequestMessage request = new(HttpMethod.Get,
++                $"{url}?npid={Uri.EscapeDataString(username)}&ip={Uri.EscapeDataString(ipAddress)}");
++            request.Headers.Add("X-Admin-Api-Key", Environment.GetEnvironmentVariable("LBPPC_SHADNET_KEY") ?? "");
++            using HttpResponseMessage response = ShadNetClient.Send(request);
++            if (!response.IsSuccessStatusCode)
++            {
++                context.Logger.LogWarning(BunkumCategory.Authentication, $"shadNet's session check answered {(int)response.StatusCode}");
++                return false;
++            }
++            using Stream stream = response.Content.ReadAsStream();
++            using System.Text.Json.JsonDocument json = System.Text.Json.JsonDocument.Parse(stream);
++            System.Text.Json.JsonElement root = json.RootElement;
++            return root.TryGetProperty("signedIn", out System.Text.Json.JsonElement signedIn) && signedIn.GetBoolean() &&
++                   root.TryGetProperty("sameIp", out System.Text.Json.JsonElement sameIp) && sameIp.GetBoolean();
++        }
++        catch (Exception e)
++        {
++            context.Logger.LogWarning(BunkumCategory.Authentication, $"shadNet's session check failed: {e.Message}");
++            return false;
++        }
++    }
++
++    // LBPPC: shadNet redeems the code (GET /admin/v1/authcodes/redeem, single use) and says whether its session was
++    // this account's, asked for this game server's login.
++    private static bool ShadNetCodeValid(RequestContext context, string code, string username)
++    {
++        string url = Environment.GetEnvironmentVariable("LBPPC_SHADNET_CODES_URL")
++                     ?? "http://127.0.0.1:31350/admin/v1/authcodes/redeem";
++        try
++        {
++            using HttpRequestMessage request = new(HttpMethod.Get,
++                $"{url}?code={Uri.EscapeDataString(code)}&npid={Uri.EscapeDataString(username)}");
++            request.Headers.Add("X-Admin-Api-Key", Environment.GetEnvironmentVariable("LBPPC_SHADNET_KEY") ?? "");
++            using HttpResponseMessage response = ShadNetClient.Send(request);
++            if (!response.IsSuccessStatusCode)
++            {
++                context.Logger.LogWarning(BunkumCategory.Authentication, $"shadNet's code check answered {(int)response.StatusCode}");
++                return false;
++            }
++            using Stream stream = response.Content.ReadAsStream();
++            using System.Text.Json.JsonDocument json = System.Text.Json.JsonDocument.Parse(stream);
++            return json.RootElement.TryGetProperty("valid", out System.Text.Json.JsonElement valid) && valid.GetBoolean();
++        }
++        catch (Exception e)
++        {
++            context.Logger.LogWarning(BunkumCategory.Authentication, $"shadNet's code check failed: {e.Message}");
++            return false;
++        }
++    }
++
+     private static bool VerifyTicket(RequestContext context, MemoryStream body, Ticket ticket, TokenPlatform platform, IDateTimeProvider timeProvider)
+     {
+         ITicketSigningKey signingKey;
+diff -ruN a/Refresh.Interfaces.APIv3/Endpoints/AuthenticationApiEndpoints.cs b/Refresh.Interfaces.APIv3/Endpoints/AuthenticationApiEndpoints.cs
+--- a/Refresh.Interfaces.APIv3/Endpoints/AuthenticationApiEndpoints.cs	2026-11-13 03:07:23.006935700 -0330
++++ b/Refresh.Interfaces.APIv3/Endpoints/AuthenticationApiEndpoints.cs	2026-11-13 11:21:20.785032700 -0330
+@@ -354,6 +354,11 @@
+             return new ApiValidationError(ApiValidationError.InvalidUsernameErrorWhen
+                 + " Are you sure you used your PSN/RPCN username?");
+ 
++        // LBPPC: an account here only for a name that has an LBPPC (shadNet) account, which the launcher creates
++        // first, and only for a name the blocked-names list allows.
++        if (LbppcNameProblem(context, body.Username) is { } nameProblem)
++            return new ApiValidationError(nameProblem);
++
+         if (database.IsUsernameQueued(body.Username) || database.IsEmailQueued(body.EmailAddress))
+             return UserInQueueError();
+         
+@@ -445,4 +450,47 @@
+             "To do so you must patch your game to our servers. " +
+             "For more instructions on patching, please visit https://docs.lbpbonsai.com", true);
+     }
++
++    // LBPPC: shadNet's admin API on this machine (GET /admin/v1/names/check), with its AdminApiKey from
++    // LBPPC_SHADNET_KEY. LBPPC_SHADNET_CHECK_URL=off (a private test server) turns this off with the login check.
++    private static readonly HttpClient ShadNetClient = new() { Timeout = TimeSpan.FromSeconds(5) };
++
++    /// <summary>Why this name can't have an account here, in words for the player; null when it can.</summary>
++    private static string? LbppcNameProblem(RequestContext context, string username)
++    {
++        if (Environment.GetEnvironmentVariable("LBPPC_SHADNET_CHECK_URL") == "off")
++            return null;
++        string url = Environment.GetEnvironmentVariable("LBPPC_SHADNET_NAMES_URL")
++                     ?? "http://127.0.0.1:31350/admin/v1/names/check";
++        try
++        {
++            using HttpRequestMessage request = new(HttpMethod.Get, $"{url}?npid={Uri.EscapeDataString(username)}");
++            request.Headers.Add("X-Admin-Api-Key", Environment.GetEnvironmentVariable("LBPPC_SHADNET_KEY") ?? "");
++            using HttpResponseMessage response = ShadNetClient.Send(request);
++            if (!response.IsSuccessStatusCode)
++                throw new HttpRequestException($"answered {(int)response.StatusCode}");
++            using Stream stream = response.Content.ReadAsStream();
++            using System.Text.Json.JsonDocument json = System.Text.Json.JsonDocument.Parse(stream);
++            System.Text.Json.JsonElement root = json.RootElement;
++            string blocked = root.TryGetProperty("blocked", out System.Text.Json.JsonElement b) ? b.GetString() ?? "" : "";
++            if (blocked.Length > 0)
++            {
++                context.Logger.LogWarning(BunkumCategory.Authentication,
++                    $"Refused to register {username}: blocked name ({blocked})");
++                return "That name isn't allowed on LBPPC. Please choose another.";
++            }
++            if (!(root.TryGetProperty("exists", out System.Text.Json.JsonElement e) && e.GetBoolean()))
++            {
++                context.Logger.LogWarning(BunkumCategory.Authentication,
++                    $"Refused to register {username}: no LBPPC account by that name");
++                return "Accounts are made in the LBPPC launcher (Online, Create account), which sets this one up too.";
++            }
++            return null;
++        }
++        catch (Exception ex)
++        {
++            context.Logger.LogWarning(BunkumCategory.Authentication, $"shadNet's name check failed: {ex.Message}");
++            return "The account server can't be reached right now. Please try again in a minute.";
++        }
++    }
+ }
+\ No newline at end of file

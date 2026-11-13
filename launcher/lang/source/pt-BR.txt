@@ -376,3 +376,9 @@
 374|sessão de jogo
 375|latino-americana
 376|norte-americana
+377|Compilar shaders em segundo plano
+378|Um shader que o jogo ainda não usou é compilado sem pausar o jogo. Desligado: nada aparece atrasado, mas o jogo pode travar por um instante na primeira vez.
+379|Preparando shaders ({percent}%)
+380|esse nome não é permitido, ou a senha ou o e-mail não são aceitos
+381|contas novas demais a partir desta rede hoje, tente de novo amanhã
+382|Senhas erradas demais: o login está bloqueado por até 15 minutos.

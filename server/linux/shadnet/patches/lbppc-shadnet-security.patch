@@ -1,0 +1,480 @@
+diff -ruN a/src/admin_api.cpp b/src/admin_api.cpp
+--- a/src/admin_api.cpp	2026-11-13 03:07:15.201021800 -0330
++++ b/src/admin_api.cpp	2026-11-13 11:21:20.622881800 -0330
+@@ -1,6 +1,7 @@
+ // SPDX-FileCopyrightText: Copyright 2026 shadNet Project
+ // SPDX-License-Identifier: GPL-2.0-or-later
+ #include "admin_api.h"
++#include "lbppc_names.h"
+ 
+ #include <cmath>
+ 
+@@ -893,6 +894,78 @@
+             return JsonOk(body);
+         });
+ 
++    // LBPPC: GET /admin/v1/sessions/check?npid=<name>&ip=<address>, for the game server's login:
++    // { "signedIn": whether the account has a session now, "sameIp": whether one is from that
++    // address }. Only from this machine, and only with the AdminApiKey (no admin sign-in: the game
++    // server asks for every login). The addresses themselves are never returned.
++    m_http->route(
++        "/admin/v1/sessions/check", QHttpServerRequest::Method::Get,
++        [this](const QHttpServerRequest& req) -> QHttpServerResponse {
++            if (!req.remoteAddress().isLoopback() || m_config->GetAdminApiKey().isEmpty() ||
++                !CheckApiKey(req))
++                return ApiKeyError(req);
++            const QUrlQuery query(req.url());
++            const QString npid = query.queryItemValue(QStringLiteral("npid"));
++            const QString ip = query.queryItemValue(QStringLiteral("ip")).trimmed();
++            bool signedIn = false, sameIp = false;
++            if (m_shared && !npid.isEmpty()) {
++                QReadLocker lk(&m_shared->clientsLock);
++                for (const auto& entry : m_shared->clients) {
++                    if (entry.npid.compare(npid, Qt::CaseInsensitive) == 0) {
++                        signedIn = true;
++                        sameIp |= !ip.isEmpty() && entry.peerIp == ip;
++                    }
++                }
++            }
++            QJsonObject body;
++            body.insert(QStringLiteral("signedIn"), signedIn);
++            body.insert(QStringLiteral("sameIp"), sameIp);
++            return JsonOk(body);
++        });
++
++    // LBPPC: GET /admin/v1/names/check?npid=<name>, for the game server's sign-up: { "exists": whether a shadNet
++    // account has that name, "blocked": the blocked-list entry that refuses it, or "" }. Same access as above.
++    m_http->route(
++        "/admin/v1/names/check", QHttpServerRequest::Method::Get,
++        [this](const QHttpServerRequest& req) -> QHttpServerResponse {
++            if (!req.remoteAddress().isLoopback() || m_config->GetAdminApiKey().isEmpty() ||
++                !CheckApiKey(req))
++                return ApiKeyError(req);
++            const QString npid = QUrlQuery(req.url()).queryItemValue(QStringLiteral("npid"));
++            QJsonObject body;
++            body.insert(QStringLiteral("exists"), !npid.isEmpty() && m_db->GetUserId(npid).has_value());
++            body.insert(QStringLiteral("blocked"), npid.isEmpty() ? QString() : LbppcNames::BlockedBy(npid));
++            return JsonOk(body);
++        });
++
++    // LBPPC: GET /admin/v1/authcodes/redeem?code=<code>&npid=<name>, for the game server's login: { "valid": whether
++    // the code was issued by this server to that account's session for the game server's login (client id
++    // lbppc-refresh) and not used or expired }. The code is used up either way. Same access as above.
++    m_http->route(
++        "/admin/v1/authcodes/redeem", QHttpServerRequest::Method::Get,
++        [this](const QHttpServerRequest& req) -> QHttpServerResponse {
++            if (!req.remoteAddress().isLoopback() || m_config->GetAdminApiKey().isEmpty() ||
++                !CheckApiKey(req))
++                return ApiKeyError(req);
++            const QUrlQuery query(req.url());
++            const QString code = query.queryItemValue(QStringLiteral("code"));
++            const QString npid = query.queryItemValue(QStringLiteral("npid"));
++            bool valid = false;
++            if (m_shared && !code.isEmpty() && !npid.isEmpty()) {
++                if (const auto grant = m_shared->authCodes.Redeem(code)) {
++                    const auto owner = m_db->GetUsername(grant->userId);
++                    valid = grant->clientId == QLatin1String("lbppc-refresh") && owner &&
++                            owner->compare(npid, Qt::CaseInsensitive) == 0;
++                    if (!valid)
++                        qWarning().noquote() << "LBPPC: a login code for" << (owner ? *owner : QStringLiteral("?"))
++                                             << "(client" << grant->clientId << ") was presented for" << npid;
++                }
++            }
++            QJsonObject body;
++            body.insert(QStringLiteral("valid"), valid);
++            return JsonOk(body);
++        });
++
+     // GET /admin/v1/version
+     m_http->route("/admin/v1/version", QHttpServerRequest::Method::Get,
+                   [](const QHttpServerRequest&) {
+diff -ruN a/src/client_session.cpp b/src/client_session.cpp
+--- a/src/client_session.cpp	2026-11-13 03:07:15.209046300 -0330
++++ b/src/client_session.cpp	2026-11-13 11:21:20.645443000 -0330
+@@ -66,9 +66,41 @@
+     qInfo() << "Client connected (" << mode << ") from" << m_socket->peerAddress().toString();
+ }
+ 
++static QString PlainAddress(const QHostAddress& address) {
++    bool isV4 = false;
++    const quint32 v4 = address.toIPv4Address(&isV4);
++    return isV4 ? QHostAddress(v4).toString() : address.toString();
++}
++
+ void ClientSession::OnReadyRead() {
+     m_readBuf.append(m_socket->readAll());
+ 
++    // LBPPC: "PROXY TCP4 <player> <server> <port> <port>\r\n" from nginx, before any packet.
++    if (!m_proxyChecked) {
++        const QHostAddress peer = m_socket->peerAddress();
++        if (m_peerIp.isEmpty())
++            m_peerIp = PlainAddress(peer);
++        if (peer.isLoopback() && m_readBuf.startsWith("PROXY ")) {
++            const int end = m_readBuf.indexOf("\r\n");
++            if (end < 0) {
++                if (m_readBuf.size() > 107) { // the longest v1 line
++                    m_socket->disconnectFromHost();
++                }
++                return; // the rest of the line is still coming
++            }
++            const QList<QByteArray> parts = m_readBuf.left(end).split(' ');
++            if (parts.size() >= 3 && (parts[1] == "TCP4" || parts[1] == "TCP6")) {
++                const QHostAddress player(QString::fromLatin1(parts[2]));
++                if (!player.isNull())
++                    m_peerIp = PlainAddress(player);
++            }
++            m_readBuf.remove(0, end + 2);
++        } else if (peer.isLoopback() && m_readBuf.size() < 6 && QByteArray("PROXY ").startsWith(m_readBuf)) {
++            return; // could still be the start of the line
++        }
++        m_proxyChecked = true;
++    }
++
+     while (m_readBuf.size() >= static_cast<int>(HEADER_SIZE)) {
+         // Parse header
+         const uint8_t* hdr = reinterpret_cast<const uint8_t*>(m_readBuf.constData());
+diff -ruN a/src/client_session.h b/src/client_session.h
+--- a/src/client_session.h	2026-11-13 03:07:15.216079200 -0330
++++ b/src/client_session.h	2026-11-13 11:21:20.667835700 -0330
+@@ -96,6 +96,9 @@
+         Matching2Access matching2Access = Matching2Access::Normal;
+         QString clientVersion;
+         bool versionReported = false;
++        // LBPPC: the address this session signed in from (IPv4 as a.b.c.d), so the game server can
++        // accept a game login only from where the account is signed in (GET /admin/v1/sessions/check).
++        QString peerIp;
+         std::function<void()> recheckVersion;
+     };
+     QHash<int64_t, ClientEntry> clients;
+@@ -410,6 +413,18 @@
+     std::optional<PendingOnline> m_pendingOnline;
+     bool m_registered = false; // in m_shared->clients (shown online)
+     QByteArray m_readBuf;
++    // LBPPC: the player's address. nginx terminates TLS on 31313 and connects from 127.0.0.1,
++    // stating the player's address first in a PROXY protocol (v1) line, which is only believed
++    // from a loopback peer. m_proxyChecked: the start of the stream was looked at for it.
++    QString m_peerIp;
++    bool m_proxyChecked = false;
++
++public:
++    const QString& PeerIp() const {
++        return m_peerIp;
++    }
++
++private:
+     std::unique_ptr<Database> m_db;
+     ClientInfo m_info;
+     MatchingSessionState m_matching;
+diff -ruN a/src/cmd_account.cpp b/src/cmd_account.cpp
+--- a/src/cmd_account.cpp	2026-11-13 03:07:15.222579400 -0330
++++ b/src/cmd_account.cpp	2026-11-13 11:21:20.689377500 -0330
+@@ -7,6 +7,8 @@
+ #include <QDebug>
+ #include <QTimer>
+ #include "client_session.h"
++#include "lbppc_guard.h"
++#include "lbppc_names.h"
+ #include "proto_utils.h"
+ #include "shadnet.pb.h"
+ 
+@@ -34,9 +36,25 @@
+     if (!IsValidNpid(npid))
+         return ErrorType::InvalidInput;
+ 
++    // LBPPC: names on the blocked list (lbppc_names.h) can't be registered.
++    if (const QString blocked = LbppcNames::BlockedBy(npid); !blocked.isEmpty()) {
++        qWarning().noquote() << "CmdCreate: refused the name" << npid << "(blocked list:" << blocked << ") from"
++                             << PeerIp();
++        return ErrorType::InvalidInput;
++    }
++
+     if (password.isEmpty() || email.isEmpty())
+         return ErrorType::InvalidInput;
+ 
++    // LBPPC: the launcher's minimum, also for clients that skip it; and a few new accounts per address a day.
++    if (password.size() < LbppcGuard::MinPasswordLength)
++        return ErrorType::InvalidInput;
++    if (!LbppcGuard::SignupAllowed(PeerIp())) {
++        qWarning().noquote() << "CmdCreate: refused" << npid << "from" << PeerIp()
++                             << ": already" << LbppcGuard::MaxSignupsPerAddress << "new accounts from there today";
++        return ErrorType::TooSoon;
++    }
++
+     // Check banned email domain.
+     int at = email.indexOf('@');
+     if (at >= 0) {
+@@ -61,7 +79,8 @@
+         }
+     }
+ 
+-    qInfo() << "Account created:" << npid;
++    qInfo() << "Account created:" << npid << "from" << PeerIp();
++    LbppcGuard::SignedUp(PeerIp());
+     return ErrorType::NoError;
+ }
+ 
+@@ -77,10 +96,18 @@
+     QString npid = QString::fromStdString(req.npid());
+     QString token = QString::fromStdString(req.token());
+ 
++    // LBPPC: password guessing is refused for a while (lbppc_guard.h).
++    if (LbppcGuard::LoginLocked(PeerIp(), npid)) {
++        qWarning().noquote() << "Login refused for" << npid << "from" << PeerIp()
++                             << ": too many wrong passwords, locked for up to 15 minutes";
++        return ErrorType::TooSoon;
++    }
++
+     bool checkToken = m_shared->config->IsEmailValidated();
+     auto userOpt = m_db->CheckUser(npid, QString::fromStdString(req.password()), token, checkToken);
+     if (!userOpt) {
+-        qWarning() << "Login failed for" << npid;
++        qWarning() << "Login failed for" << npid << "from" << PeerIp();
++        LbppcGuard::LoginFailed(PeerIp(), npid);
+         return ErrorType::LoginInvalidPassword;
+     }
+     const UserRecord& user = *userOpt;
+@@ -214,6 +241,8 @@
+         entry.titleName = pending.titleName;
+         entry.clientVersion = m_reportedVersion;
+         entry.versionReported = m_versionReported;
++        // LBPPC: where this session signed in from (the player's address, through nginx).
++        entry.peerIp = PeerIp();
+         entry.send = [this](QByteArray pkt) {
+             QMetaObject::invokeMethod(
+                 this, [this, pkt]() { SendPacket(pkt); }, Qt::QueuedConnection);
+diff -ruN a/src/lbppc_guard.h b/src/lbppc_guard.h
+--- a/src/lbppc_guard.h	1969-12-31 20:30:00.000000000 -0330
++++ b/src/lbppc_guard.h	2026-11-13 11:21:20.711430600 -0330
+@@ -0,0 +1,84 @@
++// LBPPC: limits on password guessing and sign-ups, per player address (ClientSession::PeerIp, the player's own
++// address through nginx) and per account name. In memory: a restart clears them.
++//   wrong passwords within 15 minutes -> refused for 15 minutes: 10 for one account from one address, 20 from one
++//   address (any accounts), 50 for one account from anywhere. A troll can't lock someone out with a few tries
++//   (the lock is per address), and guessing spread over many addresses still stops.
++//   new accounts: 3 per address per 24 hours
++#pragma once
++
++#include <algorithm>
++#include <QDateTime>
++#include <QHash>
++#include <QList>
++#include <QMutex>
++#include <QString>
++
++namespace LbppcGuard {
++
++constexpr qint64 FailureWindowMs = 15 * 60 * 1000;
++constexpr int MaxFailuresPerAccountFromAddress = 10;
++constexpr int MaxFailuresPerAccount = 50;
++constexpr int MaxFailuresPerAddress = 20;
++constexpr qint64 SignupWindowMs = 24 * 60 * 60 * 1000;
++constexpr int MaxSignupsPerAddress = 3;
++constexpr int MinPasswordLength = 8; // the launcher's (scripts/online_accounts.py MIN_PASSWORD)
++
++struct State {
++    QMutex mutex;
++    QHash<QString, QList<qint64>> failuresByAccount, failuresByPair, failuresByAddress, signupsByAddress;
++};
++
++inline State& Get() {
++    static State state;
++    return state;
++}
++
++// The times within the window, older ones dropped (and the key removed when none are left).
++inline int Recent(QHash<QString, QList<qint64>>& table, const QString& key, qint64 window, qint64 now) {
++    auto it = table.find(key);
++    if (it == table.end())
++        return 0;
++    it->erase(std::remove_if(it->begin(), it->end(), [&](qint64 t) { return now - t > window; }), it->end());
++    if (it->isEmpty()) {
++        table.erase(it);
++        return 0;
++    }
++    return int(it->size());
++}
++
++// Whether a login for this account from this address is refused for now (too many wrong passwords).
++inline bool LoginLocked(const QString& address, const QString& account) {
++    auto& s = Get();
++    QMutexLocker lock(&s.mutex);
++    const qint64 now = QDateTime::currentMSecsSinceEpoch();
++    const QString name = account.toLower();
++    return Recent(s.failuresByPair, name + QLatin1Char('|') + address, FailureWindowMs, now) >=
++               MaxFailuresPerAccountFromAddress ||
++           Recent(s.failuresByAddress, address, FailureWindowMs, now) >= MaxFailuresPerAddress ||
++           Recent(s.failuresByAccount, name, FailureWindowMs, now) >= MaxFailuresPerAccount;
++}
++
++inline void LoginFailed(const QString& address, const QString& account) {
++    auto& s = Get();
++    QMutexLocker lock(&s.mutex);
++    const qint64 now = QDateTime::currentMSecsSinceEpoch();
++    const QString name = account.toLower();
++    s.failuresByAccount[name].append(now);
++    s.failuresByPair[name + QLatin1Char('|') + address].append(now);
++    s.failuresByAddress[address].append(now);
++}
++
++inline bool SignupAllowed(const QString& address) {
++    auto& s = Get();
++    QMutexLocker lock(&s.mutex);
++    return Recent(s.signupsByAddress, address, SignupWindowMs, QDateTime::currentMSecsSinceEpoch()) <
++           MaxSignupsPerAddress;
++}
++
++inline void SignedUp(const QString& address) {
++    auto& s = Get();
++    QMutexLocker lock(&s.mutex);
++    s.signupsByAddress[address].append(QDateTime::currentMSecsSinceEpoch());
++}
++
++} // namespace LbppcGuard
+diff -ruN a/src/lbppc_names.h b/src/lbppc_names.h
+--- a/src/lbppc_names.h	1969-12-31 20:30:00.000000000 -0330
++++ b/src/lbppc_names.h	2026-11-13 11:21:20.732978600 -0330
+@@ -0,0 +1,144 @@
++// LBPPC: names nobody can register (shadNet accounts, and Refresh, which asks shadNet: GET /admin/v1/names/check).
++// The list is a text file, /etc/lbppc/blocked-names.txt (LBPPC_BLOCKED_NAMES overrides), read again whenever it
++// changes; its format is described in the file. name_check.py (beside the deploy scripts) is the same rule in
++// Python, for testing a list against names: keep the two the same.
++//
++// A name is lower-cased, leetspeak undone (0 o, 1 i, 3 e, 4 a, 5 s, 7 t, 8 b, @ a, $ s, ! i, | i) and reduced to
++// letters. A list word matches when its letters appear in order with each run of a letter at least as long as in the
++// word: "faggot" matches faaaggot and fagggot, while "nigg" needs two g's and so doesn't match knight.
++#pragma once
++
++#include <QDateTime>
++#include <QDebug>
++#include <QFile>
++#include <QFileInfo>
++#include <QMutex>
++#include <QRegularExpression>
++#include <QString>
++#include <QStringList>
++#include <QTextStream>
++
++namespace LbppcNames {
++
++inline QString Squash(const QString& name) {
++    static const QString from = QStringLiteral("0134578@$!|");
++    static const QString to = QStringLiteral("oieastbasii");
++    QString out;
++    out.reserve(name.size());
++    for (QChar c : name.toLower()) {
++        const int i = from.indexOf(c);
++        if (i >= 0)
++            c = to.at(i);
++        if (c >= QLatin1Char('a') && c <= QLatin1Char('z'))
++            out.append(c);
++    }
++    return out;
++}
++
++// Each run of a letter as that letter at least as many times: "fagg" -> "f{1,}a{1,}g{2,}".
++inline QString Pattern(const QString& word) {
++    QString out;
++    for (int i = 0; i < word.size();) {
++        int run = 1;
++        while (i + run < word.size() && word.at(i + run) == word.at(i))
++            ++run;
++        out += QRegularExpression::escape(QString(word.at(i))) + QStringLiteral("{%1,}").arg(run);
++        i += run;
++    }
++    return out;
++}
++
++struct Entry {
++    QString label;            // the word as listed ("=word" for a whole-name entry)
++    QString digits;           // a number entry (1488): matched in the name as typed
++    QRegularExpression rule;  // otherwise: matched in the squashed name
++};
++
++struct Rules {
++    QList<Entry> entries;
++    QStringList allowed;
++};
++
++inline Rules Parse(QTextStream& in) {
++    Rules rules;
++    while (!in.atEnd()) {
++        QString line = in.readLine().trimmed().toLower();
++        if (line.isEmpty() || line.startsWith(QLatin1Char('#')))
++            continue;
++        if (line.startsWith(QLatin1Char('+'))) {
++            const QString word = Squash(line.mid(1));
++            if (!word.isEmpty())
++                rules.allowed.append(word);
++            continue;
++        }
++        const bool exact = line.startsWith(QLatin1Char('='));
++        if (exact)
++            line = line.mid(1);
++        bool isNumber = false;
++        line.toLongLong(&isNumber);
++        if (isNumber) {
++            rules.entries.append({line, line, {}});
++            continue;
++        }
++        const QString word = Squash(line);
++        if (word.isEmpty())
++            continue;
++        const QString pattern = exact ? QRegularExpression::anchoredPattern(Pattern(word)) : Pattern(word);
++        rules.entries.append({exact ? QLatin1Char('=') + word : word, {}, QRegularExpression(pattern)});
++    }
++    return rules;
++}
++
++// The list entry that blocks the name, or an empty string.
++inline QString BlockedBy(const QString& name, const Rules& rules) {
++    QString squashed = Squash(name);
++    for (const QString& word : rules.allowed)
++        squashed.remove(word);
++    const QString raw = name.toLower();
++    for (const Entry& e : rules.entries) {
++        if (!e.digits.isEmpty()) {
++            if (raw.contains(e.digits))
++                return e.label;
++        } else if (e.rule.match(squashed).hasMatch()) {
++            return e.label;
++        }
++    }
++    return {};
++}
++
++// The file's rules, read again when it changes. If it can't be read, every new name is refused (fails closed:
++// a missing list must not let anything through); the reason is logged.
++inline QString BlockedBy(const QString& name) {
++    static QMutex mutex;
++    static Rules rules;
++    static QDateTime loadedAt;
++    static bool warned = false;
++    const QByteArray env = qgetenv("LBPPC_BLOCKED_NAMES");
++    const QString path = env.isEmpty() ? QStringLiteral("/etc/lbppc/blocked-names.txt") : QString::fromUtf8(env);
++    QMutexLocker lock(&mutex);
++    const QFileInfo info(path);
++    if (!info.exists() || !info.isReadable()) {
++        if (!warned)
++            qCritical() << "LBPPC: the blocked-names list" << path
++                        << "can't be read (missing, or permissions): every new name is refused until it can";
++        warned = true;
++        loadedAt = {};
++        return QStringLiteral("(the blocked-names list can't be read)");
++    }
++    if (info.lastModified() != loadedAt) {
++        QFile file(path);
++        if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
++            qCritical() << "LBPPC: the blocked-names list" << path << "can't be opened: every new name is refused";
++            return QStringLiteral("(the blocked-names list can't be read)");
++        }
++        QTextStream in(&file);
++        rules = Parse(in);
++        loadedAt = info.lastModified();
++        warned = false;
++        qInfo() << "LBPPC: blocked-names list loaded:" << rules.entries.size() << "entries,"
++                << rules.allowed.size() << "allowed words";
++    }
++    return BlockedBy(name, rules);
++}
++
++} // namespace LbppcNames
