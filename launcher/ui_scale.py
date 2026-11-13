@@ -185,8 +185,33 @@ def fonts(root):
 
 
 def image(pil):
-    """A PIL image placed on a canvas, at the factor."""
+    """A PIL image placed on a canvas, at the factor. An image the theme drew at its drawing scale (info['hires'],
+    lbppc_theme.finish) is resized once from that drawing; shrunk images get their edges' contrast back (small text
+    on a 1080p screen, at 0.75, otherwise reads soft)."""
     if U == 1.0:
         return pil
-    from PIL import Image
-    return pil.resize((max(1, round(pil.width * U)), max(1, round(pil.height * U))), Image.LANCZOS)
+    from PIL import Image, ImageFilter
+    size = (max(1, round(pil.width * U)), max(1, round(pil.height * U)))
+    owner, owner_size, redraw = pil.info.get('redraw') or (None, None, None)
+    if owner == id(pil) and owner_size == pil.size and redraw is not None:
+        # Text drawn again at twice its real pixel size and halved once (drawn at 1x, FreeType's whole-pixel
+        # advances space letters unevenly; shrunk twice from the design size, it reads soft), on a canvas of
+        # exactly the scaled size.
+        big = redraw(U * 2)
+        drawn = big.resize((max(1, round(big.width / 2)), max(1, round(big.height / 2))), Image.LANCZOS)
+        if drawn.size == size:
+            return drawn
+        out = Image.new('RGBA', size, (0, 0, 0, 0))
+        out.alpha_composite(drawn.crop((0, 0, min(drawn.width, size[0]), min(drawn.height, size[1]))))
+        return out
+    owner, owner_size, hires = pil.info.get('hires') or (None, None, None)
+    if owner == id(pil) and owner_size == pil.size and hires is not None and hires.width >= size[0]:
+        return hires.resize(size, Image.LANCZOS, reducing_gap=3.0)
+    out = pil.resize(size, Image.LANCZOS)
+    if U < 1.0:
+        sharp = out.convert('RGBA')
+        alpha = sharp.getchannel('A')
+        sharp = sharp.filter(ImageFilter.UnsharpMask(radius=0.8, percent=70, threshold=0))
+        sharp.putalpha(alpha)
+        return sharp
+    return out

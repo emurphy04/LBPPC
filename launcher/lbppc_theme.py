@@ -75,22 +75,27 @@ def fredoka_has(text):
 SEGOE = {'Regular': 'segoeui.ttf', 'Medium': 'seguisb.ttf', 'SemiBold': 'seguisb.ttf', 'Bold': 'segoeuib.ttf'}
 
 
-def font(size, weight='SemiBold', text=''):
-    """Fredoka at `size` points (the drawing scale applied), one of its named weights; Segoe UI when `text` has
-    letters Fredoka can't draw (a translation's)."""
+def font(size, weight='SemiBold', text='', scale=S):
+    """Fredoka at `size` points (times `scale`, the drawing scale unless given), one of its named weights; Segoe UI
+    when `text` has letters Fredoka can't draw (a translation's)."""
     if text and not fredoka_has(text):
         try:
-            return ImageFont.truetype(SEGOE.get(weight, 'segoeui.ttf'), size * S)
+            return ImageFont.truetype(SEGOE.get(weight, 'segoeui.ttf'), size * scale)
         except OSError:
             pass  # no Segoe UI (Proton, Linux): Fredoka, with its missing letters
-    f = ImageFont.truetype(str(FONTS / 'Fredoka.ttf'), size * S)
+    f = ImageFont.truetype(str(FONTS / 'Fredoka.ttf'), size * scale)
     f.set_variation_by_name(weight)
     return f
 
 
 def finish(img):
-    """Back from the drawing scale."""
-    return img.resize((max(1, img.width // S), max(1, img.height // S)), Image.LANCZOS)
+    """Back from the drawing scale. The drawing itself rides along (info['hires']): when the launcher is shown
+    scaled (ui_scale.image), it is resized once from that instead of twice, so small text stays sharp."""
+    out = img.resize((max(1, img.width // S), max(1, img.height // S)), Image.LANCZOS)
+    # Tied to this very image: Pillow copies info into rotated, filtered or converted images, which then no longer
+    # match the drawing (ui_scale.image checks the id).
+    out.info['hires'] = (id(out), out.size, img)
+    return out
 
 
 def felt(w, h, base=NIGHT):
@@ -175,15 +180,31 @@ def rgb(colour):
     return tuple(int(colour[i:i + 2], 16) for i in (1, 3, 5)) if isinstance(colour, str) else tuple(colour[:3])
 
 
+def redrawable(img, draw):
+    """`img` (finished) with `draw(scale)`, which draws it again `scale` times its size: the launcher shown scaled
+    (ui_scale.image) has text drawn at its real pixel size, sharp, instead of shrunk. Tied to this very image, as
+    finish's drawing."""
+    img.info['redraw'] = (id(img), img.size, draw)
+    return img
+
+
+def _line(text, size, colour, weight, scale):
+    """One line of text drawn `scale` times the launcher's size, a scale-sized margin around it."""
+    f = font(size, weight, text, scale)
+    l, t, r, b = f.getbbox(text)
+    pad = max(1, round(scale))
+    img = Image.new('RGBA', (max(1, round(r - l) + 2 * pad), max(1, round(b - t) + 2 * pad)), (0, 0, 0, 0))
+    ImageDraw.Draw(img).text((pad - l, pad - t), text, font=f, fill=colour)
+    return img
+
+
 def text_image(text, size, colour=TEXT, weight='SemiBold', outline=None):
     """A line of Fredoka (with a sticker outline when `outline` is a colour)."""
-    f = font(size, weight, text)
     if outline:
+        f = font(size, weight, text)
         return finish(sticker_text(text, f, rgb(colour), rgb(outline), (size // 6) * S))
-    l, t, r, b = f.getbbox(text)
-    img = Image.new('RGBA', (r - l + 2 * S, b - t + 2 * S), (0, 0, 0, 0))
-    ImageDraw.Draw(img).text((S - l, S - t), text, font=f, fill=colour)
-    return finish(img)
+    return redrawable(finish(_line(text, size, colour, weight, S)),
+                      lambda scale: _line(text, size, colour, weight, scale))
 
 
 def panel(w, h, title, radius=20):
@@ -358,12 +379,17 @@ def paragraph(text, size, width, colour=TEXT, weight='Regular', spacing=1.35):
             line = trial
     if line:
         lines.append(line)
-    step = round(size * spacing * S)
-    img = Image.new('RGBA', (width * S, max(1, step * len(lines) + size * S // 2)), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img)
-    for i, text_line in enumerate(lines):
-        draw.text((0, i * step), text_line, font=f, fill=colour)
-    return finish(img)
+
+    def draw_at(scale):  # the lines as wrapped above, at any scale
+        f2 = font(size, weight, text, scale)
+        step = round(size * spacing * scale)
+        img = Image.new('RGBA', (max(1, round(width * scale)), max(1, step * len(lines) + round(size * scale / 2))),
+                        (0, 0, 0, 0))
+        draw = ImageDraw.Draw(img)
+        for i, text_line in enumerate(lines):
+            draw.text((0, i * step), text_line, font=f2, fill=colour)
+        return img
+    return redrawable(finish(draw_at(S)), draw_at)
 
 
 def badge(number, size=26):
