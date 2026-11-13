@@ -8,6 +8,7 @@ saves to user/. The log goes to the console and out/last_run.log.
 import json
 import os
 from pathlib import Path
+import platform
 import subprocess
 import sys
 import time
@@ -173,6 +174,13 @@ def main(argv):
     # Quit Game in the pause menu: the game files it changes are shown changed by the runtime (out/file_edits.bin).
     script('quit_menu.py', game, '--out', OUT)
     env = dict(os.environ)
+    # rcpps/rsqrtps/dpps computed exactly offline too (LBPPC_EXACT_MATH, probe.c), as online, on CPUs other than
+    # AMD's: their approximations differ between CPU makers, and the game was made on the PS4's AMD one. On an Intel
+    # CPU the story's intro cutscene (c01_intro) stopped for good after Newton's line cs01_100: a scripted step that
+    # never came. LBPPC_EXACT_MATH=0 turns it off, =1 on whatever the CPU.
+    cpu = f"{os.environ.get('PROCESSOR_IDENTIFIER', '')} {platform.processor()}"
+    if 'AuthenticAMD' not in cpu and 'AMD' not in cpu.split():
+        env.setdefault('LBPPC_EXACT_MATH', '1')
     if (OUT / 'file_edits.bin').is_file():
         env.setdefault('LBPPC_FILE_EDITS', str(OUT / 'file_edits.bin'))
     # The logo on the game window (launcher/assets in a checkout, assets/ in a release).
