@@ -155,7 +155,6 @@ BG = theme.hex_colour(theme.NIGHT)
 CUSTOM_FRAME = os.name == 'nt'
 # The window: the settings in a column on the left, the friends list on the right.
 WIDTH, MAIN_WIDTH, TITLE_HEIGHT, BANNER_HEIGHT = 1180, 860, 38 if os.name == 'nt' else 0, 176
-LOG_HEIGHT = 220
 UI_FONT = ('Segoe UI', 10)
 HINT_FONT = ('Segoe UI', 9)
 
@@ -1287,6 +1286,42 @@ class TitleBar:
         self.window.geometry(f'+{event.x_root - self.offset[0]}+{event.y_root - self.offset[1]}')
 
 
+class LogWindow:
+    """Show log: the game's output in a window of its own, in the launcher's look (its title bar, felt, a lime-edged
+    panel, dark scroll bars). A log under the launcher's bar made it taller than a 1080p screen. Hidden, it keeps
+    filling; its close button hides it."""
+
+    W, H = 1180, 520
+
+    def __init__(self, launcher, on_close):
+        top = self.top = tk.Toplevel(launcher, bg=BG)
+        top.withdraw()
+        top.title(t('LBPPC - Log'))
+        top.protocol('WM_DELETE_WINDOW', on_close)
+        top.resizable(False, False)
+        scene = self.scene = Scene(top, self.W, self.H)
+        scene.pack(fill='both', expand=True)
+        scene.image('felt', theme.felt(self.W, self.H), 0, 0)
+        y0 = TITLE_HEIGHT if CUSTOM_FRAME else 0
+        panel_x, panel_y, panel_w, panel_h = 16, y0 + 12, self.W - 32, self.H - y0 - 28
+        scene.image('panel', theme.panel(panel_w, panel_h, t('Game log')), panel_x, panel_y)
+        self.text = tk.Text(top, bg='#0e111c', fg=MUTED, insertbackground=TEXT, relief='flat',
+                            font=('Consolas', -12), wrap='none', state='disabled', padx=8, pady=6,
+                            highlightthickness=1, highlightbackground=theme.FIELD_EDGE,
+                            highlightcolor=theme.FIELD_EDGE)
+        down = ttk.Scrollbar(top, orient='vertical', command=self.text.yview, style='Log.Vertical.TScrollbar')
+        across = ttk.Scrollbar(top, orient='horizontal', command=self.text.xview, style='Log.Horizontal.TScrollbar')
+        self.text.configure(yscrollcommand=down.set, xscrollcommand=across.set)
+        bar = 14
+        x, y = panel_x + 20, panel_y + 46
+        w, h = panel_w - 40 - bar - 2, panel_h - 46 - 20 - bar - 2
+        scene.widget(self.text, x, y, w, h)
+        scene.widget(down, x + w + 2, y, bar, h)
+        scene.widget(across, x, y + h + 2, w, bar)
+        if CUSTOM_FRAME:
+            TitleBar(top, scene, t('Game log'), on_close, minimise=False)
+
+
 def style_widgets(root):
     """The fields and dropdowns: dark, light text, a lime edge on the focused one."""
     style = ttk.Style(root)
@@ -1299,6 +1334,11 @@ def style_widgets(root):
               background=[('active', theme.FIELD_EDGE)], bordercolor=[('focus', theme.hex_colour(theme.LIME))])
     style.configure('Night.Vertical.TScrollbar', background=theme.FIELD, troughcolor=BG,
                     arrowcolor=MUTED, borderwidth=0)
+    # The log window's (LogWindow): dark through and through, as the fields (clam's bevels are light otherwise).
+    for name in ('Log.Vertical.TScrollbar', 'Log.Horizontal.TScrollbar'):
+        style.configure(name, background=theme.FIELD, troughcolor='#0e111c', bordercolor=theme.FIELD_EDGE,
+                        lightcolor=theme.FIELD, darkcolor=theme.FIELD, arrowcolor=MUTED, gripcount=0)
+        style.map(name, background=[('active', theme.FIELD_EDGE)], arrowcolor=[('active', TEXT)])
     root.option_add('*TCombobox*Listbox.background', theme.FIELD)
     root.option_add('*TCombobox*Listbox.foreground', TEXT)
     root.option_add('*TCombobox*Listbox.selectBackground', theme.hex_colour(theme.BLUE))
@@ -1346,7 +1386,7 @@ class Launcher(tk.Tk):
         style_widgets(self)
         self.scene = Scene(self, WIDTH, self.HEIGHT)
         self.scene.pack(fill='both', expand=True)
-        self.scene.image('felt', theme.felt(WIDTH, self.HEIGHT + LOG_HEIGHT), 0, 0)
+        self.scene.image('felt', theme.felt(WIDTH, self.HEIGHT), 0, 0)
         self.build()
         if CUSTOM_FRAME:
             TitleBar(self, self.scene, t('{version} beta', version=VERSION), self.close)
@@ -1541,13 +1581,12 @@ class Launcher(tk.Tk):
                                                   'Help, news and co-op partners on the Discord.'),
                   ('Segoe UI', 8), '#6c7690', 'center')
 
-        # The game's output, under the bar while shown
-        self.log = tk.Text(self, bg='#0e111c', fg=MUTED, insertbackground=TEXT, relief='flat', font=('Consolas', 9),
-                           wrap='none', state='disabled', padx=10, pady=8, highlightthickness=1,
-                           highlightbackground=theme.FIELD_EDGE)
+        # The game's output, in a window of its own (Show log, LogWindow).
+        self.log_window = LogWindow(self, self.toggle_log)
+        self.log_top, self.log = self.log_window.top, self.log_window.text
         self.log.tag_configure('warn', foreground=WARN)
         self.log.tag_configure('bad', foreground=ERROR)
-        self.log_window = None
+        self.log_placed = False
 
     def show_page(self, page):
         self.page = page
@@ -1761,17 +1800,27 @@ class Launcher(tk.Tk):
         self.after(200, finished)
 
     def toggle_log(self):
+        """Show log / Hide log (and the log window's own close button): the log window shown or hidden."""
         self.log_shown = not self.log_shown
-        height = self.HEIGHT + (LOG_HEIGHT if self.log_shown else 0)
-        self.scene.configure(height=height)
         if self.log_shown:
-            self.log_window = self.scene.widget(self.log, self.PANEL_X, self.HEIGHT - 4, WIDTH - 56, LOG_HEIGHT - 12)
+            if not self.log_placed:
+                # First time: beside the launcher when the screen has room, else over its lower part.
+                self.update_idletasks()
+                screen_w, screen_h = self.winfo_screenwidth(), self.winfo_screenheight()
+                width, height = ui_scale.s(LogWindow.W), ui_scale.s(LogWindow.H)
+                x, y = self.winfo_rootx() + self.winfo_width() + 8, self.winfo_rooty()
+                if x + width > screen_w:
+                    x = max(0, min(self.winfo_rootx() + ui_scale.s(28), screen_w - width))
+                    y = max(0, min(self.winfo_rooty() + self.winfo_height() - height - ui_scale.s(110),
+                                   screen_h - height - 60))
+                self.log_top.geometry(f'+{x}+{y}')
+                self.log_placed = True
+            self.log_top.deiconify()
+            self.log_top.lift()
             self.log.see('end')
-        elif self.log_window:
-            self.scene.delete(self.log_window)
-            self.log_window = None
+        else:
+            self.log_top.withdraw()
         self.scene.itemconfigure(self.log_link, text=t('Hide log') if self.log_shown else t('Show log'))
-        self.geometry(f'{ui_scale.s(WIDTH)}x{ui_scale.s(height)}')
 
     def play(self):
         if self.process or self.refresh_game() not in ('ready', 'warn'):
@@ -2638,8 +2687,6 @@ if __name__ == '__main__':
     elif len(sys.argv) > 3 and sys.argv[1] == '--apply-update':
         updater.run_apply(sys.argv[2:])  # the new version, from out/update/staging, installing itself
     else:
-        # The launcher at the screen's size (ui_scale.py), and on a short screen (the Steam Deck's) a shorter log.
+        # The launcher at the screen's size (ui_scale.py).
         ui_scale.install(ui_scale.choose(WIDTH, Launcher.HEIGHT))
-        room = ui_scale.work_area()[1] * 0.96 / ui_scale.U - Launcher.HEIGHT
-        LOG_HEIGHT = max(100, min(LOG_HEIGHT, int(room)))
         Launcher().mainloop()

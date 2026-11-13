@@ -5,8 +5,8 @@ showing them scaled by one factor: positions and sizes going in are multiplied b
 bbox, the canvas's size, pointer events) are divided by it, images placed through the launcher's Scene are resized, and
 fonts follow Tk's scaling. So the launcher's own code keeps its numbers.
 
-The factor follows the screen's height (1440 is 1), at least 0.75 so text stays readable on small screens (1080p, the
-Steam Deck's 1280 x 800), and never more than fits the screen's work area. The launcher isn't DPI-aware, so on a 4K
+The factor follows the screen's height (1440 is 1), at least MIN_FACTOR (0.9) so text stays readable on smaller
+screens (1080p), and never more than fits the screen's work area (the Steam Deck's 1280 x 800 gets what fits). The launcher isn't DPI-aware, so on a 4K
 screen with Windows' usual 150% Windows already enlarges it and the screen reads as 1440 high here. LBPPC_UI_SCALE
 overrides the factor (tests).
 """
@@ -14,6 +14,8 @@ import os
 import tkinter as tk
 
 DESIGN_HEIGHT = 1440
+# The smallest factor while the launcher fits: 0.9 on a 1080p screen (at 0.75 its small text was about 9 pixels).
+MIN_FACTOR = 0.9
 U = 1.0
 
 
@@ -45,7 +47,7 @@ def choose(width, height):
             pass
     area_w, area_h = work_area()
     fit = min(area_w * 0.96 / width, area_h * 0.96 / height)
-    return round(min(fit, max(area_h / DESIGN_HEIGHT, 0.75)), 3)
+    return round(min(fit, max(area_h / DESIGN_HEIGHT, MIN_FACTOR)), 3)
 
 
 def s(value):
@@ -185,8 +187,33 @@ def fonts(root):
 
 
 def image(pil):
-    """A PIL image placed on a canvas, at the factor."""
+    """A PIL image placed on a canvas, at the factor. An image the theme drew at its drawing scale (info['hires'],
+    lbppc_theme.finish) is resized once from that drawing; shrunk images get their edges' contrast back (small text
+    on a 1080p screen, at 0.75, otherwise reads soft)."""
     if U == 1.0:
         return pil
-    from PIL import Image
-    return pil.resize((max(1, round(pil.width * U)), max(1, round(pil.height * U))), Image.LANCZOS)
+    from PIL import Image, ImageFilter
+    size = (max(1, round(pil.width * U)), max(1, round(pil.height * U)))
+    owner, owner_size, redraw = pil.info.get('redraw') or (None, None, None)
+    if owner == id(pil) and owner_size == pil.size and redraw is not None:
+        # Text drawn again at twice its real pixel size and halved once (drawn at 1x, FreeType's whole-pixel
+        # advances space letters unevenly; shrunk twice from the design size, it reads soft), on a canvas of
+        # exactly the scaled size.
+        big = redraw(U * 2)
+        drawn = big.resize((max(1, round(big.width / 2)), max(1, round(big.height / 2))), Image.LANCZOS)
+        if drawn.size == size:
+            return drawn
+        out = Image.new('RGBA', size, (0, 0, 0, 0))
+        out.alpha_composite(drawn.crop((0, 0, min(drawn.width, size[0]), min(drawn.height, size[1]))))
+        return out
+    owner, owner_size, hires = pil.info.get('hires') or (None, None, None)
+    if owner == id(pil) and owner_size == pil.size and hires is not None and hires.width >= size[0]:
+        return hires.resize(size, Image.LANCZOS, reducing_gap=3.0)
+    out = pil.resize(size, Image.LANCZOS)
+    if U < 1.0:
+        sharp = out.convert('RGBA')
+        alpha = sharp.getchannel('A')
+        sharp = sharp.filter(ImageFilter.UnsharpMask(radius=0.8, percent=70, threshold=0))
+        sharp.putalpha(alpha)
+        return sharp
+    return out
