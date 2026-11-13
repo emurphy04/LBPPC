@@ -855,8 +855,11 @@ vk::Format DepthFormat(DepthBuffer::ZFormat z_format, DepthBuffer::StencilFormat
 }
 
 vk::ClearValue ColorBufferClearValue(const AmdGpu::ColorBuffer& color_buffer) {
-    const auto comp_swizzle = color_buffer.Swizzle();
     const auto format = AmdGpu::DataFormat(color_buffer.info.format);
+    // lbppc: CB_COLORn_CLEAR_WORD is already in memory layout, like fragment exports and CPU
+    // uploads; COMP_SWAP on top of it permuted the cleared area's channels (the khaki sky of the
+    // 1.28 levels, the Moon's). Only the remap implied by our own format choice is needed.
+    const auto comp_swizzle = AmdGpu::RemapSwizzle(format, AmdGpu::IdentityMapping);
     const auto number_type = color_buffer.GetFixedNumberFormat();
 
     const auto& c0 = color_buffer.clear_word0;
