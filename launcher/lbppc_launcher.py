@@ -1343,6 +1343,7 @@ class Launcher(tk.Tk):
                       add='+')
         self.lines = queue.Queue()
         self.log_shown = False
+        self.stopping = False  # Stop pressed, the game not gone yet
         style_widgets(self)
         self.scene = Scene(self, WIDTH, self.HEIGHT)
         self.scene.pack(fill='both', expand=True)
@@ -1903,10 +1904,13 @@ class Launcher(tk.Tk):
 
     def finished(self, code):
         self.process = None
+        stopped, self.stopping = self.stopping, False
         self.stop_button.set_enabled(False)
         self.friends.game_running(False)
         self.stop_presence()
-        if code == 0:
+        if stopped:
+            self.set_state(t('Stopped'), MUTED)  # ended by Stop: its exit code is taskkill's, not an error
+        elif code == 0:
             self.set_state(t('Closed'), MUTED)
         else:
             self.set_state(t('Ended with an error: see the log'), ERROR)
@@ -1914,13 +1918,24 @@ class Launcher(tk.Tk):
                 self.toggle_log()
         self.refresh_game()
 
+    @staticmethod
+    def end_process(process):
+        """run.py's game process is its child: the whole tree ends (on Windows before run.py itself, whose
+        children taskkill finds through it). taskkill returns once the game is gone: in a level, Windows and the
+        driver take about 6 s to free its memory and GPU resources."""
+        if os.name == 'nt':
+            subprocess.run(['taskkill', '/T', '/F', '/PID', str(process.pid)], capture_output=True,
+                           creationflags=subprocess.CREATE_NO_WINDOW)
+        process.terminate()
+
     def stop(self):
-        if self.process:
-            # run.py's game process is its child: the whole tree ends (on Windows before run.py itself,
-            # whose children taskkill finds through it).
-            if os.name == 'nt':
-                subprocess.run(['taskkill', '/T', '/F', '/PID', str(self.process.pid)], capture_output=True)
-            self.process.terminate()
+        """Stop: the game ended on a thread, so the launcher answers while Windows frees it. finished() runs when
+        run.py's output ends, as for any exit."""
+        if self.process and not self.stopping:
+            self.stopping = True
+            self.stop_button.set_enabled(False)
+            self.set_state(t('Stopping...'), WARN)
+            threading.Thread(target=self.end_process, args=(self.process,), daemon=True).start()
 
     def set_icon(self):
         """The logo as the window's and taskbar button's icon. Its own app ID keeps the button from grouping under
@@ -1939,7 +1954,8 @@ class Launcher(tk.Tk):
             self.iconphoto(True, self._icon)
 
     def close(self):
-        self.stop()
+        if self.process:
+            self.end_process(self.process)  # here and now: the launcher leaves right after (no thread would run)
         try:
             self.store()  # a field still being typed in has not lost focus, which is when it saves
         except Exception:  # noqa: BLE001 - closing must not fail
