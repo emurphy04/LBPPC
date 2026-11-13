@@ -8,8 +8,8 @@ LBPPC runs the PS4 game's own code directly on your PC's processor. It is a nati
 community servers bring back creating, sharing and playing levels together, which ended when the original servers
 shut down.
 
-**Status:** 0.1.3, a public beta. It supports LittleBigPlanet 3 US (CUSA00473), version 1.28. You need your
-own copy and its 1.28 update, extracted to folders on your PC.
+**Status:** 0.1.3, a public beta. It supports LittleBigPlanet 3 US (CUSA00473) and European (CUSA00063), version
+1.28. You need your own copy and its 1.28 update, extracted to folders on your PC.
 
 [Download and guide](https://lbppc.com/download) · [Discord](https://discord.gg/YqfBQCU4vc) ·
 [Release notes](docs/releases/0.1.1.md)
@@ -45,7 +45,7 @@ own copy and its 1.28 update, extracted to folders on your PC.
 ## Getting started
 
 You need 64-bit Windows 10 (1903 or later) or Windows 11, a graphics card with Vulkan support, and your own dump of
-LittleBigPlanet 3 (CUSA00473, version 1.28).
+LittleBigPlanet 3 (US CUSA00473 or European CUSA00063) with its 1.28 update.
 
 1. Unzip a release anywhere except Program Files, for example `C:\Games\LBPPC`.
 2. Start `LBPPC.exe`. If Windows SmartScreen warns about a new app, click **More info**, then **Run anyway**.
