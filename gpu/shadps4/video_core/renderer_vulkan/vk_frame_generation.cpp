@@ -27,6 +27,19 @@ namespace Vulkan {
 
 namespace {
 
+// lbppc: FSR 3.1 interpolates with its own optical flow alone: the motion vectors rebuilt from
+// LBP3's camera are given to it scaled to 0. In the camera moves that open a level (fast pans,
+// zooms, cuts) those vectors are wrong, and the generated frames had dark bands and doubled
+// edges: the picture flickered at the display's rate. The optical flow follows what is on screen,
+// and the flicker was gone. LBPPC_FSR3_GAME_MOTION=1 gives it the camera's vectors as before.
+float Fsr3MotionVectorScale() {
+    static const float scale = [] {
+        const char* env = std::getenv("LBPPC_FSR3_GAME_MOTION");
+        return env && env[0] == '1' ? 1.0f : 0.0f;
+    }();
+    return scale;
+}
+
 /// The hudless copy viewed like the presenter views the display buffer (`requested`): the
 /// copy's channel order, the requested sRGB decoding.
 vk::Format HudlessViewFormat(vk::Format storage, vk::Format requested) {
@@ -567,6 +580,14 @@ u32 FrameGenerator::Generate(vk::CommandBuffer& cmdbuf, vk::Image color, vk::Ima
         return 0;
     }
     // FSR 3.1 keeps the previous input: it cannot switch between frames with and without UI.
+    // lbppc: the picture before the UI is taken at the frame's first UI draw, so a frame that
+    // draws no UI has none; in LBP3's levels the UI (prompts, speech bubbles) comes and goes, and
+    // each switch started generation over (that frame got no interpolated one). Without UI the
+    // frame is its own picture before the UI, so it is used as that and generation goes on.
+    if (!(hudless && hudless_view) && last_hudless) {
+        hudless = color;
+        hudless_view = color_view;
+    }
     const bool with_hudless = hudless && hudless_view;
     if (with_hudless != last_hudless) {
         last_hudless = with_hudless;
@@ -829,8 +850,8 @@ u32 FrameGenerator::GenerateFsr3(vk::CommandBuffer cmdbuf, vk::Image color,
         .renderHeight = input_height,
         .jitterOffsetX = capture_jitter[0],
         .jitterOffsetY = capture_jitter[1],
-        .motionVectorScaleX = 1.0f,
-        .motionVectorScaleY = 1.0f,
+        .motionVectorScaleX = Fsr3MotionVectorScale(),
+        .motionVectorScaleY = Fsr3MotionVectorScale(),
         .frameTimeMilliseconds = frame_ms,
         .minLuminance = 0.0f,
         .maxLuminance = 1.0f,
