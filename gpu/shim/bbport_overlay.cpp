@@ -18,6 +18,7 @@
 #include <pdh.h>
 #include <pdhmsg.h>
 #include <cwchar>
+#include <map>
 #include <thread>
 #include <vector>
 #endif
@@ -155,8 +156,8 @@ void SampleCpu() {
     last_time = now;
 }
 
-// Windows' per-process GPU Engine counters (the number Task Manager shows), 3D engine only: the
-// one a game loads. Opening the query and enumerating the instances is not free, so this runs on
+// Windows' per-process GPU Engine counters (the number Task Manager shows): the busiest of the
+// process's engines. Opening the query and enumerating the instances is not free, so this runs on
 // its own thread once a second, never on the present thread.
 float QueryGpuLoad() {
     static PDH_HQUERY query{};
@@ -180,14 +181,20 @@ float QueryGpuLoad() {
     if (PdhGetFormattedCounterArrayW(counter, format, &bytes, &count, items) != ERROR_SUCCESS) {
         return -1.0f;
     }
+    // lbppc: the busiest engine, as Task Manager's GPU column. Not the 3D engine alone: NVIDIA's
+    // laptop drivers run Vulkan graphics on "Graphics_1" (or a compute engine), and the 3D engine
+    // then reads 0% however busy the GPU is.
     const std::wstring mine = L"pid_" + std::to_wstring(GetCurrentProcessId()) + L"_";
-    double load = 0.0;
+    std::map<std::wstring, double> engines; // "luid_..._eng_N_engtype_X": its utilization
     for (DWORD i = 0; i < count; ++i) {
-        if (!items[i].szName || !std::wcsstr(items[i].szName, L"engtype_3D") ||
-            std::wcsncmp(items[i].szName, mine.c_str(), mine.size()) != 0) {
+        if (!items[i].szName || std::wcsncmp(items[i].szName, mine.c_str(), mine.size()) != 0) {
             continue;
         }
-        load += items[i].FmtValue.doubleValue;
+        engines[items[i].szName + mine.size()] += items[i].FmtValue.doubleValue;
+    }
+    double load = 0.0;
+    for (const auto& [name, value] : engines) {
+        load = std::max(load, value);
     }
     return float(std::min(load, 100.0));
 }
