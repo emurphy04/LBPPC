@@ -1624,7 +1624,7 @@ class Launcher(tk.Tk):
             return
         try:
             game_root = game_setup.Folder(self.settings['game']).root if self.settings.get('game') else None
-            backup = save_import.import_saves(saves, USER, save_import.game_title(game_root))
+            backup = save_import.import_saves(saves, USER, save_import.game_title(game_root, self.settings.get('update') or None))
         except OSError as error:
             self.set_state(t('The save could not be imported: {error}', error=error), ERROR)
             return

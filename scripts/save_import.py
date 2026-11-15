@@ -126,11 +126,21 @@ def find_saves(folder):
     return list(found.values())
 
 
-def game_title(game_folder):
-    """The save folder name the runtime gives this game (probe.c: INSTALL_DIR_SAVEDATA, else TITLE_ID), so a save
-    imported for the European edition (CUSA00063) lands where it reads its saves. TITLE_ID when unknown."""
-    sfo = read_sfo(Path(game_folder) / 'sce_sys' / 'param.sfo') if game_folder else {}
-    return str(sfo.get('INSTALL_DIR_SAVEDATA') or sfo.get('TITLE_ID') or TITLE_ID)
+def game_title(game_folder, update_folder=None):
+    """The save folder name the runtime gives this game (probe.c: INSTALL_DIR_SAVEDATA, else TITLE_ID, from the
+    param.sfo it runs with: the update's, an Sc0's or the game's, game_view.py), so a save imported for the European
+    edition (CUSA00063) lands where it reads its saves. TITLE_ID when unknown, or when the name isn't a plain ID
+    (runtime_savedata.c keeps its default then too)."""
+    sfo = {}
+    if game_folder:
+        import game_view
+        system = game_view.system_folder(game_folder, update_folder)
+        sfo = read_sfo(system / 'param.sfo') if system else {}
+    for key in ('INSTALL_DIR_SAVEDATA', 'TITLE_ID'):
+        name = str(sfo.get(key) or '')
+        if name:
+            return name if re.fullmatch(r'[A-Za-z0-9_-]+', name) else TITLE_ID
+    return TITLE_ID
 
 
 def save_root(user_dir, title=TITLE_ID):

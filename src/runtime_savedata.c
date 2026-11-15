@@ -71,7 +71,15 @@ static uint64_t memory_size;
 static size_t mounts_done, memory_writes;
 
 void runtime_savedata_configure(const char *title) {
-    if (title && *title) snprintf(title_id,sizeof(title_id),"%s",title);
+    /* lbppc: the save folder's name, from param.sfo (INSTALL_DIR_SAVEDATA or TITLE_ID): only a plain ID such as
+       CUSA00473 is used as one; anything else (a slash, "..") keeps the default. */
+    if (!title || !*title) return;
+    for (const char *p=title;*p;++p)
+        if (!((*p>='A' && *p<='Z') || (*p>='a' && *p<='z') || (*p>='0' && *p<='9') || *p=='_' || *p=='-')) {
+            fprintf(stderr,"Saves: \"%s\" from param.sfo is not a save folder name; using %s\n",title,title_id);
+            return;
+        }
+    snprintf(title_id,sizeof(title_id),"%s",title);
 }
 
 static int make_dirs(const char *path) {
