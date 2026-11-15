@@ -114,7 +114,8 @@ don't post game files in issues or pull requests, and don't ask for them.
   - [shadNet](https://github.com/shadps4-emu/shadNet), with LBPPC's patch, handles sign-in, friends, presence, the
     co-op relay and invites.
 - **Online stays in sync.** Both players' worlds step in lockstep, so CPU-specific maths shortcuts are replaced with
-  exact versions that give the same results on every PC.
+  exact versions that give the same results on every PC. On Intel CPUs they are used offline too: the game was made on
+  the PS4's AMD processor, and with Intel's approximations the story's intro cutscene never finished.
 - **Your folders are only read.** The 1.28 update is read over the game from its own folder, and system files from an
   extraction's Sc0, as in shadPS4. Small game changes such as Quit Game are made as the files are read; nothing on
   disk is ever touched.
