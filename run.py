@@ -151,8 +151,10 @@ def main(argv):
         update = Path(argv[at + 1]).resolve()
         del argv[at:at + 2]
     elif not os.environ.get('LBPPC_NO_UPDATE_FOLDER'):
-        update = game_setup.find_update(game)
-        update = game_setup.find_root(update) if update else None
+        # Only a usable one, as the launcher decides (game_setup.separate_update: this game's edition, at 1.28), and
+        # only for a game not at 1.28 already: a leftover or older update folder beside a ready game is left alone.
+        base = game_setup.Folder(game)
+        update = game_setup.separate_update(base) if base.version != game_setup.VERSION else None
     if update and not game_view.system_folder(update):
         sys.exit(f'LBPPC: {update} has no param.sfo (sce_sys or Sc0): it is not an extracted update')
     view = game_view.open_view(game, update)
