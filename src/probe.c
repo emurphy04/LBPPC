@@ -2559,7 +2559,22 @@ int main(int argc, char **argv) {
         runtime_sfo_value(sfo,"TITLE_ID",serial,sizeof(serial),NULL);
         runtime_sfo_value(sfo,"TITLE",title,sizeof(title),NULL);
         runtime_sfo_value(sfo,"APP_VER",version,sizeof(version),NULL);
-        bbnet_configure(sys_dir,serial,title,version);
+        /* npbind.dat (online sign-in's NP communication id) from the first of: the folder param.sfo came from, the
+           Sc0, the game's own sce_sys. An update needn't carry one, and before the update was kept in a folder of its
+           own the game's copy was always there. */
+        char np_dir[4096];
+        snprintf(np_dir,sizeof(np_dir),"%s",sys_dir);
+        const char *np_candidates[3]={sys_dir,system_files,NULL};
+        char game_sys[4096];
+        snprintf(game_sys,sizeof(game_sys),"%s/sce_sys",app0);
+        np_candidates[2]=game_sys;
+        for (int i=0;i<3;++i) {
+            char npbind[4200]; FILE *exists;
+            if (!np_candidates[i]) continue;
+            snprintf(npbind,sizeof(npbind),"%s/npbind.dat",np_candidates[i]);
+            if ((exists=fopen(npbind,"rb"))) { fclose(exists); snprintf(np_dir,sizeof(np_dir),"%s",np_candidates[i]); break; }
+        }
+        bbnet_configure(np_dir,serial,title,version);
     }
     bbgpu_register_kernel();
 #ifdef _WIN32
