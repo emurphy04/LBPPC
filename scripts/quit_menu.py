@@ -229,7 +229,10 @@ if __name__ == '__main__':
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument('game', type=Path)
     p.add_argument('--out', type=Path, default=Path(__file__).resolve().parent.parent / 'out')
+    p.add_argument('--update', type=Path, help='the update\'s folder, read over the game (game_view.py)')
     a = p.parse_args()
+    import game_view
+    a.game = game_view.open_view(a.game, a.update)
     # The game starts without the button rather than not at all.
     try:
         prepare(a.game, a.out)

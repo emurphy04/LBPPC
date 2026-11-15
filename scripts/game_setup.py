@@ -1,20 +1,20 @@
-"""Game setup: the player's LittleBigPlanet 3 made into one folder LBPPC runs, the 1.28 update's files put into it.
+"""Game setup: the player's LittleBigPlanet 3 and its 1.28 update, checked and chosen, each left where it is.
 
 The launcher's Set up... wizard runs this. Players' copies come in a few shapes, all handled here:
 - the game folder itself (eboot.bin, sce_module, sce_sys), or a folder above it (an extraction's Image0 inside, or one
   more folder level);
 - system files (param.sfo, npbind.dat, playgo-chunk.dat) in a separate Sc0 folder, inside the game folder or beside
-  its Image0: they go into the game's sce_sys (without npbind.dat online co-op can't work);
+  its Image0;
 - the 1.28 update in a folder of its own (shadPS4's layout, CUSA00473-UPDATE and the like), with or without its own Sc0.
 
-The update's files replace the game's, as on a PS4. With "delete the update files" they are moved (on the same drive
-instantly, no extra space), otherwise copied and the update folder is left as it was. Each file lands whole (a copy
-goes to a .lbppc-part file first and is renamed into place), and eboot.bin and param.sfo go last: a setup stopped
-part way leaves the game reading as its old version, and running setup again finishes it.
+Nothing is written to the game's folder or the update's: as in shadPS4, the update's files are read over the game's
+when it runs, and an Sc0 is read as the game's sce_sys (run.py, scripts/game_view.py, the runtime's --update and
+--system). The same folders keep working in shadPS4. Only DLC is copied, into LBPPC's own user folder, where the game
+looks for it.
 
 Only extracted folders: a .pkg must be extracted first (LBPPC doesn't do that).
 
-usage: python scripts/game_setup.py <game folder> [<update folder>] [--move] [--check]
+usage: python scripts/game_setup.py <game folder> [<update folder>] [<DLC folder> <LBPPC user folder>] [--check]
 """
 import os
 import re
@@ -23,6 +23,8 @@ import shutil
 import stat
 import struct
 import sys
+
+import game_view  # where the game's files are read from (the update over the game, the system files in an Sc0)
 
 try:  # the launcher's language (launcher/i18n.py); run on its own, English
     from i18n import N_, t
@@ -48,13 +50,8 @@ OTHER_LBP3 = {'CUSA00762': N_('European (PAL)'), 'CUSA01072': N_('European (PAL)
 # The update folder beside the game when the player didn't choose one (shadPS4's and PS4 dump tools' names).
 UPDATE_SUFFIXES = ('-UPDATE', '-update', '-Update', '-patch', '-PATCH', '-Patch', '_patch', '_update', '_UPDATE')
 SYSTEM_FILES = ('npbind.dat', 'playgo-chunk.dat')  # needed by online co-op (NP sign-in, the game's chunks)
-# Last: eboot.bin, then param.sfo. Until param.sfo the folder reads as its old version (setup is offered again), and
-# the update folder keeps its param.sfo (it is still recognised as the update).
-LAST = ('eboot.bin', 'sce_sys/param.sfo')
 FULL_GAME = 'base_001.farc'  # in the game, never in an update (which brings patch_001.farc)
-PART = '.lbppc-part'
-HOME = Path.home().resolve()
-PROTECTED = {HOME, *(HOME / name for name in ('Downloads', 'Desktop', 'Documents'))}  # never deleted as "the update"
+PART = '.lbppc-part'  # a DLC file being copied
 SPACE_MARGIN = 256 << 20
 
 
@@ -82,7 +79,7 @@ def read_sfo(path):
 
 
 def find_root(folder):
-    """The folder holding eboot.bin (or, for an update setup has partly moved, sce_sys/param.sfo): `folder` itself, its
+    """The folder holding eboot.bin (or, for an update without one, sce_sys/param.sfo): `folder` itself, its
     Image0, or one or two levels down when there is exactly one such folder (a zip's or an extraction tool's extra
     level). None when there isn't one."""
     folder = Path(folder)
@@ -200,15 +197,16 @@ def inside(a, b):
 
 
 class Plan:
-    """What setup will do: (source, target, kind) steps, kind 'update' (replaces), 'system' (fills a gap) or 'dlc'
-    (copied into LBPPC's user/addcont)."""
+    """What setup will do: the game and its update checked (the update stays in its own folder, read over the game
+    when it runs), and (source, target, 'dlc') steps: the player's DLC copied into LBPPC's user/addcont. Nothing is
+    written to the game's folder or the update's."""
 
-    def __init__(self, game_folder, update_folder=None, move=False, dlc_folder=None, user_dir=None):
+    def __init__(self, game_folder, update_folder=None, dlc_folder=None, user_dir=None):
         game, update = Folder(game_folder), Folder(update_folder) if update_folder else None
         # The two chosen the wrong way round: swapped (what each one is, is in its param.sfo).
         if update and game.is_update and update.full:
             game, update = update, game
-        self.game, self.update, self.move = game, update, move
+        self.game, self.update = game, update
         problem = game.problem('game')
         if problem:
             raise SetupError(problem)
@@ -216,8 +214,7 @@ class Plan:
             raise SetupError(t('That\'s the update, not the game (it has no base_001.farc). Choose the base game '
                                'folder first, then the update.'))
         self.steps = []
-        # Already 1.28 (set up, or a setup stopped between param.sfo and eboot.bin): an update still holding files is
-        # put in all the same (the same files again change nothing); an emptied or unusable one is left out.
+        # A game already at 1.28 (its update put into it some other way) needs none: an unusable one is left out.
         if game.version == VERSION and update and (update.problem('update') or not update.is_update or
                                                    update.version != VERSION):
             update = None
@@ -239,23 +236,7 @@ class Plan:
                 raise SetupError(t('That update is for {update}, but the game is {game}. Choose the update of the '
                                    'same edition.', update=update.title_id, game=game.title_id))
         self.update = update
-        targets = {}
-        if update:
-            # The update's Sc0 first, then its own files: its sce_sys wins over its Sc0, as on a PS4.
-            if update.sc0:
-                for path in files(update.sc0):
-                    targets[f'sce_sys/{path.relative_to(update.sc0).as_posix()}'] = (path, 'update')
-            for path in files(update.root):
-                targets[path.relative_to(update.root).as_posix()] = (path, 'update')
-        if game.sc0:  # the game's own system files, where it has none
-            for path in files(game.sc0):
-                rel = f'sce_sys/{path.relative_to(game.sc0).as_posix()}'
-                if rel not in targets and not (game.root / rel).exists():
-                    targets[rel] = (path, 'system')
-        order = sorted(targets, key=lambda rel: (rel in LAST, LAST.index(rel) if rel in LAST else 0, rel))
-        self.steps = [(targets[rel][0], game.root / rel, targets[rel][1]) for rel in order]
         # The player's DLC, copied (never moved) into <user>/addcont/CUSA00473/<label>, where the game finds it.
-        # First, so that a setup stopped part way still leaves the game reading as its old version.
         self.dlc = []
         if dlc_folder:
             if not user_dir:
@@ -269,55 +250,38 @@ class Plan:
                     if target.is_file() and target.stat().st_size == source.stat().st_size:
                         continue  # already in place (set up before)
                     dlc_steps.append((source, target, 'dlc'))
-            self.steps = dlc_steps + self.steps
+            self.steps = dlc_steps
 
     @property
     def root(self):
         return self.game.root
 
-    def moving(self, step):
-        """Is this step a move? Update files are when the player chose to delete the update; system files never."""
-        return self.move and step[2] == 'update'
-
     def bytes_needed(self):
-        """{folder on a drive: free space the setup takes there} (copies and moves across drives, less what they
-        replace): the game's drive, and LBPPC's for the DLC."""
+        """{folder on a drive: free space the DLC copies take there}, less what they replace."""
         need = {}
-        for source, target, kind in self.steps:
-            where = self.root if kind != 'dlc' else existing_parent(target)
+        for source, target, _kind in self.steps:
+            where = existing_parent(target)
             device = os.stat(where).st_dev
             key = next((k for k in need if os.stat(k).st_dev == device), where)
-            size = source.stat().st_size
-            if self.moving((source, target, kind)) and os.stat(source).st_dev == device:
-                continue  # a rename: no space
-            need[key] = need.get(key, 0) + size - (target.stat().st_size if target.is_file() else 0)
+            need[key] = need.get(key, 0) + source.stat().st_size - (target.stat().st_size if target.is_file() else 0)
         return {k: max(0, v) for k, v in need.items()}
 
     def check_space(self):
         for where, need in self.bytes_needed().items():
             free = shutil.disk_usage(where).free
             if need and need + SPACE_MARGIN > free:
-                message = (N_('Not enough space on the game\'s drive: {needed} needed, {free} free. Free some space, '
-                              'or tick "Delete the update files" when the update is on the same drive as the game.')
-                           if where == self.root else
-                           N_('Not enough space on LBPPC\'s drive (for the DLC): {needed} needed, {free} free. Free '
-                              'some space.'))
-                raise SetupError(t(message, needed=gb(need + SPACE_MARGIN), free=gb(free)))
+                raise SetupError(t('Not enough space on LBPPC\'s drive (for the DLC): {needed} needed, {free} free. '
+                                   'Free some space.', needed=gb(need + SPACE_MARGIN), free=gb(free)))
 
     def total_bytes(self):
         return sum(source.stat().st_size for source, _target, _kind in self.steps)
 
     def summary(self):
-        updates = [step for step in self.steps if step[2] == 'update']
-        system = sum(1 for step in self.steps if step[2] == 'system')
-        dlc_bytes = sum(step[0].stat().st_size for step in self.steps if step[2] == 'dlc')
+        dlc_bytes = sum(step[0].stat().st_size for step in self.steps)
         parts = []
-        if updates:
-            size = sum(step[0].stat().st_size for step in updates)
-            parts.append(t('{count} update files moved in ({size})', count=len(updates), size=gb(size)) if self.move
-                         else t('{count} update files copied in ({size})', count=len(updates), size=gb(size)))
-        if system:
-            parts.append(t('{count} system files added to sce_sys', count=system))
+        if self.update:
+            parts.append(t('The update is read from its own folder: your game and update folders are left as '
+                           'they are'))
         if self.dlc:
             names = ', '.join(dlc.label for dlc in self.dlc[:3]) + (', ...' if len(self.dlc) > 3 else '')
             parts.append(t('{count} DLC ({names}) copied ({size})', count=len(self.dlc), names=names, size=gb(dlc_bytes))
@@ -468,18 +432,12 @@ def writable(path):
         pass
 
 
-def place(source, target, move, progress=None):
-    """`source` to `target`, which it replaces, landing whole (no half-written file if stopped)."""
+def place(source, target, progress=None):
+    """`source` copied to `target` (in LBPPC's user folder), which it replaces, landing whole (no half-written file
+    if stopped). The source is only read."""
     target.parent.mkdir(parents=True, exist_ok=True)
     if target.exists():
         writable(target)
-    if move:
-        writable(source)
-        try:
-            os.replace(source, target)  # same drive: a rename
-            return
-        except OSError:
-            pass  # another drive: copied, then the source removed
     part = target.with_name(target.name + PART)
     with open(source, 'rb') as src, open(part, 'wb') as dst:
         while True:
@@ -492,25 +450,17 @@ def place(source, target, move, progress=None):
     shutil.copystat(source, part)
     writable(part)
     os.replace(part, target)
-    if move:
-        os.unlink(source)
 
 
 def run(plan, progress=None, cancelled=lambda: False):
-    """Carries out `plan`. progress(done_bytes, total_bytes, name) as it goes. Returns False when cancelled (the folder
-    still reads as the old version until the last files, so setup can be run again)."""
-    for leftover in plan.root.rglob(f'*{PART}'):  # a setup stopped part way through a copy
-        writable(leftover)
-        leftover.unlink(missing_ok=True)
+    """Carries out `plan` (its DLC copies). progress(done_bytes, total_bytes, name) as it goes. Returns False when
+    cancelled (running setup again finishes it)."""
     plan.check_space()
     total, done = plan.total_bytes() or 1, 0
-    for source, target, kind in plan.steps:
+    for source, target, _kind in plan.steps:
         if cancelled():
             return False
-        try:
-            name = target.relative_to(plan.root).as_posix()
-        except ValueError:
-            name = f'DLC {target.parent.name}/{target.name}'
+        name = f'DLC {target.parent.name}/{target.name}'
         size = source.stat().st_size
         copied = [0]
 
@@ -521,59 +471,52 @@ def run(plan, progress=None, cancelled=lambda: False):
 
         if progress:
             progress(done, total, name)
-        place(source, target, plan.moving((source, target, kind)), advance)
+        place(source, target, advance)
         done += size
     if progress:
         progress(total, total, '')
-    verify(plan.root)
+    verify(plan.update.root if plan.update else plan.root)
     return True
 
 
 def verify(root):
-    """After setup: the folder reads as LittleBigPlanet 3 1.28."""
+    """The folder the game runs as (the update's, or a game already at 1.28) reads as LittleBigPlanet 3 1.28."""
     folder = Folder(root)
     if folder.title_id not in SUPPORTED_IDS or folder.version != VERSION or not (Path(root) / 'eboot.bin').is_file():
-        raise SetupError(t('After setup the game reads as version {version}, not 1.28. Try setup again; if it keeps '
-                           'happening, ask on the Discord.', version=folder.version or '?'))
+        raise SetupError(t('The game reads as version {version}, not 1.28. Choose the 1.28 update folder; if it '
+                           'keeps happening, ask on the Discord.', version=folder.version or '?'))
 
 
-def remove_update(plan):
-    """The update's folders deleted, once setup is done (the player's choice). Only folders setup recognised as the
-    update: its root, its Sc0, and the folder holding them when nothing else is left in it."""
-    update = plan.update
-    if not update or not update.root:
-        return
-    root, sc0 = update.root.resolve(), update.sc0.resolve() if update.sc0 else None
-    for folder in filter(None, (root, sc0)):
-        if inside(plan.root, folder) or folder.parent == folder or folder in PROTECTED:
-            continue  # never the game, a drive, or the user's own folders
-        if folder.is_dir():
-            shutil.rmtree(folder, onerror=lambda func, path, _info: (writable(path), func(path)))
-    holder = update.chosen.resolve()
-    for folder in (root.parent, holder):
-        try:
-            if folder != plan.root and inside(root, folder) and folder.is_dir() and not any(folder.iterdir()):
-                folder.rmdir()
-        except OSError:
-            pass
+def separate_update(game, update=None):
+    """The 1.28 update kept in its own folder for this game: `update` (chosen in the launcher), else the folder beside
+    the game (CUSA00063-patch and the like). Its root, or None when there's no usable one."""
+    candidate = Folder(update) if update else Folder(find_update(game.root)) if game.root and find_update(game.root) else None
+    if (candidate and candidate.root and candidate.is_update and candidate.version == VERSION
+            and candidate.title_id == game.title_id):
+        return candidate.root
+    return None
 
 
-def status(folder):
-    """(state, text) of a game folder for the launcher: 'ready', 'setup' (the wizard fixes it), or 'missing'."""
+def status(folder, update=None):
+    """(state, text) of a game folder for the launcher: 'ready', 'setup' (the wizard fixes it), or 'missing'.
+    `update`: the update's own folder, read over the game when it runs (else the one beside the game is looked for)."""
     game = Folder(folder)
     problem = game.problem('game')
     if problem:
         return ('setup' if game.root else 'missing'), problem
     if game.is_update:
         return 'setup', t('That\'s the update only, not the game. Click Set up... to choose both.')
-    if game.version != VERSION:
-        return 'setup', t('Version {version}: LBPPC needs the 1.28 update. Click Set up... to add it.',
+    extra = separate_update(game, update) if game.version != VERSION else None
+    if game.version != VERSION and not extra:
+        return 'setup', t('Version {version}: LBPPC needs the 1.28 update. Click Set up... to choose its folder.',
                           version=game.version.lstrip('0'))
-    missing = [name for name in SYSTEM_FILES if not (game.root / 'sce_sys' / name).is_file()]
+    # The system files wherever the game reads them (sce_sys or an Sc0, the update's or the game's: game_view.py).
+    folders = game_view.system_folders(game.root, extra)
+    missing = [name for name in SYSTEM_FILES if not any((folder / name).is_file() for folder in folders)]
     if missing:
-        if game.sc0:
-            return 'setup', t('Missing {files} (in Sc0). Click Set up... to add them.', files=', '.join(missing))
         return 'ready', t('Ready. Missing {files}: online co-op won\'t work.', files=', '.join(missing))
+    if extra:
+        return 'ready', t('LittleBigPlanet 3 version 1.28 (update in its own folder), ready to play')
     return 'ready', t('LittleBigPlanet 3 version 1.28, ready to play')
 
 
@@ -582,7 +525,8 @@ if __name__ == '__main__':
     if not args:
         sys.exit(__doc__)
     try:
-        plan = Plan(args[0], args[1] if len(args) > 1 else find_update(find_root(args[0])), '--move' in sys.argv)
+        plan = Plan(args[0], args[1] if len(args) > 1 else find_update(find_root(args[0])),
+                    args[2] if len(args) > 3 else None, args[3] if len(args) > 3 else None)
         print(f'Game: {plan.root}' + (f'\nUpdate: {plan.update.root}' if plan.update else ''))
         print(plan.summary())
         if '--check' not in sys.argv:

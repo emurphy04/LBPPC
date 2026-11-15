@@ -50,8 +50,10 @@ LittleBigPlanet 3 (US CUSA00473 or European CUSA00063) with its 1.28 update.
 1. Unzip a release anywhere except Program Files, for example `C:\Games\LBPPC`.
 2. Start `LBPPC.exe`. If Windows SmartScreen warns about a new app, click **More info**, then **Run anyway**.
 3. The launcher opens **Set up your game**: choose your game's folder and its 1.28 update's folder (both must be
-   extracted), and LBPPC puts the update into the game folder for you. Tick **Delete the update files when done** to
-   move them instead of copying. Already have one folder at version 1.28? Just choose it. Then press **Play**.
+   extracted). As in shadPS4, the update is read from its own folder when you play: LBPPC never changes your game or
+   update folders, so the same ones keep working in shadPS4. An update folder beside the game (`CUSA00063-patch`,
+   `CUSA00473-UPDATE` and the like) is found by itself. Already have one folder at version 1.28? Just choose it. Then
+   press **Play**.
    The first start prepares the game, which takes about a minute.
    The first time you see something new, it may hitch once while its shaders are built.
 4. To play online, choose a name and password under Online, press **Create account**, tick **Play online on the LBPPC
@@ -113,8 +115,9 @@ don't post game files in issues or pull requests, and don't ask for them.
     co-op relay and invites.
 - **Online stays in sync.** Both players' worlds step in lockstep, so CPU-specific maths shortcuts are replaced with
   exact versions that give the same results on every PC.
-- **Small game changes are made in memory.** Changes such as Quit Game edit the game's files as they're read; the
-  files on disk are never touched.
+- **Your folders are only read.** The 1.28 update is read over the game from its own folder, and system files from an
+  extraction's Sc0, as in shadPS4. Small game changes such as Quit Game are made as the files are read; nothing on
+  disk is ever touched.
 
 ## Building
 

@@ -17,7 +17,8 @@ typedef struct {
 /* Registers kernel event queues (needed with or without graphics). */
 void bbgpu_register_kernel(void);
 /* Co-op: the game folder and param.sfo identity for the network and PSN libraries. */
-void bbnet_configure(const char *app0, const char *serial, const char *title, const char *app_ver);
+/* system: the game's sce_sys folder (param.sfo, npbind.dat), wherever the extraction put it. */
+void bbnet_configure(const char *system, const char *serial, const char *title, const char *app_ver);
 /* The online session's start (bbnet/bbnet_glue.cpp). */
 void bbnet_initialize(void);
 /* Creates window, Vulkan device, presenter and GPU command processor. */

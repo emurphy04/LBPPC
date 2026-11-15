@@ -23,4 +23,7 @@ if __name__=='__main__':
     p.add_argument('game',type=Path)
     p.add_argument('--out',type=Path,default=Path(__file__).resolve().parent.parent/'out')
     p.add_argument('--sku',choices=['full','trial'],default='full')
-    a=p.parse_args();prepare(a.game,a.out,a.sku)
+    p.add_argument('--update',type=Path,help='the update\'s folder, read over the game (game_view.py)')
+    a=p.parse_args()
+    import game_view
+    prepare(game_view.open_view(a.game,a.update),a.out,a.sku)

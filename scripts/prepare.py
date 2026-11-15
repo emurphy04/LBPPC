@@ -315,8 +315,10 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('game', type=Path)
     parser.add_argument('--out', type=Path, default=Path(__file__).resolve().parent.parent / 'out')
+    parser.add_argument('--update', type=Path, help='the update\'s folder, read over the game (game_view.py)')
     args = parser.parse_args()
+    import game_view
     try:
-        prepare(args.game, args.out)
+        prepare(game_view.open_view(args.game, args.update), args.out)
     except (ValueError, OSError, StopIteration, KeyError, IndexError) as error:
         parser.exit(1, f'prepare failed: {error}\n')

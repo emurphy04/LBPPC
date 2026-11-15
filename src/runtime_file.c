@@ -192,6 +192,14 @@ static int64_t edited_pread(const FileEdit *e,int h,void *buffer,uint64_t size,i
 }
 
 static char user_root[512]="user";
+/* lbppc: the update kept in a folder of its own, as shadPS4 keeps it (--update): /app0 and /hostapp read each file
+ * from it when it has one, else from the game's folder; directory listings hold both. Neither folder is ever
+ * written (game_path: game mounts are read-only). */
+static char update_root[512];
+void runtime_file_set_update(const char *dir) {
+    snprintf(update_root,sizeof(update_root),"%s",dir ? dir : "");
+    if (update_root[0]) printf("Runtime: update %s read over /app0\n",update_root);
+}
 const char *runtime_file_user_dir(void) { return user_root; }
 void runtime_file_configure(const char *app0,const char *user) {
     char path[600];
@@ -209,7 +217,7 @@ void runtime_file_configure(const char *app0,const char *user) {
     }
 }
 /* Resolve a guest path to a host path; returns 0 or a host errno. */
-static int translate(const char *guest,char *out,size_t size) {
+static int translate_path(const char *guest,char *out,size_t size,int overlay) {
     if (!guest || !*guest) return ENOENT;
     char buffer[1024];
     if (guest[0]!='/') snprintf(buffer,sizeof(buffer),"/app0/%s",guest);
@@ -222,10 +230,16 @@ static int translate(const char *guest,char *out,size_t size) {
         size_t n=strlen(mounts[i].guest);
         if (!strncmp(buffer,mounts[i].guest,n) && (buffer[n]=='/' || !buffer[n]) && n>best) { best=n; m=&mounts[i]; }
     }
-    int result=0;
+    int result=0, app0=0;
     if (!m) result=ENOENT;
     else if ((size_t)snprintf(out,size,"%s%s",m->host,buffer+best)>=size) result=ENAMETOOLONG;
+    else app0=!strcmp(m->guest,"/app0") || !strcmp(m->guest,"/hostapp");
     pthread_mutex_unlock(&lock);
+    if (!result && app0 && overlay && update_root[0]) {
+        char candidate[1024]; HostStat file;
+        if ((size_t)snprintf(candidate,sizeof(candidate),"%s%s",update_root,buffer+best)<sizeof(candidate) &&
+            !host_stat(candidate,&file) && (size_t)snprintf(out,size,"%s",candidate)>=size) result=ENAMETOOLONG;
+    }
     if (!result && strstr(out,"/dvdroot_ps4/")) {
         const char *language=getenv("BB_LANGUAGE");
         if (language && !strcmp(language,"17")) {
@@ -267,6 +281,35 @@ static int translate(const char *guest,char *out,size_t size) {
     }
     if (result==ENOENT) fprintf(stderr,"Runtime: no mount for guest path %s\n",guest);
     return result;
+}
+static int translate(const char *guest,char *out,size_t size) { return translate_path(guest,out,size,1); }
+static int game_path(const char *p);
+static Listing *list_directory(const char *path);
+static void free_listing(Listing *l);
+/* An /app0 directory read from the update: the game folder's entries it lacks are added (the update holds only the
+ * files it changes). */
+static void add_base_entries(Listing *l,const char *guest,const char *path) {
+    char base[1024];
+    if (!update_root[0] || !game_path(guest) || translate_path(guest,base,sizeof(base),0) || !strcmp(base,path)) return;
+    Listing *more=list_directory(base);
+    if (!more) return;
+    size_t bytes=0;
+    for (size_t i=0;i<l->count;++i) bytes=l->offsets[i]+strlen(l->names+l->offsets[i])+1;
+    for (size_t i=0;i<more->count;++i) {
+        const char *name=more->names+more->offsets[i];
+        int seen=0;
+        for (size_t j=0;j<l->count && !seen;++j) seen=!strcasecmp(name,l->names+l->offsets[j]);
+        if (seen) continue;
+        size_t n=strlen(name)+1;
+        l->offsets=realloc(l->offsets,(l->count+1)*sizeof(size_t));
+        l->types=realloc(l->types,l->count+1);
+        l->names=realloc(l->names,bytes+n);
+        if (!l->offsets || !l->types || !l->names) { fputs("Out of memory listing directory\n",stderr); exit(1); }
+        memcpy(l->names+bytes,name,n);
+        l->offsets[l->count]=bytes; l->types[l->count]=more->types[i];
+        ++l->count; bytes+=n;
+    }
+    free_listing(more);
 }
 static int host_flags(int flags) {
     int r;
@@ -467,6 +510,7 @@ static int64_t do_open(const char *guest,int flags,int mode) {
     if (!host_stat(path,&s) && S_ISDIR(s.st_mode)) {
         if (flags&3) return -EISDIR;
         if (!(dir=list_directory(path))) return -EACCES;
+        add_base_entries(dir,guest,path);
     } else if (flags&0x20000) {
         e=errno==ENOENT ? ENOENT : ENOTDIR;
         if (e==ENOENT) { ++missing; printf("Runtime: open(%s) -> not found\n",guest); }
@@ -512,7 +556,7 @@ static int64_t do_open(const char *guest,int flags,int mode) {
     }
     struct stat s;
     Listing *dir=NULL;
-    if (!fstat(host,&s) && S_ISDIR(s.st_mode)) dir=list_directory(path);
+    if (!fstat(host,&s) && S_ISDIR(s.st_mode)) { dir=list_directory(path); if (dir) add_base_entries(dir,guest,path); }
 #endif
     const FileEdit *edit=dir || (flags&3) ? NULL : edit_for(guest,(uint64_t)s.st_size);
     pthread_mutex_lock(&lock);

@@ -141,7 +141,7 @@ OVERLAY = [('show_fps', N_('Frame rate'), False), ('show_frame_times', N_('Frame
            ('show_gpu', N_('GPU usage'), False), ('show_cpu', N_('CPU usage'), False), ('show_ram', N_('RAM usage'), False),
            ('show_fps_graph', N_('Frame time graph'), False), ('graph_game_frames', N_('Graph the game\'s own frames'), True),
            ('counter_colors', N_('Colour-coded values'), True)]
-DEFAULTS = {'game': '', 'language': 'auto', 'logs_scrubbed': False, 'resolution': '1920x1080', 'display': 'borderless', 'frame_gen': 'dlss', 'latency': 'on',
+DEFAULTS = {'game': '', 'update': '', 'language': 'auto', 'logs_scrubbed': False, 'resolution': '1920x1080', 'display': 'borderless', 'frame_gen': 'dlss', 'latency': 'on',
             'upscaling': 'off', 'sharpening': 'medium', 'beta_notice_seen': False,
             'online': False, 'online_name': '', 'password': '', 'discord_presence': True, 'discord_app_id': '',
             'diagnostics': {key: on for key, _env, _title, _hint, on in DIAGNOSTICS},
@@ -182,24 +182,27 @@ def read_sfo(path):
 _FILES_CHECKED = {}  # game folder: the quick file check's result (checked once a session, or after Set up)
 
 
-def quick_files(root):
-    root = str(root)
-    if root not in _FILES_CHECKED:
+def quick_files(root, update=None):
+    key = f'{root}|{update or ""}'
+    if key not in _FILES_CHECKED:
         try:
-            _FILES_CHECKED[root] = game_files.check(root)
+            _FILES_CHECKED[key] = game_files.check(root, update=update)
         except (OSError, ValueError):
-            _FILES_CHECKED[root] = None  # no file list (a development checkout without it): not checked
-    return _FILES_CHECKED[root]
+            _FILES_CHECKED[key] = None  # no file list (a development checkout without it): not checked
+    return _FILES_CHECKED[key]
 
 
-def check_game(folder):
+def check_game(folder, update=None):
     """(state, description) of a game folder: 'ready', 'warn' (playable, but files are missing or the wrong size),
-    'setup' (Set up... fixes it) or 'missing' (scripts/game_setup.py, scripts/game_files.py)."""
+    'setup' (Set up... fixes it) or 'missing' (scripts/game_setup.py, scripts/game_files.py). `update`: the update's
+    own folder (shadPS4's layout), read over the game; else the one beside the game is looked for."""
     if not folder:
         return 'missing', t("Choose your game's folder, or click Set up... to be walked through it.")
-    state, text = game_setup.status(folder)
+    state, text = game_setup.status(folder, update or None)
     if state == 'ready':
-        files = quick_files(game_setup.find_root(folder) or folder)
+        game = game_setup.Folder(folder)
+        extra = game_setup.separate_update(game, update or None) if game.version != game_setup.VERSION else None
+        files = quick_files(game.root or folder, extra)
         if files and not files.ok:
             return 'warn', files.summary(False)
     dlc = len(game_setup.installed_dlc(USER)) if state == 'ready' else 0
@@ -666,14 +669,14 @@ class SetupWizard(BetaNotice):
     finishes the job). A card over the dimmed launcher, as the beta notice."""
 
     W = 660
-    INTRO = N_('LBPPC runs LittleBigPlanet 3 version 1.28 (US, CUSA00473) from one folder. Choose your game and its '
-             '1.28 update: LBPPC puts the update into your game folder for you, and adds any DLC you have. Choose '
-             'folders you extracted yourself (a .pkg must be extracted first).')
+    INTRO = N_('LBPPC runs LittleBigPlanet 3 version 1.28 (US CUSA00473, or European CUSA00063). Choose your game and '
+             'its 1.28 update: as in shadPS4, the update is read from its own folder and neither folder is changed. '
+             'Choose folders you extracted yourself (a .pkg must be extracted first).')
     FIELD_W = 440
 
     def __init__(self, launcher, on_closed=None):
         self.launcher, self.closing, self.on_closed = launcher, False, on_closed
-        self.running, self.stop_requested, self.delete_update, self.plan = False, False, False, None
+        self.running, self.stop_requested, self.plan = False, False, None
         self.events = queue.Queue()
         card, self.rows, self.buttons_y = self.draw()
         scene = self.open_window(card)
@@ -698,19 +701,13 @@ class SetupWizard(BetaNotice):
                                                 width=self.W - 60)
         self.entries = [w for w in window.winfo_children() if isinstance(w, tk.Entry)]
 
-        # Delete the update files afterwards: then they are moved (instant on the same drive, no extra space).
+        # Said plainly: nothing is written to the player's folders (the update is read from its own, as in shadPS4).
         y = self.rows[3]
-        box = scene.image('delete:box', theme.checkbox(False), 30, y)
-        label = scene.image('delete:label', theme.text_image(t('Delete the update files when done'), 13, TEXT,
-                                                             'Medium'), 60, y + 1)
-        self.delete_hint = scene.create_text(62, y + 26, text=t('Faster, and needs no extra space. Off: the update '
-                                                                'folder is copied and left as it is.'),
-                                             font=HINT_FONT, fill=MUTED,
-                                             anchor='nw')
-        for item in (box, label):
-            scene.tag_bind(item, '<Button-1>', lambda _e: self.toggle_delete())
-            scene.tag_bind(item, '<Enter>', lambda _e: scene.configure(cursor='hand2'))
-            scene.tag_bind(item, '<Leave>', lambda _e: scene.configure(cursor=''))
+        scene.image('untouched:label', theme.text_image(t('Your game and update folders are never changed'), 13,
+                                                        theme.hex_colour(theme.LIME), 'Medium'), 30, y + 1)
+        scene.create_text(32, y + 26, text=t('The update is read from its own folder when you play, as in shadPS4: '
+                                             'the same folders keep working there.'),
+                          font=HINT_FONT, fill=MUTED, anchor='nw', width=self.W - 60)
 
         # What will happen (or what's wrong), and the progress bar while it runs.
         y = self.rows[4]
@@ -775,13 +772,6 @@ class SetupWizard(BetaNotice):
                 if update:
                     self.folders['update'].set(str(update))
 
-    def toggle_delete(self):
-        if self.running:
-            return
-        self.delete_update = not self.delete_update
-        self.scene.image('delete:box', theme.checkbox(self.delete_update), 30, self.rows[3])
-        self.schedule_check()
-
     def schedule_check(self):
         if self.check_after:
             self.window.after_cancel(self.check_after)
@@ -834,8 +824,8 @@ class SetupWizard(BetaNotice):
         folder_problem = any(self.scene.itemcget(self.notes[k], 'fill') == ERROR for k in self.notes)
         self.plan = None
         try:
-            plan = game_setup.Plan(game_text, update_text or None, move=self.delete_update,
-                                   dlc_folder=dlc_text or None, user_dir=USER) if game_text else None
+            plan = game_setup.Plan(game_text, update_text or None, dlc_folder=dlc_text or None,
+                                   user_dir=USER) if game_text else None
             if plan:
                 plan.check_space()
                 self.plan = plan
@@ -852,7 +842,7 @@ class SetupWizard(BetaNotice):
         ready = bool(self.plan)
         self.go.set_enabled(ready)
         if self.plan and not self.plan.steps:
-            self.go_text(t('Use this folder'))
+            self.go_text(t('Use these folders') if self.plan.update else t('Use this folder'))
         else:
             self.go_text(t('Set up'))
 
@@ -861,6 +851,10 @@ class SetupWizard(BetaNotice):
         if self.running:
             return
         game = game_setup.Folder(self.folders['game'].get().strip())
+        update_text = self.folders['update'].get().strip()
+        # The update in its own folder: its files checked in place of the game's it replaces.
+        update = (game_setup.separate_update(game, update_text or None)
+                  if game.root and game.version != game_setup.VERSION else None)
         if not game.root:
             self.scene.itemconfigure(self.summary, text=t('Choose your game folder to begin.'), fill=WARN)
             return
@@ -874,7 +868,8 @@ class SetupWizard(BetaNotice):
 
         def work():
             try:
-                result = game_files.check(game.root, full=True, progress=lambda d, total: events.put((d, total)),
+                result = game_files.check(game.root, full=True, update=update,
+                                          progress=lambda d, total: events.put((d, total)),
                                           cancelled=lambda: self.stop_requested)
                 events.put(('done', result))
             except (OSError, ValueError) as error:
@@ -901,7 +896,7 @@ class SetupWizard(BetaNotice):
                     elif isinstance(result, Exception):
                         text, colour = t('The files could not be checked: {error}', error=result), ERROR
                     else:
-                        _FILES_CHECKED[str(game.root)] = result
+                        _FILES_CHECKED[f'{game.root}|{update or ""}'] = result
                         text, colour = result.summary(True), GOOD if result.ok else ERROR
                     self.scene.itemconfigure(self.summary, text=text, fill=colour)
                     return
@@ -937,14 +932,6 @@ class SetupWizard(BetaNotice):
         if not self.plan.steps:
             self.finish(True, '')
             return
-        if self.delete_update and self.plan.update:
-            sure = messagebox.askyesno(
-                t('Delete the update files?'),
-                t('When setup is done, this folder is deleted:\n\n{folder}\n\nYour game folder keeps everything it '
-                  'needs. Go ahead?', folder=self.plan.update.root), parent=self.window)
-            self.bring_to_front()
-            if not sure:
-                return
         self.running, self.stop_requested = True, False
         for entry in self.entries:
             entry.configure(state='disabled')
@@ -953,15 +940,12 @@ class SetupWizard(BetaNotice):
                 tab.set_enabled(False)
         self.scene.itemconfigure(self.trough, state='normal')
         self.scene.itemconfigure(self.bar, state='normal')
-        plan, delete = self.plan, self.delete_update
+        plan = self.plan
 
         def work():
             try:
                 done = game_setup.run(plan, lambda d, t, name: self.events.put(('progress', d, t, name)),
                                       lambda: self.stop_requested)
-                if done and delete:
-                    self.events.put(('progress', 1, 1, t('Deleting the update folder...')))
-                    game_setup.remove_update(plan)
                 self.events.put(('done', done, ''))
             except game_setup.SetupError as error:
                 self.events.put(('done', False, str(error)))
@@ -993,8 +977,10 @@ class SetupWizard(BetaNotice):
     def finish(self, ok, message):
         self.running = False
         if ok:
-            # The launcher takes the folder that was set up (the one holding eboot.bin).
-            _FILES_CHECKED.pop(str(self.plan.root), None)  # its files changed: checked again
+            # The launcher takes the game's folder (the one holding eboot.bin) and the update's, read over it.
+            for key in [k for k in _FILES_CHECKED if k.startswith(f'{self.plan.root}|')]:
+                _FILES_CHECKED.pop(key, None)  # checked again, with the update chosen now
+            self.launcher.settings['update'] = str(self.plan.update.root) if self.plan.update else ''
             self.launcher.game.set(str(self.plan.root))
             self.launcher.refresh_game()
             self.close(force=True)
@@ -1007,7 +993,7 @@ class SetupWizard(BetaNotice):
         self.scene.itemconfigure(self.bar, state='hidden')
         self.check()
         self.scene.itemconfigure(self.summary, fill=ERROR if message else WARN, text=message or
-                                 t('Stopped. Your game still reads as its old version: click Set up to finish.'))
+                                 t('Stopped before all the DLC was copied: click Set up to finish.'))
 
     def close(self, force=False):
         if self.running and not force:
@@ -1666,6 +1652,7 @@ class Launcher(tk.Tk):
         if folder:
             # The folder holding eboot.bin, when a folder above it was chosen (an extraction's Image0 and the like).
             root = game_setup.find_root(folder)
+            self.settings['update'] = ''  # another game: its update is looked for beside it
             self.game.set(str(root) if root and root.parent != root else folder)
             if self.refresh_game() == 'setup':
                 self.open_setup()
@@ -1680,7 +1667,8 @@ class Launcher(tk.Tk):
     def first_start(self):
         """The beta notice until it's turned off, then the setup wizard while there's no game ready to play."""
         def offer_setup():
-            if self.winfo_exists() and check_game(self.game.get().strip())[0] in ('setup', 'missing'):
+            if self.winfo_exists() and check_game(self.game.get().strip(),
+                                                  self.settings.get('update'))[0] in ('setup', 'missing'):
                 SetupWizard(self)
         if not self.settings.get('beta_notice_seen'):
             BetaNotice(self, on_closed=offer_setup)
@@ -1688,7 +1676,7 @@ class Launcher(tk.Tk):
             offer_setup()
 
     def refresh_game(self):
-        state, text = check_game(self.game.get().strip())
+        state, text = check_game(self.game.get().strip(), self.settings.get('update'))
         ok = state in ('ready', 'warn')
         image, margin = theme.tag(text, (70, 140, 40) if state == 'ready' else (190, 110, 20) if state in ('setup', 'warn') else (190, 60, 50))
         item = self.scene.image('game:tag', image, self.PANEL_X + 16 - margin, self.status_tag_y - margin)
@@ -1845,7 +1833,9 @@ class Launcher(tk.Tk):
             # The game would quietly use FSR 3.1 instead (packaging/windows/import_dlss.py installs them).
             self.append(['Launcher: the DLSS files are missing next to the game; frame generation uses FSR 3.1.'])
         command = [sys.executable, '--script'] if FROZEN else [sys.executable]
-        self.process = subprocess.Popen(command + [str(ROOT / 'run.py'), self.settings['game']], cwd=ROOT,
+        update = self.settings.get('update')
+        self.process = subprocess.Popen(command + [str(ROOT / 'run.py'), self.settings['game'],
+                                                   *(['--update', update] if update else [])], cwd=ROOT,
                                         env=env, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
                                         stderr=subprocess.STDOUT, creationflags=flags)
         threading.Thread(target=self.read_output, args=(self.process,), daemon=True).start()

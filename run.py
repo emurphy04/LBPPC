@@ -18,6 +18,8 @@ sys.path.insert(0, str(HERE / 'scripts'))
 import prepare as dump  # noqa: E402  (param.sfo)
 import log_privacy  # noqa: E402
 import game_files  # noqa: E402
+import game_setup  # noqa: E402
+import game_view  # noqa: E402
 
 # title ID: the version LBPPC's patches are made for. The EU 1.28 (CUSA00063) has the US 1.28's very eboot.bin.
 SUPPORTED = {'CUSA00473': '01.28', 'CUSA00063': '01.28'}
@@ -136,23 +138,51 @@ def main(argv):
     if not argv or argv[0].startswith('-'):
         sys.exit(__doc__)
     game = Path(argv[0]).resolve()
-    if not (game / 'eboot.bin').is_file():
+    argv = argv[:1] + list(argv[1:])
+    # The update in a folder of its own, as shadPS4 keeps it: --update <folder>, or the CUSA…-UPDATE / -patch folder
+    # beside the game. Its files are read over the game's (scripts/game_view.py, the runtime's --update); the game
+    # folder itself is never changed.
+    update = None
+    if '--update' in argv:
+        at = argv.index('--update')
+        if at + 1 >= len(argv):
+            sys.exit('LBPPC: --update needs a folder')
+        update = Path(argv[at + 1]).resolve()
+        del argv[at:at + 2]
+    elif not os.environ.get('LBPPC_NO_UPDATE_FOLDER'):
+        update = game_setup.find_update(game)
+        update = game_setup.find_root(update) if update else None
+    if update and not game_view.system_folder(update):
+        sys.exit(f'LBPPC: {update} has no param.sfo (sce_sys or Sc0): it is not an extracted update')
+    view = game_view.open_view(game, update)
+    if not (view / 'eboot.bin').is_file():
         sys.exit(f'No eboot.bin in {game}')
+    # The system files (param.sfo, npbind.dat...) where the extraction put them: an Sc0 folder is given to the runtime
+    # as /app0/sce_sys (--system), read in place as everything else.
+    system = game_view.system_folder(game, update)
+    natural = {(root / 'sce_sys').resolve() for root in (game, update) if root}
+    system_args = ('--system', str(system)) if system and system.resolve() not in natural else ()
     # Only the version the patches are made for runs: another one has different code at every patched spot.
     try:
-        info = dump.sfo((game / 'sce_sys' / 'param.sfo').read_bytes())
+        info = dump.sfo((system / 'param.sfo').read_bytes()) if system else {}
+        base_system = game_view.system_folder(game) if update else None
+        base_title = dump.sfo((base_system / 'param.sfo').read_bytes()).get('TITLE_ID') if base_system else None
     except (OSError, ValueError):
-        info = {}
+        info, base_title = {}, None
+    if base_title and base_title != info.get('TITLE_ID'):
+        sys.exit(f'LBPPC: the update ({info.get("TITLE_ID")}) is not for this game ({base_title}).')
+    if update:
+        print(f'LBPPC: update {update} read over the game')
     title, version = info.get('TITLE_ID', '?'), info.get('APP_VER', '?')
     if title.startswith('CUSA') and title not in SUPPORTED:
         sys.exit(f'LBPPC: this copy is {title}. LBPPC needs LittleBigPlanet 3 {" or ".join(SUPPORTED)}: '
                  'other versions won\'t run.')
     if title in SUPPORTED and version != SUPPORTED[title]:
         sys.exit(f'LBPPC: this copy of LittleBigPlanet 3 is version {version}; LBPPC needs version {SUPPORTED[title]}. '
-                 'Open the launcher and use Set up... to add the 1.28 update to your game folder.')
+                 'Choose the 1.28 update folder in the launcher (or pass --update <folder>).')
     # Every file of the game at the right size (scripts/game_files.py): a broken or incomplete copy is said in the log.
     try:
-        files = game_files.check(game)
+        files = game_files.check(game, update=update)
         files_line = 'Game files: ' + ('all present' if files.ok else files.summary(False) + ' ' +
                                        ', '.join((files.missing + files.wrong_size)[:10]))
     except (OSError, ValueError):
@@ -166,13 +196,15 @@ def main(argv):
     user = Path(os.environ['LBPPC_USER_DIR']) if os.environ.get('LBPPC_USER_DIR') else HERE / 'user'
     user.mkdir(exist_ok=True)
     clear_download_cache(user)
-    script('prepare.py', game, '--out', OUT)
+    with_update = ('--update', update) if update else ()
+    script('prepare.py', game, '--out', OUT, *with_update)
     # The game's own modules (LBP3's FMOD plugins) are linked too; sceKernelLoadStartModule hands them out.
-    plugins = sorted(p.relative_to(game).as_posix() for p in game.glob('gamedata_orbis/spu/*.prx'))
-    script('link_modules.py', game, '--out', OUT, '--modules', 'libc.prx', 'libSceFios2.prx', *plugins)
-    script('content_profile.py', game, '--out', OUT)
+    plugins = sorted(p.name for p in (view / 'gamedata_orbis/spu').glob('*.prx')) if (view / 'gamedata_orbis/spu').is_dir() else []
+    plugins = [f'gamedata_orbis/spu/{name}' for name in plugins]
+    script('link_modules.py', game, '--out', OUT, *with_update, '--modules', 'libc.prx', 'libSceFios2.prx', *plugins)
+    script('content_profile.py', game, '--out', OUT, *with_update)
     # Quit Game in the pause menu: the game files it changes are shown changed by the runtime (out/file_edits.bin).
-    script('quit_menu.py', game, '--out', OUT)
+    script('quit_menu.py', game, '--out', OUT, *with_update)
     env = dict(os.environ)
     if (OUT / 'file_edits.bin').is_file():
         env.setdefault('LBPPC_FILE_EDITS', str(OUT / 'file_edits.bin'))
@@ -255,7 +287,8 @@ def main(argv):
     if MSYS2_BIN.is_dir():
         env['PATH'] = f'{MSYS2_BIN}{os.pathsep}{env.get("PATH", "")}'
     command = [str(probe), str(OUT / 'boot-linked.bin'), '--content-profile', str(OUT / 'content.bin'),
-               '--app0', str(game), '--user', str(user), '--timeout', '0', *argv[1:]]
+               '--app0', str(game), *(('--update', str(update)) if update else ()), *system_args,
+               '--user', str(user), '--timeout', '0', *argv[1:]]
     keep_previous_log()
     # Players post their logs: every line loses the player's own details (IP addresses, names, the Windows user)
     # before it is written or shown (scripts/log_privacy.py).
