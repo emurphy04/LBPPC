@@ -382,3 +382,20 @@
 380|ce nom n'est pas autorisé, ou le mot de passe ou l'e-mail n'est pas accepté
 381|trop de nouveaux comptes depuis ce réseau aujourd'hui, réessayez demain
 382|Trop de mots de passe erronés : la connexion est bloquée pendant 15 minutes au plus.
+383|LBPPC fait tourner LittleBigPlanet 3 version 1.28 (US CUSA00473, ou européenne CUSA00063). Choisissez votre jeu et sa mise à jour 1.28 : comme dans shadPS4, la mise à jour est lue depuis son propre dossier et aucun des deux dossiers n'est modifié. Choisissez des dossiers que vous avez extraits vous-même (un .pkg doit d'abord être extrait).
+384|LBPPC - Journal
+385|Vos dossiers du jeu et de la mise à jour ne sont jamais modifiés
+386|La mise à jour est lue depuis son propre dossier quand vous jouez, comme dans shadPS4 : les mêmes dossiers continuent de fonctionner là-bas.
+387|Journal du jeu
+388|Arrêté
+389|Arrêt...
+390|Utiliser ces dossiers
+391|Arrêté avant que tous les DLC soient copiés : cliquez sur Configurer pour terminer.
+392|américaine
+393|Le jeu est en version {version}, pas 1.28. Choisissez le dossier de la mise à jour 1.28 ; si cela se reproduit, demandez sur le Discord.
+394|Version {version} : LBPPC a besoin de la mise à jour 1.28. Cliquez sur Configurer... pour choisir son dossier.
+395|LittleBigPlanet 3 version 1.28 (mise à jour dans son propre dossier), prêt à jouer
+396|Ceci est la version {region} de LittleBigPlanet 3 ({id}). LBPPC a besoin de la version américaine ou européenne du jeu ({ids}) : les autres versions ne fonctionnent pas.
+397|La mise à jour est lue depuis son propre dossier : vos dossiers du jeu et de la mise à jour restent tels quels
+398|{folder} est un DLC pour la version {region} de LittleBigPlanet 3 ({id}). LBPPC a besoin de la version américaine ou européenne ({ids}), et de ses DLC.
+399|Cette mise à jour est pour {update}, mais le jeu est {game}. Choisissez la mise à jour de la même édition.

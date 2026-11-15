@@ -381,5 +381,22 @@
  "Preparing shaders ({percent}%)",
  "that name is not allowed, or the password or email is not accepted",
  "too many new accounts from this network today, try again tomorrow",
- "Too many wrong passwords: sign-in is locked for up to 15 minutes."
+ "Too many wrong passwords: sign-in is locked for up to 15 minutes.",
+ "LBPPC runs LittleBigPlanet 3 version 1.28 (US CUSA00473, or European CUSA00063). Choose your game and its 1.28 update: as in shadPS4, the update is read from its own folder and neither folder is changed. Choose folders you extracted yourself (a .pkg must be extracted first).",
+ "LBPPC - Log",
+ "Your game and update folders are never changed",
+ "The update is read from its own folder when you play, as in shadPS4: the same folders keep working there.",
+ "Game log",
+ "Stopped",
+ "Stopping...",
+ "Use these folders",
+ "Stopped before all the DLC was copied: click Set up to finish.",
+ "US",
+ "The game reads as version {version}, not 1.28. Choose the 1.28 update folder; if it keeps happening, ask on the Discord.",
+ "Version {version}: LBPPC needs the 1.28 update. Click Set up... to choose its folder.",
+ "LittleBigPlanet 3 version 1.28 (update in its own folder), ready to play",
+ "This is the {region} version of LittleBigPlanet 3 ({id}). LBPPC needs the US or European version of the game ({ids}): other versions won't run.",
+ "The update is read from its own folder: your game and update folders are left as they are",
+ "{folder} is DLC for the {region} version of LittleBigPlanet 3 ({id}). LBPPC needs the US or European version ({ids}), and its DLC.",
+ "That update is for {update}, but the game is {game}. Choose the update of the same edition."
 ]

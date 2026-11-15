@@ -382,3 +382,20 @@
 380|nimi ei ole sallittu, tai salasanaa tai sähköpostia ei hyväksytä
 381|liian monta uutta tiliä tästä verkosta tänään, yritä huomenna uudelleen
 382|Liian monta väärää salasanaa: kirjautuminen on estetty enintään 15 minuutiksi.
+383|LBPPC ajaa LittleBigPlanet 3:n version 1.28 (yhdysvaltalainen CUSA00473 tai eurooppalainen CUSA00063). Valitse pelisi ja sen päivitys 1.28: kuten shadPS4:ssä, päivitys luetaan sen omasta kansiosta eikä kumpaakaan kansiota muuteta. Valitse kansiot, jotka olet purkanut itse (.pkg on purettava ensin).
+384|LBPPC - Loki
+385|Peli- ja päivityskansioitasi ei koskaan muuteta
+386|Päivitys luetaan pelatessa sen omasta kansiosta, kuten shadPS4:ssä: samat kansiot toimivat edelleen siellä.
+387|Pelin loki
+388|Pysäytetty
+389|Pysäytetään...
+390|Käytä näitä kansioita
+391|Pysäytetty ennen kuin kaikki DLC:t oli kopioitu: napsauta Asenna viimeistelläksesi.
+392|yhdysvaltalainen
+393|Peli näkyy versiona {version}, ei 1.28. Valitse päivityksen 1.28 kansio; jos tämä toistuu, kysy Discordissa.
+394|Versio {version}: LBPPC tarvitsee päivityksen 1.28. Napsauta Asenna... valitaksesi sen kansion.
+395|LittleBigPlanet 3 versio 1.28 (päivitys omassa kansiossaan), valmis pelattavaksi
+396|Tämä on LittleBigPlanet 3:n {region} versio ({id}). LBPPC tarvitsee pelin yhdysvaltalaisen tai eurooppalaisen version ({ids}): muut versiot eivät toimi.
+397|Päivitys luetaan sen omasta kansiosta: peli- ja päivityskansiosi pysyvät ennallaan
+398|{folder} on DLC LittleBigPlanet 3:n {region} versiolle ({id}). LBPPC tarvitsee yhdysvaltalaisen tai eurooppalaisen version ({ids}) ja sen DLC:t.
+399|Tämä päivitys on pelille {update}, mutta peli on {game}. Valitse saman painoksen päivitys.

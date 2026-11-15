@@ -382,3 +382,20 @@
 380|ta nazwa jest niedozwolona albo hasło lub e-mail nie są akceptowane
 381|zbyt wiele nowych kont z tej sieci dzisiaj, spróbuj jutro
 382|Zbyt wiele błędnych haseł: logowanie jest zablokowane na maksymalnie 15 minut.
+383|LBPPC uruchamia LittleBigPlanet 3 w wersji 1.28 (amerykańskiej CUSA00473 lub europejskiej CUSA00063). Wybierz grę i jej aktualizację 1.28: tak jak w shadPS4 aktualizacja jest czytana z własnego folderu, a żaden z folderów nie jest zmieniany. Wybierz foldery, które samodzielnie rozpakowałeś (plik .pkg trzeba najpierw rozpakować).
+384|LBPPC - Dziennik
+385|Foldery gry i aktualizacji nigdy nie są zmieniane
+386|Podczas gry aktualizacja jest czytana z własnego folderu, tak jak w shadPS4: te same foldery nadal tam działają.
+387|Dziennik gry
+388|Zatrzymano
+389|Zatrzymywanie...
+390|Użyj tych folderów
+391|Zatrzymano, zanim skopiowano wszystkie DLC: kliknij Skonfiguruj, aby dokończyć.
+392|amerykańska
+393|Gra jest w wersji {version}, a nie 1.28. Wybierz folder aktualizacji 1.28; jeśli to się powtarza, zapytaj na Discordzie.
+394|Wersja {version}: LBPPC potrzebuje aktualizacji 1.28. Kliknij Skonfiguruj..., aby wybrać jej folder.
+395|LittleBigPlanet 3 w wersji 1.28 (aktualizacja we własnym folderze), gotowe do gry
+396|To jest {region} wersja LittleBigPlanet 3 ({id}). LBPPC potrzebuje amerykańskiej lub europejskiej wersji gry ({ids}): inne wersje nie zadziałają.
+397|Aktualizacja jest czytana z własnego folderu: foldery gry i aktualizacji zostają bez zmian
+398|{folder} to DLC do wersji {region} LittleBigPlanet 3 ({id}). LBPPC potrzebuje wersji amerykańskiej lub europejskiej ({ids}) i jej DLC.
+399|Ta aktualizacja jest dla {update}, a gra to {game}. Wybierz aktualizację tego samego wydania.

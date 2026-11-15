@@ -381,5 +381,22 @@
  "Preparing shaders ({percent}%)": "Forbereder shaders ({percent} %)",
  "that name is not allowed, or the password or email is not accepted": "det navn er ikke tilladt, eller adgangskoden eller e-mailen accepteres ikke",
  "too many new accounts from this network today, try again tomorrow": "for mange nye konti fra dette netværk i dag, prøv igen i morgen",
- "Too many wrong passwords: sign-in is locked for up to 15 minutes.": "For mange forkerte adgangskoder: login er spærret i op til 15 minutter."
+ "Too many wrong passwords: sign-in is locked for up to 15 minutes.": "For mange forkerte adgangskoder: login er spærret i op til 15 minutter.",
+ "LBPPC runs LittleBigPlanet 3 version 1.28 (US CUSA00473, or European CUSA00063). Choose your game and its 1.28 update: as in shadPS4, the update is read from its own folder and neither folder is changed. Choose folders you extracted yourself (a .pkg must be extracted first).": "LBPPC kører LittleBigPlanet 3 version 1.28 (amerikansk CUSA00473 eller europæisk CUSA00063). Vælg dit spil og dets opdatering 1.28: som i shadPS4 læses opdateringen fra sin egen mappe, og ingen af mapperne ændres. Vælg mapper, du selv har pakket ud (en .pkg skal pakkes ud først).",
+ "LBPPC - Log": "LBPPC - Log",
+ "Your game and update folders are never changed": "Dine spil- og opdateringsmapper ændres aldrig",
+ "The update is read from its own folder when you play, as in shadPS4: the same folders keep working there.": "Opdateringen læses fra sin egen mappe, når du spiller, som i shadPS4: de samme mapper bliver ved med at virke der.",
+ "Game log": "Spillog",
+ "Stopped": "Stoppet",
+ "Stopping...": "Stopper...",
+ "Use these folders": "Brug disse mapper",
+ "Stopped before all the DLC was copied: click Set up to finish.": "Stoppet før alle DLC var kopieret: klik på Opsæt for at gøre det færdigt.",
+ "US": "amerikanske",
+ "The game reads as version {version}, not 1.28. Choose the 1.28 update folder; if it keeps happening, ask on the Discord.": "Spillet står som version {version}, ikke 1.28. Vælg mappen med opdatering 1.28; hvis det bliver ved, så spørg på Discord.",
+ "Version {version}: LBPPC needs the 1.28 update. Click Set up... to choose its folder.": "Version {version}: LBPPC skal bruge opdatering 1.28. Klik på Opsæt... for at vælge dens mappe.",
+ "LittleBigPlanet 3 version 1.28 (update in its own folder), ready to play": "LittleBigPlanet 3 version 1.28 (opdateringen i sin egen mappe), klar til at spille",
+ "This is the {region} version of LittleBigPlanet 3 ({id}). LBPPC needs the US or European version of the game ({ids}): other versions won't run.": "Dette er den {region} version af LittleBigPlanet 3 ({id}). LBPPC skal bruge den amerikanske eller europæiske version af spillet ({ids}): andre versioner virker ikke.",
+ "The update is read from its own folder: your game and update folders are left as they are": "Opdateringen læses fra sin egen mappe: dine spil- og opdateringsmapper forbliver, som de er",
+ "{folder} is DLC for the {region} version of LittleBigPlanet 3 ({id}). LBPPC needs the US or European version ({ids}), and its DLC.": "{folder} er DLC til den {region} version af LittleBigPlanet 3 ({id}). LBPPC skal bruge den amerikanske eller europæiske version ({ids}) og dens DLC.",
+ "That update is for {update}, but the game is {game}. Choose the update of the same edition.": "Den opdatering er til {update}, men spillet er {game}. Vælg opdateringen til samme udgave."
 }

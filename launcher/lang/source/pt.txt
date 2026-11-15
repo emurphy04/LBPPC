@@ -382,3 +382,20 @@
 380|esse nome não é permitido, ou a palavra-passe ou o e-mail não são aceites
 381|demasiadas contas novas a partir desta rede hoje, tenta novamente amanhã
 382|Demasiadas palavras-passe erradas: o início de sessão está bloqueado até 15 minutos.
+383|O LBPPC executa o LittleBigPlanet 3 versão 1.28 (norte-americana CUSA00473, ou europeia CUSA00063). Escolhe o teu jogo e a atualização 1.28: como no shadPS4, a atualização é lida da sua própria pasta e nenhuma das pastas é alterada. Escolhe pastas que tu próprio extraíste (um .pkg tem de ser extraído primeiro).
+384|LBPPC - Registo
+385|As pastas do jogo e da atualização nunca são alteradas
+386|A atualização é lida da sua própria pasta quando jogas, como no shadPS4: as mesmas pastas continuam a funcionar lá.
+387|Registo do jogo
+388|Parado
+389|A parar...
+390|Usar estas pastas
+391|Parado antes de todos os DLC serem copiados: clica em Configurar para terminar.
+392|norte-americana
+393|O jogo aparece como versão {version}, não 1.28. Escolhe a pasta da atualização 1.28; se voltar a acontecer, pergunta no Discord.
+394|Versão {version}: o LBPPC precisa da atualização 1.28. Clica em Configurar... para escolher a pasta dela.
+395|LittleBigPlanet 3 versão 1.28 (atualização na sua própria pasta), pronto a jogar
+396|Esta é a versão {region} do LittleBigPlanet 3 ({id}). O LBPPC precisa da versão norte-americana ou europeia do jogo ({ids}): as outras versões não funcionam.
+397|A atualização é lida da sua própria pasta: as pastas do jogo e da atualização ficam como estão
+398|{folder} é um DLC para a versão {region} do LittleBigPlanet 3 ({id}). O LBPPC precisa da versão norte-americana ou europeia ({ids}) e dos seus DLC.
+399|Essa atualização é para {update}, mas o jogo é {game}. Escolhe a atualização da mesma edição.

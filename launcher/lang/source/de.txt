@@ -382,3 +382,20 @@
 380|dieser Name ist nicht erlaubt, oder Passwort oder E-Mail werden nicht akzeptiert
 381|zu viele neue Konten aus diesem Netzwerk heute, versuche es morgen erneut
 382|Zu viele falsche Passwörter: Die Anmeldung ist für bis zu 15 Minuten gesperrt.
+383|LBPPC führt LittleBigPlanet 3 Version 1.28 aus (US CUSA00473 oder europäisch CUSA00063). Wähle dein Spiel und sein Update 1.28: Wie in shadPS4 wird das Update aus seinem eigenen Ordner gelesen, und keiner der beiden Ordner wird verändert. Wähle Ordner, die du selbst entpackt hast (ein .pkg muss zuerst entpackt werden).
+384|LBPPC - Log
+385|Deine Spiel- und Update-Ordner werden nie verändert
+386|Das Update wird beim Spielen aus seinem eigenen Ordner gelesen, wie in shadPS4: Dieselben Ordner funktionieren dort weiterhin.
+387|Spiel-Log
+388|Gestoppt
+389|Wird gestoppt...
+390|Diese Ordner verwenden
+391|Gestoppt, bevor alle DLCs kopiert waren: Klicke auf Einrichten, um es abzuschließen.
+392|US-amerikanische
+393|Das Spiel meldet Version {version}, nicht 1.28. Wähle den Ordner des Updates 1.28; wenn es wieder passiert, frag im Discord.
+394|Version {version}: LBPPC braucht das Update 1.28. Klicke auf Einrichten..., um seinen Ordner zu wählen.
+395|LittleBigPlanet 3 Version 1.28 (Update in eigenem Ordner), bereit zum Spielen
+396|Das ist die {region} Version von LittleBigPlanet 3 ({id}). LBPPC braucht die US- oder europäische Version des Spiels ({ids}): andere Versionen laufen nicht.
+397|Das Update wird aus seinem eigenen Ordner gelesen: Deine Spiel- und Update-Ordner bleiben, wie sie sind
+398|{folder} ist ein DLC für die {region} Version von LittleBigPlanet 3 ({id}). LBPPC braucht die US- oder europäische Version ({ids}) und ihre DLCs.
+399|Dieses Update ist für {update}, aber das Spiel ist {game}. Wähle das Update derselben Edition.

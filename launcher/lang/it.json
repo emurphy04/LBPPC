@@ -381,5 +381,22 @@
  "Preparing shaders ({percent}%)": "Preparazione degli shader ({percent}%)",
  "that name is not allowed, or the password or email is not accepted": "quel nome non è consentito, oppure la password o l'e-mail non sono accettate",
  "too many new accounts from this network today, try again tomorrow": "troppi nuovi account da questa rete oggi, riprova domani",
- "Too many wrong passwords: sign-in is locked for up to 15 minutes.": "Troppe password errate: l'accesso è bloccato per un massimo di 15 minuti."
+ "Too many wrong passwords: sign-in is locked for up to 15 minutes.": "Troppe password errate: l'accesso è bloccato per un massimo di 15 minuti.",
+ "LBPPC runs LittleBigPlanet 3 version 1.28 (US CUSA00473, or European CUSA00063). Choose your game and its 1.28 update: as in shadPS4, the update is read from its own folder and neither folder is changed. Choose folders you extracted yourself (a .pkg must be extracted first).": "LBPPC esegue LittleBigPlanet 3 versione 1.28 (statunitense CUSA00473, o europea CUSA00063). Scegli il gioco e il suo aggiornamento 1.28: come in shadPS4, l'aggiornamento viene letto dalla sua cartella e nessuna delle due cartelle viene modificata. Scegli cartelle che hai estratto tu (un .pkg va prima estratto).",
+ "LBPPC - Log": "LBPPC - Registro",
+ "Your game and update folders are never changed": "Le cartelle del gioco e dell'aggiornamento non vengono mai modificate",
+ "The update is read from its own folder when you play, as in shadPS4: the same folders keep working there.": "Quando giochi l'aggiornamento viene letto dalla sua cartella, come in shadPS4: le stesse cartelle continuano a funzionare anche lì.",
+ "Game log": "Registro del gioco",
+ "Stopped": "Fermato",
+ "Stopping...": "Arresto...",
+ "Use these folders": "Usa queste cartelle",
+ "Stopped before all the DLC was copied: click Set up to finish.": "Fermato prima che tutti i DLC fossero copiati: fai clic su Configura per finire.",
+ "US": "statunitense",
+ "The game reads as version {version}, not 1.28. Choose the 1.28 update folder; if it keeps happening, ask on the Discord.": "Il gioco risulta alla versione {version}, non 1.28. Scegli la cartella dell'aggiornamento 1.28; se succede ancora, chiedi sul Discord.",
+ "Version {version}: LBPPC needs the 1.28 update. Click Set up... to choose its folder.": "Versione {version}: LBPPC ha bisogno dell'aggiornamento 1.28. Fai clic su Configura... per sceglierne la cartella.",
+ "LittleBigPlanet 3 version 1.28 (update in its own folder), ready to play": "LittleBigPlanet 3 versione 1.28 (aggiornamento nella sua cartella), pronto per giocare",
+ "This is the {region} version of LittleBigPlanet 3 ({id}). LBPPC needs the US or European version of the game ({ids}): other versions won't run.": "Questa è la versione {region} di LittleBigPlanet 3 ({id}). LBPPC ha bisogno della versione statunitense o europea del gioco ({ids}): le altre versioni non funzionano.",
+ "The update is read from its own folder: your game and update folders are left as they are": "L'aggiornamento viene letto dalla sua cartella: le cartelle del gioco e dell'aggiornamento restano come sono",
+ "{folder} is DLC for the {region} version of LittleBigPlanet 3 ({id}). LBPPC needs the US or European version ({ids}), and its DLC.": "{folder} è un DLC per la versione {region} di LittleBigPlanet 3 ({id}). LBPPC ha bisogno della versione statunitense o europea ({ids}) e dei suoi DLC.",
+ "That update is for {update}, but the game is {game}. Choose the update of the same edition.": "Quell'aggiornamento è per {update}, ma il gioco è {game}. Scegli l'aggiornamento della stessa edizione."
 }

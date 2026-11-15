@@ -382,3 +382,20 @@
 380|die naam is niet toegestaan, of het wachtwoord of e-mailadres wordt niet geaccepteerd
 381|te veel nieuwe accounts vanaf dit netwerk vandaag, probeer het morgen opnieuw
 382|Te veel verkeerde wachtwoorden: inloggen is maximaal 15 minuten geblokkeerd.
+383|LBPPC draait LittleBigPlanet 3 versie 1.28 (Amerikaans CUSA00473, of Europees CUSA00063). Kies je game en de update 1.28: net als in shadPS4 wordt de update uit zijn eigen map gelezen en wordt geen van beide mappen gewijzigd. Kies mappen die je zelf hebt uitgepakt (een .pkg moet eerst worden uitgepakt).
+384|LBPPC - Log
+385|Je game- en updatemap worden nooit gewijzigd
+386|De update wordt tijdens het spelen uit zijn eigen map gelezen, net als in shadPS4: dezelfde mappen blijven daar werken.
+387|Gamelog
+388|Gestopt
+389|Bezig met stoppen...
+390|Deze mappen gebruiken
+391|Gestopt voordat alle DLC was gekopieerd: klik op Instellen om af te ronden.
+392|Amerikaanse
+393|De game staat op versie {version}, niet 1.28. Kies de map van de update 1.28; blijft het gebeuren, vraag het dan op de Discord.
+394|Versie {version}: LBPPC heeft de update 1.28 nodig. Klik op Instellen... om de map te kiezen.
+395|LittleBigPlanet 3 versie 1.28 (update in eigen map), klaar om te spelen
+396|Dit is de {region} versie van LittleBigPlanet 3 ({id}). LBPPC heeft de Amerikaanse of Europese versie van de game nodig ({ids}): andere versies werken niet.
+397|De update wordt uit zijn eigen map gelezen: je game- en updatemap blijven zoals ze zijn
+398|{folder} is DLC voor de {region} versie van LittleBigPlanet 3 ({id}). LBPPC heeft de Amerikaanse of Europese versie nodig ({ids}), en de DLC daarvan.
+399|Die update is voor {update}, maar de game is {game}. Kies de update van dezelfde editie.

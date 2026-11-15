@@ -381,5 +381,22 @@
  "Preparing shaders ({percent}%)": "Valmistellaan varjostimia ({percent} %)",
  "that name is not allowed, or the password or email is not accepted": "nimi ei ole sallittu, tai salasanaa tai sähköpostia ei hyväksytä",
  "too many new accounts from this network today, try again tomorrow": "liian monta uutta tiliä tästä verkosta tänään, yritä huomenna uudelleen",
- "Too many wrong passwords: sign-in is locked for up to 15 minutes.": "Liian monta väärää salasanaa: kirjautuminen on estetty enintään 15 minuutiksi."
+ "Too many wrong passwords: sign-in is locked for up to 15 minutes.": "Liian monta väärää salasanaa: kirjautuminen on estetty enintään 15 minuutiksi.",
+ "LBPPC runs LittleBigPlanet 3 version 1.28 (US CUSA00473, or European CUSA00063). Choose your game and its 1.28 update: as in shadPS4, the update is read from its own folder and neither folder is changed. Choose folders you extracted yourself (a .pkg must be extracted first).": "LBPPC ajaa LittleBigPlanet 3:n version 1.28 (yhdysvaltalainen CUSA00473 tai eurooppalainen CUSA00063). Valitse pelisi ja sen päivitys 1.28: kuten shadPS4:ssä, päivitys luetaan sen omasta kansiosta eikä kumpaakaan kansiota muuteta. Valitse kansiot, jotka olet purkanut itse (.pkg on purettava ensin).",
+ "LBPPC - Log": "LBPPC - Loki",
+ "Your game and update folders are never changed": "Peli- ja päivityskansioitasi ei koskaan muuteta",
+ "The update is read from its own folder when you play, as in shadPS4: the same folders keep working there.": "Päivitys luetaan pelatessa sen omasta kansiosta, kuten shadPS4:ssä: samat kansiot toimivat edelleen siellä.",
+ "Game log": "Pelin loki",
+ "Stopped": "Pysäytetty",
+ "Stopping...": "Pysäytetään...",
+ "Use these folders": "Käytä näitä kansioita",
+ "Stopped before all the DLC was copied: click Set up to finish.": "Pysäytetty ennen kuin kaikki DLC:t oli kopioitu: napsauta Asenna viimeistelläksesi.",
+ "US": "yhdysvaltalainen",
+ "The game reads as version {version}, not 1.28. Choose the 1.28 update folder; if it keeps happening, ask on the Discord.": "Peli näkyy versiona {version}, ei 1.28. Valitse päivityksen 1.28 kansio; jos tämä toistuu, kysy Discordissa.",
+ "Version {version}: LBPPC needs the 1.28 update. Click Set up... to choose its folder.": "Versio {version}: LBPPC tarvitsee päivityksen 1.28. Napsauta Asenna... valitaksesi sen kansion.",
+ "LittleBigPlanet 3 version 1.28 (update in its own folder), ready to play": "LittleBigPlanet 3 versio 1.28 (päivitys omassa kansiossaan), valmis pelattavaksi",
+ "This is the {region} version of LittleBigPlanet 3 ({id}). LBPPC needs the US or European version of the game ({ids}): other versions won't run.": "Tämä on LittleBigPlanet 3:n {region} versio ({id}). LBPPC tarvitsee pelin yhdysvaltalaisen tai eurooppalaisen version ({ids}): muut versiot eivät toimi.",
+ "The update is read from its own folder: your game and update folders are left as they are": "Päivitys luetaan sen omasta kansiosta: peli- ja päivityskansiosi pysyvät ennallaan",
+ "{folder} is DLC for the {region} version of LittleBigPlanet 3 ({id}). LBPPC needs the US or European version ({ids}), and its DLC.": "{folder} on DLC LittleBigPlanet 3:n {region} versiolle ({id}). LBPPC tarvitsee yhdysvaltalaisen tai eurooppalaisen version ({ids}) ja sen DLC:t.",
+ "That update is for {update}, but the game is {game}. Choose the update of the same edition.": "Tämä päivitys on pelille {update}, mutta peli on {game}. Valitse saman painoksen päivitys."
 }
