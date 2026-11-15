@@ -42,6 +42,7 @@ TITLE_ID, VERSION = 'CUSA00473', '01.28'  # the game and version LBPPC's patches
 SUPPORTED_IDS = {TITLE_ID: N_('US'), 'CUSA00063': N_('European (PAL)')}
 # Its DLC is sold under the add-on service CUSA00762 (param.sfo SERVICE_ID_ADDCONT_ADD_1 = EP9000-CUSA00762_00).
 DLC_TITLE_IDS = {TITLE_ID, 'CUSA00063', 'CUSA00762'}
+SUPPORTED_LIST = ' / '.join(SUPPORTED_IDS)  # for messages: CUSA00473 / CUSA00063
 # LittleBigPlanet 3's other editions, by the region the game's own table (eboot 0x12c8718) gives each: A the Americas,
 # E Europe, J Japan, K and C Asia. CUSA00810 sold with Latin American Spanish and Brazilian Portuguese.
 OTHER_LBP3 = {'CUSA00762': N_('European (PAL)'), 'CUSA01072': N_('European (PAL)'),
@@ -164,10 +165,10 @@ class Folder:
             return t('No param.sfo found (sce_sys or Sc0). The extraction looks incomplete.')
         if self.title_id not in SUPPORTED_IDS:
             if self.title_id in OTHER_LBP3:
-                return t('This is the {region} version of LittleBigPlanet 3 ({id}). LBPPC needs the US version of '
-                         'the game ({us}): other versions won\'t run.', region=t(OTHER_LBP3[self.title_id]),
-                         id=self.title_id, us=TITLE_ID)
-            return t('This isn\'t LittleBigPlanet 3 ({id}). LBPPC needs {us}.', id=self.title_id, us=TITLE_ID)
+                return t('This is the {region} version of LittleBigPlanet 3 ({id}). LBPPC needs the US or European '
+                         'version of the game ({ids}): other versions won\'t run.', region=t(OTHER_LBP3[self.title_id]),
+                         id=self.title_id, ids=SUPPORTED_LIST)
+            return t('This isn\'t LittleBigPlanet 3 ({id}). LBPPC needs {us}.', id=self.title_id, us=SUPPORTED_LIST)
         return None
 
     def describe(self):
@@ -352,9 +353,9 @@ def dlc_at(folder):
                        id=dlc.content_id or '-')
     if dlc.title_id not in DLC_TITLE_IDS:
         region = OTHER_LBP3.get(dlc.title_id)
-        return None, (t('{folder} is DLC for the {region} version of LittleBigPlanet 3 ({id}). LBPPC needs the US '
-                        'version ({us}), and its DLC.', folder=folder.name, region=t(region), id=dlc.title_id,
-                        us=TITLE_ID) if region else
+        return None, (t('{folder} is DLC for the {region} version of LittleBigPlanet 3 ({id}). LBPPC needs the US or '
+                        'European version ({ids}), and its DLC.', folder=folder.name, region=t(region), id=dlc.title_id,
+                        ids=SUPPORTED_LIST) if region else
                       t('{folder} is DLC for another game ({id}).', folder=folder.name, id=dlc.title_id or '?'))
     return dlc, None
 
