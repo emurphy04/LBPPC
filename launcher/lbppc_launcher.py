@@ -1597,7 +1597,8 @@ class Launcher(tk.Tk):
                                                        what=what), parent=self):
             return
         try:
-            backup = save_import.import_saves(saves, USER)
+            game_root = game_setup.Folder(self.settings['game']).root if self.settings.get('game') else None
+            backup = save_import.import_saves(saves, USER, save_import.game_title(game_root))
         except OSError as error:
             self.set_state(t('The save could not be imported: {error}', error=error), ERROR)
             return

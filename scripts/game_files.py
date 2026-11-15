@@ -16,6 +16,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import struct
 import sys
 
 try:  # the launcher's language (launcher/i18n.py); run on its own, English
@@ -28,11 +29,39 @@ HERE = Path(sys.executable).resolve().parent / 'scripts' if getattr(sys, 'frozen
     else Path(__file__).resolve().parent
 MANIFEST = HERE / 'data' / 'lbp3-1.28-us.json.gz'
 SKIP = ('sce_sys', 'app/sce_sys')  # per account / per extraction tool
+# Files that differ by edition. The list is the US copy's; the European one (CUSA00063 1.28) has the same eboot,
+# modules and .farc files, but its own French (France) and some Portuguese voice files, sku.txt, FMOD SPU plugins,
+# chunk maps and disc maps. These are checked only for being there.
+REGION_FILES = {'CUSA00063': ('gamedata/audio/french/', 'gamedata/audio/dialogue/french/',
+                              'gamedata/audio/dialogue/dlc/dccomics/french/',
+                              'gamedata/audio/lbp3/dialogue/languages/french/',
+                              'gamedata/audio/lbp3/dialogue/languages/portuguese/', 'gamedata_orbis/sku.txt',
+                              'gamedata_orbis/spu/', 'output/', 'sce_discmap.plt', 'sce_discmap_patch.plt')}
 
 
 def skipped(rel):
     rel = rel.lower()
     return any(rel == s or rel.startswith(s + '/') for s in SKIP)
+
+
+def edition(folder):
+    """The game folder's TITLE_ID (sce_sys/param.sfo), or ''."""
+    try:
+        data = (Path(folder) / 'sce_sys' / 'param.sfo').read_bytes()
+        magic, _version, keys, values, count = struct.unpack_from('<4sIIII', data, 0)
+        if magic != b'\0PSF':
+            return ''
+        for i in range(count):
+            key, _fmt, size, _capacity, offset = struct.unpack_from('<HHIII', data, 20 + i * 16)
+            if data[keys + key:data.index(b'\0', keys + key)] == b'TITLE_ID':
+                return data[values + offset:values + offset + size].rstrip(b'\0').decode('ascii')
+    except (OSError, ValueError, struct.error, UnicodeDecodeError):
+        pass
+    return ''
+
+
+def regional(rel, title):
+    return rel.lower().startswith(REGION_FILES.get(title, ()))
 
 
 def make(folder):
@@ -96,6 +125,7 @@ def check(folder, full=False, progress=None, cancelled=lambda: False):
     folder = Path(folder)
     result = Result()
     entries = manifest()
+    title = edition(folder)
     total = sum(size for _rel, size, _sha in entries) if full else 0
     done = 0
     for rel, size, sha in entries:
@@ -107,6 +137,9 @@ def check(folder, full=False, progress=None, cancelled=lambda: False):
             actual = path.stat().st_size
         except OSError:
             result.missing.append(rel)
+            continue
+        if regional(rel, title):  # this edition's own version of the file: only its presence is checked
+            done += size
             continue
         if actual != size:
             result.wrong_size.append(rel)

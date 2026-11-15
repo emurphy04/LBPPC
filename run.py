@@ -19,7 +19,8 @@ import prepare as dump  # noqa: E402  (param.sfo)
 import log_privacy  # noqa: E402
 import game_files  # noqa: E402
 
-SUPPORTED = {'CUSA00473': '01.28'}  # title ID: the version LBPPC's patches are made for
+# title ID: the version LBPPC's patches are made for. The EU 1.28 (CUSA00063) has the US 1.28's very eboot.bin.
+SUPPORTED = {'CUSA00473': '01.28', 'CUSA00063': '01.28'}
 MSYS2_BIN = Path(r'C:\msys64\clang64\bin')  # development builds: SDL3 and the other CLANG64 DLLs
 RESTART_EXIT_CODE = 75  # the in-game menu's Apply and restart (probe.c runtime_restart)
 
@@ -144,8 +145,8 @@ def main(argv):
         info = {}
     title, version = info.get('TITLE_ID', '?'), info.get('APP_VER', '?')
     if title.startswith('CUSA') and title not in SUPPORTED:
-        sys.exit(f'LBPPC: this copy is {title}, not the US version of LittleBigPlanet 3. LBPPC needs the US version '
-                 f'({", ".join(SUPPORTED)}): the European (PAL) and other versions won\'t run.')
+        sys.exit(f'LBPPC: this copy is {title}. LBPPC needs LittleBigPlanet 3 {" or ".join(SUPPORTED)}: '
+                 'other versions won\'t run.')
     if title in SUPPORTED and version != SUPPORTED[title]:
         sys.exit(f'LBPPC: this copy of LittleBigPlanet 3 is version {version}; LBPPC needs version {SUPPORTED[title]}. '
                  'Open the launcher and use Set up... to add the 1.28 update to your game folder.')

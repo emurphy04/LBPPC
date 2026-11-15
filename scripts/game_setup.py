@@ -34,9 +34,15 @@ except ImportError:
         return text.format(**fields) if fields else text
 
 TITLE_ID, VERSION = 'CUSA00473', '01.28'  # the game and version LBPPC's patches are made for
+# Editions whose 1.28 runs as it is: the European CUSA00063 1.28 has the very same eboot.bin, sce_module and .farc
+# files as the US one (byte for byte); only some French and Portuguese voice files, sku.txt, the FMOD SPU plugins
+# and the chunk maps differ (game_files.REGION_FILES). The eboot finds its edition from param.sfo at run time.
+SUPPORTED_IDS = {TITLE_ID: N_('US'), 'CUSA00063': N_('European (PAL)')}
+# Its DLC is sold under the add-on service CUSA00762 (param.sfo SERVICE_ID_ADDCONT_ADD_1 = EP9000-CUSA00762_00).
+DLC_TITLE_IDS = {TITLE_ID, 'CUSA00063', 'CUSA00762'}
 # LittleBigPlanet 3's other editions, by the region the game's own table (eboot 0x12c8718) gives each: A the Americas,
 # E Europe, J Japan, K and C Asia. CUSA00810 sold with Latin American Spanish and Brazilian Portuguese.
-OTHER_LBP3 = {'CUSA00063': N_('European (PAL)'), 'CUSA00762': N_('European (PAL)'), 'CUSA01072': N_('European (PAL)'),
+OTHER_LBP3 = {'CUSA00762': N_('European (PAL)'), 'CUSA01072': N_('European (PAL)'),
               'CUSA00810': N_('Latin American'), 'CUSA01077': N_('North American'), 'CUSA00601': N_('Japanese'),
               'CUSA00693': N_('Asian'), 'CUSA00738': N_('Asian')}
 # The update folder beside the game when the player didn't choose one (shadPS4's and PS4 dump tools' names).
@@ -159,7 +165,7 @@ class Folder:
             return t('No eboot.bin in this folder. Choose the folder it was extracted to (with eboot.bin inside).')
         if not self.title_id:
             return t('No param.sfo found (sce_sys or Sc0). The extraction looks incomplete.')
-        if self.title_id != TITLE_ID:
+        if self.title_id not in SUPPORTED_IDS:
             if self.title_id in OTHER_LBP3:
                 return t('This is the {region} version of LittleBigPlanet 3 ({id}). LBPPC needs the US version of '
                          'the game ({us}): other versions won\'t run.', region=t(OTHER_LBP3[self.title_id]),
@@ -229,6 +235,9 @@ class Plan:
             if update.version != VERSION:
                 raise SetupError(t('That update is version {version}. LBPPC needs the 1.28 update.',
                                    version=update.version.lstrip('0')))
+            if update.title_id != game.title_id:
+                raise SetupError(t('That update is for {update}, but the game is {game}. Choose the update of the '
+                                   'same edition.', update=update.title_id, game=game.title_id))
         self.update = update
         targets = {}
         if update:
@@ -377,7 +386,7 @@ def dlc_at(folder):
     if not re.fullmatch(r'[A-Z0-9]{16}', dlc.label):
         return None, t('{folder}: its param.sfo has no DLC label (CONTENT_ID {id}).', folder=folder.name,
                        id=dlc.content_id or '-')
-    if dlc.title_id != TITLE_ID:
+    if dlc.title_id not in DLC_TITLE_IDS:
         region = OTHER_LBP3.get(dlc.title_id)
         return None, (t('{folder} is DLC for the {region} version of LittleBigPlanet 3 ({id}). LBPPC needs the US '
                         'version ({us}), and its DLC.', folder=folder.name, region=t(region), id=dlc.title_id,
@@ -523,7 +532,7 @@ def run(plan, progress=None, cancelled=lambda: False):
 def verify(root):
     """After setup: the folder reads as LittleBigPlanet 3 1.28."""
     folder = Folder(root)
-    if folder.title_id != TITLE_ID or folder.version != VERSION or not (Path(root) / 'eboot.bin').is_file():
+    if folder.title_id not in SUPPORTED_IDS or folder.version != VERSION or not (Path(root) / 'eboot.bin').is_file():
         raise SetupError(t('After setup the game reads as version {version}, not 1.28. Try setup again; if it keeps '
                            'happening, ask on the Discord.', version=folder.version or '?'))
 

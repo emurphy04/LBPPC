@@ -126,13 +126,20 @@ def find_saves(folder):
     return list(found.values())
 
 
-def save_root(user_dir):
-    return Path(user_dir) / 'savedata' / '1' / TITLE_ID
+def game_title(game_folder):
+    """The save folder name the runtime gives this game (probe.c: INSTALL_DIR_SAVEDATA, else TITLE_ID), so a save
+    imported for the European edition (CUSA00063) lands where it reads its saves. TITLE_ID when unknown."""
+    sfo = read_sfo(Path(game_folder) / 'sce_sys' / 'param.sfo') if game_folder else {}
+    return str(sfo.get('INSTALL_DIR_SAVEDATA') or sfo.get('TITLE_ID') or TITLE_ID)
 
 
-def import_saves(saves, user_dir):
+def save_root(user_dir, title=TITLE_ID):
+    return Path(user_dir) / 'savedata' / '1' / title
+
+
+def import_saves(saves, user_dir, title=TITLE_ID):
     """Copies `saves` in, LBPPC's own saves of the same kind moved to a backup first. Returns the backup folder."""
-    root = save_root(user_dir)
+    root = save_root(user_dir, title)
     root.mkdir(parents=True, exist_ok=True)
     backup = Path(user_dir) / 'save_backups' / datetime.now().strftime('%Y%m%d-%H%M%S')
     for save in saves:
