@@ -402,6 +402,27 @@ void DataBase::Clear() {
     LOG_WARNING(Render, "Pipeline cache cleared ({} files): it is rebuilt for this build", removed);
 }
 
+void DataBase::Flush() {
+    if (!opened) {
+        return;
+    }
+    // The writer thread runs requests in order: once this one has run, the earlier ones have.
+    // (It takes each request's future itself, so the signal is a promise of its own.)
+    auto signal = std::make_shared<std::promise<void>>();
+    auto done = signal->get_future();
+    auto marker = std::packaged_task<void()>{[signal] { signal->set_value(); }};
+    {
+        std::scoped_lock lock{m_request};
+        req_queue.emplace(std::move(marker));
+    }
+    {
+        std::scoped_lock lk{submit_mutex};
+        ++num_requests;
+        request_cv.notify_one();
+    }
+    done.wait();
+}
+
 void DataBase::FinishPreload() {
     if (EmulatorSettings.IsPipelineCacheArchived()) {
         mz_zip_writer_init_from_reader(&zip_ar, cache_path.string().c_str());

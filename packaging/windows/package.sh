@@ -59,6 +59,12 @@ if [[ -f out/lbppc_dlss.dll && -f out/nvngx_dlss.dll ]]; then
 else
     echo 'No DLSS in this package (packaging/windows/import_dlss.py)' >&2
 fi
+# The shader list (tools/shader_list.py): recorded pipelines and where their shaders are, no game code.
+if [[ -f out/lbp3-shaders.bin ]]; then
+    cp out/lbp3-shaders.bin "$dest/bin/"
+else
+    echo 'No shader list in this package (tools/shader_list.py)' >&2
+fi
 cp -r scripts "$dest/"
 # The red-zone sites (scripts/link_modules.py reads them from patches/ beside scripts/): without them the crash fix
 # for newer Intel CPUs and Wine is skipped without a word.

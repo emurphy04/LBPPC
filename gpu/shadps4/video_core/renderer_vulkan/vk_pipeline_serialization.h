@@ -17,5 +17,10 @@ void RegisterShaderMeta(const Shader::Info& info,
                         const std::optional<Shader::Gcn::FetchShaderData>& fetch_shader_data,
                         const Shader::StageSpecialization& spec, size_t perm_hash, size_t perm_idx);
 void RegisterShaderBinary(std::vector<u32>&& spv, u64 pgm_hash, size_t perm_idx);
+/// lbppc: a vertex shader's attribute V#s as its translation read them from the game's memory,
+/// beside its metadata, so the shader list can translate it again without the game.
+void RegisterAttribSharps(const Shader::Info& info,
+                          const std::optional<Shader::Gcn::FetchShaderData>& fetch_shader_data,
+                          size_t perm_hash);
 
 } // namespace Vulkan

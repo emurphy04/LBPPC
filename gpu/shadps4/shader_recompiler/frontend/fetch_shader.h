@@ -3,7 +3,10 @@
 
 #pragma once
 
+#include <array>
+#include <cstring>
 #include <optional>
+#include <utility>
 #include <vector>
 #include "common/types.h"
 #include "shader_recompiler/info.h"
@@ -36,8 +39,12 @@ struct VertexAttribute {
         return static_cast<InstanceIdType>(instance_data);
     }
 
-    constexpr AmdGpu::Buffer GetSharp(const Shader::Info& info) const noexcept {
-        auto buffer = info.ReadUdReg<AmdGpu::Buffer>(sgpr_base, dword_offset);
+    /// lbppc: the V# as the game's memory holds it, or, while the first-start shader build
+    /// translates a recorded vertex shader, as it was recorded (vk_pipeline_serialization.cpp).
+    AmdGpu::Buffer RawSharp(const Shader::Info& info) const noexcept;
+
+    AmdGpu::Buffer GetSharp(const Shader::Info& info) const noexcept {
+        auto buffer = RawSharp(info);
         buffer.base_address += inst_offset;
         if (data_format) {
             buffer.data_format = data_format;
@@ -71,5 +78,29 @@ struct FetchShaderData {
 const u32* GetFetchShaderCode(const Info& info, u32 sgpr_base);
 
 std::optional<FetchShaderData> ParseFetchShader(const Shader::Info& info);
+
+/// lbppc: the first-start shader build (vk_pipeline_serialization.cpp) translates a recorded shader
+/// without the game running, so there is no fetch shader in memory: ParseFetchShader returns the
+/// recorded result instead while this is set (this thread only).
+inline thread_local const std::optional<FetchShaderData>* g_fetch_shader_override = nullptr;
+
+/// lbppc: likewise the vertex attributes' V#s as recorded (key: sgpr_base << 8 | dword_offset).
+using RecordedSharps = std::vector<std::pair<u32, std::array<u32, 4>>>;
+inline thread_local const RecordedSharps* g_attrib_sharp_override = nullptr;
+
+inline AmdGpu::Buffer VertexAttribute::RawSharp(const Shader::Info& info) const noexcept {
+    if (g_attrib_sharp_override) {
+        AmdGpu::Buffer buffer{};
+        const u32 key = u32(sgpr_base) << 8 | dword_offset;
+        for (const auto& [k, raw] : *g_attrib_sharp_override) {
+            if (k == key) {
+                std::memcpy(&buffer, raw.data(), sizeof(buffer));
+                break;
+            }
+        }
+        return buffer;
+    }
+    return info.ReadUdReg<AmdGpu::Buffer>(sgpr_base, dword_offset);
+}
 
 } // namespace Shader::Gcn

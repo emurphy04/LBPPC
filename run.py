@@ -347,6 +347,13 @@ def main(argv):
     # Beta: frame rate, pacing and where each frame's time went, every 5 s in the log (a few KB a minute), so a
     # player's slow level can be told apart (the game's own work, the GPU, shader compiles, stalls).
     env.setdefault('BB_FRAME_STATS', '1')
+    # The shader list (tools/shader_list.py): pipelines recorded in play, built from the player's own game files at the
+    # first start (and after an update clears the cache), so the game doesn't freeze the first time it uses them.
+    shader_list = HERE / 'bin' / 'lbp3-shaders.bin'
+    if not shader_list.is_file():
+        shader_list = OUT / 'lbp3-shaders.bin'
+    if shader_list.is_file():
+        env.setdefault('BB_SHADER_LIST', str(shader_list))
     # LBPPC_PROFILE=1 (Debug page: "Slow-frame profiler", off by default): where the game's main thread was during
     # each slow frame, and CPU per thread ("Profile:" and "Threads:" lines). Measured to cost nothing visible.
     # Guest writes into GPU-written memory skip the copy back (buffer_cache.cpp): faster in busy levels, nothing

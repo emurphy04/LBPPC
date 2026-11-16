@@ -8,10 +8,12 @@
 #include <filesystem>
 #include <thread>
 #include <unordered_map>
+#include <unordered_set>
 #include <shared_mutex>
 #include <variant>
 #include <boost/container/static_vector.hpp>
 #include <tsl/robin_map.h>
+#include "shader_recompiler/frontend/fetch_shader.h"
 #include "shader_recompiler/profile.h"
 #include "shader_recompiler/recompiler.h"
 #include "shader_recompiler/specialization.h"
@@ -212,6 +214,29 @@ private:
     struct PreloadJob;
     std::vector<PreloadJob>* preload_jobs{};
     u32 BuildPreloaded(std::vector<PreloadJob>& jobs); ///< the number that failed
+
+    /// lbppc: the shader list shipped with LBPPC (pipelines recorded in play: their state and
+    /// shader metadata, no game code): the shaders it names are translated from the player's own
+    /// game files into the cache, once per list, so the preload builds them before play.
+    void InstallShaderList();
+
+    /// lbppc: the list's shaders and pipelines that could not be prepared at the start, because
+    /// the game makes the shader's code in memory (its vertex shaders are in no file). When the
+    /// game first uses such a program, its recorded permutations are translated from the code
+    /// in memory (InstallListedProgram), at their recorded indices, and the list's pipelines
+    /// that are then complete are built in the background (BuildListedPipelines).
+    std::unordered_map<u64, std::vector<std::vector<u8>>> list_metas; ///< by program hash
+    std::vector<std::vector<u8>> list_keys;
+    std::unordered_set<u64> list_ready; ///< permutation hashes with metadata and SPIR-V cached
+    bool list_build_pending = false;
+    std::filesystem::path list_code_dir; ///< the game's code of such programs, kept by the player
+    std::unordered_map<u64, Shader::Gcn::RecordedSharps> list_sharps; ///< by permutation hash
+    std::vector<u32> TranslateRecorded(std::span<const u32> code, Shader::Info& recorded,
+                                       Shader::StageSpecialization& spec,
+                                       const Shader::Gcn::RecordedSharps* sharps);
+    void InstallListedProgram(const Shader::ShaderParams& params);
+    void BuildListedPipelines();
+    void SubmitBackgroundBuild(GraphicsPipeline* pipeline); ///< on the build workers
 
     std::filesystem::path driver_cache_file;
     std::atomic<u32> driver_cache_changes{}; ///< pipelines made since the last save

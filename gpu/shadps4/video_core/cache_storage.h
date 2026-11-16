@@ -43,6 +43,10 @@ public:
 
     void ForEachBlob(BlobType type, const std::function<void(std::vector<u8>&& data)>& func);
 
+    /// lbppc: waits until every Save so far is written (the first-start shader build saves
+    /// blobs that the preload then reads back).
+    void Flush();
+
     /// bbport: the file for the Vulkan driver's pipeline cache, beside the blobs. It belongs to
     /// the GPU and driver, not to a build: Clear() keeps it.
     [[nodiscard]] std::filesystem::path DriverCachePath() const;

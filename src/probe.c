@@ -2661,6 +2661,15 @@ int main(int argc, char **argv) {
     if (app0 && system_files) snprintf(sys_dir,sizeof(sys_dir),"%s",system_files);
     if (app0) {
         runtime_file_configure(app0, user_dir ? user_dir : "user");
+        /* The GPU side's first-start shader build reads the game's archives (vk_pipeline_serialization.cpp): the
+           update's folder first when it has one of its own (its files replace the game's), then the game's. */
+#ifdef _WIN32
+        _putenv_s("BB_APP0", app0);
+        _putenv_s("BB_APP0_UPDATE", update ? update : "");
+#else
+        setenv("BB_APP0", app0, 1);
+        setenv("BB_APP0_UPDATE", update ? update : "", 1);
+#endif
         if (system_files) {
             runtime_file_mount("/app0/sce_sys",system_files);
             runtime_file_mount("/hostapp/sce_sys",system_files);

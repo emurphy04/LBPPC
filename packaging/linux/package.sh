@@ -77,6 +77,12 @@ glibc=$(objdump -T out/LBPPC-Game out/gpu/libbbgpu.so "$dest"/lib/*.so* 2>/dev/n
         grep -o 'GLIBC_2\.[0-9]*' | sort -t. -k2 -n -u | tail -1)
 echo "Needs glibc: $glibc"
 
+# The shader list (tools/shader_list.py): recorded pipelines and where their shaders are, no game code.
+if [[ -f out/lbp3-shaders.bin ]]; then
+    cp out/lbp3-shaders.bin "$dest/bin/"
+else
+    echo 'No shader list in this package (tools/shader_list.py)' >&2
+fi
 cp -r scripts "$dest/"
 cp tools/shadnet_account.py tools/refresh_account.py "$dest/tools/"
 # The default controls: packaging/input.ini (the working copy, input.ini, is the developer's and is not in git).

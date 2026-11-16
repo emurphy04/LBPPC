@@ -253,7 +253,19 @@ struct Info : InfoPersistent {
         bnd.user_data += ud_mask.NumRegs();
     }
 
+    /// lbppc: set while the first-start shader build translates a recorded shader: no game memory
+    /// to walk, so the flattened buffer is the recorded one (the resource descriptors as they
+    /// were when the shader was recorded; the translation reads buffer formats from them).
+    static inline thread_local const std::vector<u32>* offline_flat_buf = nullptr;
+
     void RefreshFlatBuf() {
+        if (offline_flat_buf) {
+            flattened_ud_buf.assign(srt_info.flattened_bufsize_dw, 0);
+            std::copy_n(offline_flat_buf->begin(),
+                        std::min(offline_flat_buf->size(), flattened_ud_buf.size()),
+                        flattened_ud_buf.begin());
+            return;
+        }
         flattened_ud_buf.resize(srt_info.flattened_bufsize_dw);
         ASSERT(user_data.size() <= NUM_USER_DATA_REGS);
         std::memcpy(flattened_ud_buf.data(), user_data.data(), user_data.size_bytes());

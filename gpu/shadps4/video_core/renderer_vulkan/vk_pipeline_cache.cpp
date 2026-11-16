@@ -417,6 +417,13 @@ const GraphicsPipeline* Usable(const GraphicsPipeline* pipeline) {
 }
 } // namespace
 
+void PipelineCache::SubmitBackgroundBuild(GraphicsPipeline* pipeline) {
+    if (!build_workers) {
+        build_workers = std::make_unique<BuildWorkers>(async_done);
+    }
+    build_workers->Submit(pipeline);
+}
+
 void PipelineCache::FinishAsyncBuilds() {
     async_seen = async_done.load(std::memory_order_acquire);
     std::erase_if(async_builds, [this](AsyncBuild& build) {
@@ -608,6 +615,9 @@ const GraphicsPipeline* PipelineCache::GetGraphicsPipeline(const DrawIndirectPar
     used_prepared = nullptr;
     if (!async_builds.empty() && async_done.load(std::memory_order_acquire) != async_seen) {
         FinishAsyncBuilds();
+    }
+    if (list_build_pending) {
+        BuildListedPipelines(); // lbppc: the shader list's pipelines a new program completed
     }
     if (prepared) {
         if (const auto* pipeline = TryPreparedPipeline(*prepared)) {
@@ -1102,6 +1112,12 @@ PipelineCache::Result PipelineCache::GetProgram(PipelineSelection& sel, HwStage 
     }
 
     auto it_pgm = program_cache.find(params.hash); // this thread is the only writer
+    if (it_pgm == program_cache.end() && !list_metas.empty() && list_metas.contains(params.hash)) {
+        // lbppc: a program of the shader list, first used: its recorded permutations first, at
+        // their recorded indices, so the list's pipelines can use them.
+        InstallListedProgram(params);
+        it_pgm = program_cache.find(params.hash);
+    }
     if (it_pgm == program_cache.end()) {
         auto new_program = std::make_unique<Program>(hw_stage, sw_stage, params);
         auto start = binding;
@@ -1111,6 +1127,7 @@ PipelineCache::Result PipelineCache::GetProgram(PipelineSelection& sel, HwStage 
         const auto perm_hash = HashCombine(params.hash, 0);
 
         RegisterShaderMeta(new_program->info, spec.fetch_shader_data, spec, perm_hash, 0);
+        RegisterAttribSharps(new_program->info, spec.fetch_shader_data, perm_hash);
         new_program->AddPermut(module, std::move(spec));
         new_program->info_template = std::make_unique<Shader::Info>(new_program->info);
         Program* program = new_program.get();
@@ -1152,6 +1169,7 @@ PipelineCache::Result PipelineCache::GetProgram(PipelineSelection& sel, HwStage 
         module = CompileModule(new_info, runtime_info, params.code, perm_idx, binding);
 
         RegisterShaderMeta(info, spec.fetch_shader_data, spec, perm_hash, perm_idx);
+        RegisterAttribSharps(info, spec.fetch_shader_data, perm_hash);
         std::unique_lock lk{programs_mutex};
         program->AddPermut(module, std::move(spec));
     } else {
