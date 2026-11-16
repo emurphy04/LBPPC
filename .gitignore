@@ -53,5 +53,7 @@ fsr4_shaders/
 
 # Created by the runtime at start
 input.ini
+# ... except the default controls the packages ship
+!packaging/input.ini
 lbppc.ini
 bbport.ini

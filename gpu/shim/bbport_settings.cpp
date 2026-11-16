@@ -104,7 +104,11 @@ void Set(Values& v, const std::string& key, const std::string& value) {
     } else if (key == "reactive_max") {
         v.reactive_max = Clamp(f, 0.0f, 1.0f);
     } else if (key == "debug_view") {
-        v.debug_view = std::clamp(i, 0, DebugViewCount - 1);
+        // lbppc: a debug view (motion vectors) lasts only while the game runs. Saved, it came back on every start:
+        // a player who ticked it, or opened the menu with L3+R3 by accident, saw the game as red and green edges
+        // on black from then on (#24). (void)i: the saved value is ignored.
+        (void)i;
+        v.debug_view = DebugNone;
     } else if (key == "mute_unfocused") {
         v.mute_unfocused = i != 0;
     } else if (key == "fsr4_auto_exposure") {

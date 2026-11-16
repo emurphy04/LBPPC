@@ -209,6 +209,9 @@ public:
     /// Reuploads image contents.
     void RefreshImage(Image& image);
 
+    /// lbppc: colour targets stacked back to back in the memory of a taller sampled image, copied into its rows.
+    void GatherStackedTargets(ImageId image_id);
+
     /// Retrieves the sampler that matches the provided S# descriptor.
     /// extra_lod_bias: bbport, added to the S#'s bias (reduced scene rendering).
     [[nodiscard]] vk::Sampler GetSampler(const AmdGpu::Sampler& sampler,
@@ -454,6 +457,11 @@ private:
     Common::LeastRecentlyUsedCache<ImageId, u64> lru_cache;
     Common::LeastRecentlyUsedCache<u64, u64> sampler_lru_cache;
     const bool readback_linear_images;
+    const u64 readback_linear_max_pixels; // 0: any size
+    bool ReadbackSizeOk(const ImageInfo& info) const {
+        return readback_linear_max_pixels == 0 ||
+               u64(info.size.width) * info.size.height <= readback_linear_max_pixels;
+    }
     PageTable page_table;
     std::mutex mutex;
     // bbport: FindImage results for unchanged image registrations (guarded by `mutex`).

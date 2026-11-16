@@ -8,8 +8,13 @@ game content, only these fingerprints.
 
 sce_sys is left out: its files depend on the account and the tool the game was extracted with.
 
+Executables (eboot.bin, .prx, .sprx) are kept by dumps either in the PS4's own wrapper or as a plain ELF: the same
+code, a different file size. Each one's list entry also has a fingerprint of the code the game loads (its loaded
+segments, the same in both forms), so either form passes. The European edition has the same eboot.bin and modules.
+
 usage: python scripts/game_files.py <game folder> [--full]
        python scripts/game_files.py --make <known-good game folder>     (writes the list)
+       python scripts/game_files.py --add-code <the same folder>        (adds the executables' code fingerprints)
 """
 import gzip
 import hashlib
@@ -60,6 +65,55 @@ def edition(folder):
     return ''
 
 
+EXECUTABLE = ('eboot.bin', '.prx', '.sprx')
+LOADED = (1, 2, 0x61000000, 0x61000010)  # PT_LOAD, PT_DYNAMIC, the PS4's dynamic and relro segments
+
+
+def executable(rel):
+    return rel.lower().endswith(EXECUTABLE)
+
+
+def code_fingerprint(path):
+    """SHA-256 of the segments the game loads (in program-header order, with their addresses), whether the file is
+    the PS4 wrapper or a plain ELF; None if it is neither."""
+    try:
+        import prepare
+        elf, _header, ph, _segments, _missing = prepare.parse_self(Path(path).read_bytes())
+    except (OSError, ValueError, ImportError, struct.error):
+        return None
+    digest = hashlib.sha256()
+    for p in ph:
+        if p['type'] in LOADED and p['filesz']:
+            digest.update(struct.pack('<IQQ', p['type'], p['vaddr'], p['filesz']))
+            digest.update(bytes(elf[p['offset']:p['offset'] + p['filesz']]))
+    return digest.hexdigest()
+
+
+def add_code(folder):
+    """Adds the code fingerprints to the list from the known-good folder it was made from (each executable's size
+    and SHA-256 must still match its entry)."""
+    folder = Path(folder)
+    with gzip.open(MANIFEST, 'rt', encoding='utf-8') as f:
+        data = json.load(f)
+    added = 0
+    for entry in data['files']:
+        rel, size, sha = entry[:3]
+        if not executable(rel):
+            continue
+        path = folder / rel
+        if path.stat().st_size != size or hashlib.sha256(path.read_bytes()).hexdigest() != sha:
+            raise SystemExit(f'{rel}: not the file the list was made from')
+        code = code_fingerprint(path)
+        if not code:
+            raise SystemExit(f'{rel}: not a PS4 executable')
+        del entry[3:]
+        entry.append(code)
+        added += 1
+    with gzip.open(MANIFEST, 'wt', encoding='utf-8') as out:
+        json.dump(data, out, separators=(',', ':'))
+    return added
+
+
 def regional(rel, title):
     return rel.lower().startswith(REGION_FILES.get(title, ()))
 
@@ -76,7 +130,10 @@ def make(folder):
         with open(path, 'rb') as f:
             for block in iter(lambda: f.read(8 << 20), b''):
                 digest.update(block)
-        files.append([rel, path.stat().st_size, digest.hexdigest()])
+        entry = [rel, path.stat().st_size, digest.hexdigest()]
+        if executable(rel):
+            entry.append(code_fingerprint(path))
+        files.append(entry)
     MANIFEST.parent.mkdir(parents=True, exist_ok=True)
     with gzip.open(MANIFEST, 'wt', encoding='utf-8') as out:
         json.dump({'game': 'CUSA00473', 'version': '01.28', 'files': files}, out, separators=(',', ':'))
@@ -94,9 +151,17 @@ def manifest():
     return _LOADED
 
 
+UPDATE_FILE = 'patch_001.farc'  # the 1.28 update's own archive (1.2 GB): never in the game without the update
+
+
+def gb(size):
+    return f'{size / 1e9:.1f}'
+
+
 class Result:
     def __init__(self):
         self.missing, self.wrong_size, self.damaged, self.checked = [], [], [], 0
+        self.expected_bytes = self.present_bytes = 0  # the list's total; what of it is there at the right size
 
     @property
     def ok(self):
@@ -107,6 +172,16 @@ class Result:
         if self.ok:
             return (t('All {count} game files checked: they match LittleBigPlanet 3 1.28.', count=self.checked) if full
                     else t('All {count} game files are there.', count=self.checked))
+        # What went wrong, in one sentence, before the counts: the update not there at all, or a copy cut short.
+        if UPDATE_FILE in self.missing:
+            return t("The 1.28 update's files aren't in your game (missing: {count}, among them patch_001.farc, "
+                     '1.2 GB). Choose the complete 1.28 update folder: about 1.3 GB, with eboot.bin and '
+                     'patch_001.farc inside.', count=len(self.missing))
+        if self.missing and self.present_bytes < self.expected_bytes * 0.97:
+            return t('Your copy has {have} GB of the {want} GB LittleBigPlanet 3 1.28 has (missing: {count}, for '
+                     'example {file}). The extraction stopped partway or skipped files: extract the game again, '
+                     'and check there is enough free space for it.', have=gb(self.present_bytes),
+                     want=gb(self.expected_bytes), count=len(self.missing), file=self.missing[0])
         parts = []
         if self.missing:
             parts.append(t('{count} missing', count=len(self.missing)))
@@ -128,12 +203,15 @@ def check(folder, full=False, progress=None, cancelled=lambda: False, update=Non
     result = Result()
     entries = manifest()
     title = edition(update or folder)
-    total = sum(size for _rel, size, _sha in entries) if full else 0
+    total = sum(entry[1] for entry in entries) if full else 0
     done = 0
-    for rel, size, sha in entries:
+    for entry in entries:
+        rel, size, sha = entry[:3]
+        code = entry[3] if len(entry) > 3 else None
         if cancelled():
             return None
         result.checked += 1
+        result.expected_bytes += size
         path = update / rel if update and (update / rel).is_file() else folder / rel
         try:
             actual = path.stat().st_size
@@ -141,12 +219,21 @@ def check(folder, full=False, progress=None, cancelled=lambda: False, update=Non
             result.missing.append(rel)
             continue
         if regional(rel, title):  # this edition's own version of the file: only its presence is checked
+            result.present_bytes += size
+            done += size
+            continue
+        if code and actual != size:  # an executable in the other form: its code decides
+            if code_fingerprint(path) != code:
+                result.damaged.append(rel)
+            else:
+                result.present_bytes += size
             done += size
             continue
         if actual != size:
             result.wrong_size.append(rel)
             done += size
             continue
+        result.present_bytes += size
         if full:
             digest = hashlib.sha256()
             try:
@@ -161,14 +248,16 @@ def check(folder, full=False, progress=None, cancelled=lambda: False, update=Non
             except OSError:
                 result.damaged.append(rel)
                 continue
-            if digest.hexdigest() != sha:
+            if digest.hexdigest() != sha and not (code and code_fingerprint(path) == code):
                 result.damaged.append(rel)
     return result
 
 
 if __name__ == '__main__':
     args = [a for a in sys.argv[1:] if not a.startswith('--')]
-    if '--make' in sys.argv and args:
+    if '--add-code' in sys.argv and args:
+        print(f'{add_code(args[0])} executables fingerprinted in {MANIFEST}')
+    elif '--make' in sys.argv and args:
         print(f'{make(args[0])} files listed in {MANIFEST}')
     elif args:
         full = '--full' in sys.argv

@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 // Exercises the production target/resolve path on Vulkan (Lavapipe works, no game/window).
-#include <cassert>
 #include <cmath>
 #include <cstdio>
 #include <cstring>
@@ -11,6 +10,10 @@
 #include "video_core/renderer_vulkan/vk_scene_resolution.h"
 #include "video_core/texture_cache/blit_helper.h"
 #include <vk_mem_alloc.h>
+// Renderer headers are built as the GPU library builds them (NDEBUG: vulkan.hpp's dispatcher has a
+// debug-only member, so the layouts must match); this test's own assert checks are enabled after them.
+#undef NDEBUG
+#include <assert.h>
 
 int main() {
     using namespace Vulkan;

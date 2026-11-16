@@ -26,8 +26,8 @@
 #include "fg401_support.h"
 #include "fsr411_support.h"
 #include "fsr411_vulkan_support.h"
-#include "video_core/renderer_vulkan/vk_low_latency.h"
 #endif
+#include "video_core/renderer_vulkan/vk_low_latency.h"
 
 namespace Vulkan {
 

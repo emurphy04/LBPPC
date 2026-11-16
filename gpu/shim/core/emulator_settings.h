@@ -89,7 +89,18 @@ public:
     bool IsPipelineCacheArchived() { return false; }
     bool IsPipelineCacheEnabled() { static const auto value = Flag("BB_PIPELINE_CACHE", true); return value; }
     bool IsRcasEnabled() { static const auto value = Flag("BB_RCAS", true); return value; }
-    bool IsReadbackLinearImagesEnabled() { static const auto value = Flag("BB_READBACK_LINEAR", false); return value; }
+    // lbppc: linear GPU images copied back to guest memory, where the CPU reads them: LBP3's photos (640x360) and
+    // its costume and level icons are drawn on the GPU and read by the CPU to encode as JPEG; without this they
+    // came out black (#14, #29). On by default for images up to 1280x720 (larger linear targets would cost
+    // speed for nothing); BB_READBACK_LINEAR=1 every size, =0 none.
+    bool IsReadbackLinearImagesEnabled() { static const auto value = Flag("BB_READBACK_LINEAR", true); return value; }
+    u64 ReadbackLinearMaxPixels() {
+        static const u64 value = [] {
+            const char* v = std::getenv("BB_READBACK_LINEAR");
+            return v && v[0] == '1' ? u64(0) : u64(1280) * 720;
+        }();
+        return value;
+    }
     bool IsRenderdocEnabled() { return false; }
     bool IsShaderCollect() { return false; }
     bool IsUserfaultfdTracking() { return false; }

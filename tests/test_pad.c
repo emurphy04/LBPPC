@@ -11,6 +11,9 @@ static int capture;
 void bbgpu_input_note_read(void) {}
 void bbgpu_mouse_frame(BbMouseFrame *out) { memset(out,0,sizeof(*out)); }
 int bbgpu_overlay_captures_input(void) { return capture; }
+/* The text box (IME) dialog: never open in these tests (runtime_services.c, the game's window). */
+int runtime_ime_running(void) { return 0; }
+void bbgpu_text_input_finish(int accept) { (void)accept; }
 uintptr_t runtime_lookup(const RuntimeExport *table, size_t count, const char *name) {
     (void)table; (void)count; (void)name;
     return 0;

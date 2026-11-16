@@ -799,6 +799,12 @@ void EstablishConnection(s32 transport_id, bool peer_activated_hint) {
 void ProcessPendingActivations() {
     std::vector<NpSignaling::PendingActivation> work;
     std::vector<NpSignaling::PendingActivation> retry;
+    std::vector<NpSignaling::PendingActivation> unreachable;
+    // lbppc: asked again after 0.25, 0.5, 1, 2, 4, 8 s, then every 10 s; given up after 12 tries (about 66 s).
+    constexpr u32 kMaxResolveAttempts = 12;
+    const s64 now_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                           std::chrono::steady_clock::now().time_since_epoch())
+                           .count();
     {
         NpSignaling::SignalingMutexGuard lock;
         if (NpHandler::GetInstance().GetSignalingState().pending_activations.empty()) {
@@ -807,7 +813,11 @@ void ProcessPendingActivations() {
         work.swap(NpHandler::GetInstance().GetSignalingState().pending_activations);
     }
 
-    for (const NpSignaling::PendingActivation& act : work) {
+    for (NpSignaling::PendingActivation& act : work) {
+        if (act.next_try_ms > now_ms) {
+            retry.push_back(act);
+            continue;
+        }
         s32 transport_id = 0;
         {
             NpSignaling::SignalingMutexGuard lock;
@@ -830,6 +840,18 @@ void ProcessPendingActivations() {
             LOG_DEBUG(Lib_NpSignaling,
                       "Signaling activation pending: conn={} peer='{}' resolve failed", act.conn_id,
                       act.peer_online_id);
+            if (++act.attempts >= kMaxResolveAttempts) {
+                unreachable.push_back(act);
+                continue;
+            }
+            const s64 pause = std::min<s64>(s64(250) << std::min<u32>(act.attempts - 1, 6), 10000);
+            act.next_try_ms = now_ms + pause;
+            if (act.attempts == 1) {
+                LOG_INFO(Lib_NpSignaling,
+                         "Signaling: no address for '{}' yet (not a friend, or offline); asking again "
+                         "with growing pauses",
+                         act.peer_online_id);
+            }
             retry.push_back(act);
             continue;
         }
@@ -871,6 +893,13 @@ void ProcessPendingActivations() {
         NpHandler::GetInstance().GetSignalingState().pending_activations.insert(
             NpHandler::GetInstance().GetSignalingState().pending_activations.end(), retry.begin(),
             retry.end());
+    }
+    // Given up: the game is told the peer is unreachable (its "couldn't connect"), as for a handshake timeout.
+    for (const NpSignaling::PendingActivation& act : unreachable) {
+        LOG_INFO(Lib_NpSignaling, "Signaling: '{}' unreachable after {} tries; connection {} ended",
+                 act.peer_online_id, act.attempts, act.conn_id);
+        CloseConnectionAndDispatchDead(act.conn_id, ORBIS_NP_SIGNALING_ERROR_PEER_UNREACHABLE,
+                                       ORBIS_NP_MATCHING2_SIGNALING_ERROR_TIMEOUT);
     }
 }
 

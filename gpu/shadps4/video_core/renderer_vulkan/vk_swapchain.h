@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <memory>
 #include <mutex>
 #include <vector>
 #include "common/types.h"
@@ -110,6 +111,17 @@ private:
     /// Sets the surface properties according to device capabilities
     void SetSurfaceProperties();
 
+    /// lbppc: a swapchain the driver accepts after it refused `info` (more conservative ones in turn)
+    vk::SwapchainKHR CreateFallback(vk::SwapchainCreateInfoKHR info, vk::Result first);
+    // lbppc: presenting without a Vulkan swapchain (Windows), when the driver refuses every one: the images are
+    // the swapchain's own, and each frame is copied out and shown through DXGI (or GDI). vk_swapchain.cpp.
+    struct HostPresent;
+    bool StartHostPresent(const char* why);
+    void CreateHostImages();
+    bool AcquireHostImage();
+    bool PresentHost(vk::Queue queue);
+    void DestroyHostImages();
+
     /// Destroys current swapchain resources
     void Destroy();
 
@@ -142,6 +154,7 @@ private:
     bool needs_recreation = true;
     bool needs_hdr = false;    // The game requested HDR swapchain
     bool supports_hdr = false; // SC supports HDR output
+    std::unique_ptr<HostPresent> host_present; // set once presenting without a Vulkan swapchain
 };
 
 } // namespace Vulkan

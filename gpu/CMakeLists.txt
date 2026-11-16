@@ -201,7 +201,11 @@ add_dependencies(bbgpu host_shaders)
 # 529ceb3, with bbnet/vendor-changes.diff), as Awaken (Awakenchan/BloodBorneButPc) put them
 # together.
 # See bbnet/SHADNET-PORT.md.
-find_package(Protobuf CONFIG REQUIRED)
+find_package(Protobuf CONFIG QUIET)
+if(NOT Protobuf_FOUND)
+    # Ubuntu's protobuf (3.21) has no CMake package files: CMake's FindProtobuf gives the same targets.
+    find_package(Protobuf REQUIRED)
+endif()
 set(BBNET_VENDOR "${CMAKE_CURRENT_SOURCE_DIR}/bbnet/vendor/shadps4")
 set(SHADNET_PROTO_OUT "${CMAKE_CURRENT_BINARY_DIR}/shadnet_proto_gen")
 file(MAKE_DIRECTORY "${SHADNET_PROTO_OUT}")
@@ -236,12 +240,18 @@ target_link_libraries(bbnet PRIVATE OpenSSL::SSL OpenSSL::Crypto ZLIB::ZLIB)
 if (WIN32)
     target_sources(bbnet PRIVATE third_party/wepoll/wepoll.c)
     target_include_directories(bbnet PRIVATE third_party/wepoll)
-    find_path(MINIUPNPC_INCLUDE miniupnpc.h PATH_SUFFIXES miniupnpc REQUIRED)
-    find_library(MINIUPNPC_LIBRARY NAMES libminiupnpc.a miniupnpc REQUIRED)
-    target_include_directories(bbnet PRIVATE "${MINIUPNPC_INCLUDE}")
-    target_compile_definitions(bbnet PRIVATE MINIUPNP_STATICLIB)
-    target_link_libraries(bbnet PRIVATE "${MINIUPNPC_LIBRARY}")
 endif()
+# UPnP (net_upnp.h): static on Windows; the shared library elsewhere (libbbgpu.so is position-independent, and
+# the AppImage brings libminiupnpc along).
+find_path(MINIUPNPC_INCLUDE miniupnpc.h PATH_SUFFIXES miniupnpc REQUIRED)
+target_include_directories(bbnet PRIVATE "${MINIUPNPC_INCLUDE}")
+if (WIN32)
+    find_library(MINIUPNPC_LIBRARY NAMES libminiupnpc.a miniupnpc REQUIRED)
+    target_compile_definitions(bbnet PRIVATE MINIUPNP_STATICLIB)
+else()
+    find_library(MINIUPNPC_LIBRARY NAMES miniupnpc REQUIRED)
+endif()
+target_link_libraries(bbnet PRIVATE "${MINIUPNPC_LIBRARY}")
 target_compile_definitions(bbnet PRIVATE BOOST_ASIO_STANDALONE NDEBUG)
 target_compile_options(bbnet PRIVATE -Wno-deprecated-declarations -Wno-missing-field-initializers)
 target_link_libraries(bbnet PUBLIC Vulkan::Headers fmt::fmt Boost::headers magic_enum::magic_enum
@@ -274,6 +284,7 @@ target_link_libraries(bbgpu PRIVATE ffx-vulkan::portable ffx-vulkan::fsr4-v07-vu
     ffx-vulkan::fsr3-vk-framegeneration-3.1.6)
 target_link_libraries(bbgpu PUBLIC Vulkan::Headers fmt::fmt Boost::headers magic_enum::magic_enum
     tsl::robin_map GPUOpen::VulkanMemoryAllocator PkgConfig::XXHASH PkgConfig::SDL3 PkgConfig::FFMPEG miniz::miniz Zydis::Zydis sirit)
+target_include_directories(bbgpu PRIVATE third_party/xbyak)
 if (WIN32)
     # Guest code is entered with the System V ABI; NOMINMAX/WIN32_LEAN_AND_MEAN keep
     # <windows.h> out of the way of std::min/max and the Vulkan/SDL headers.
@@ -284,8 +295,7 @@ if (WIN32)
     set_source_files_properties(fsr411_dx12/fsr411_support.cpp PROPERTIES COMPILE_DEFINITIONS _WINDOWS)
     target_include_directories(bbgpu PRIVATE fsr411_dx12 fsr411_dx12/sdk/api/include fsr411_dx12/sdk/upscalers/include)
     target_compile_options(bbgpu PRIVATE -include ${CMAKE_CURRENT_SOURCE_DIR}/shim/bb_win_compat.h)
-    target_include_directories(bbgpu PRIVATE third_party/xbyak)
-    target_link_libraries(bbgpu PUBLIC Vulkan::Vulkan ws2_32 bcrypt ntdll synchronization winmm d3d12 dxgi dxguid)
+    target_link_libraries(bbgpu PUBLIC Vulkan::Vulkan ws2_32 bcrypt ntdll synchronization winmm d3d12 d3d11 dxgi dxguid gdi32 user32)
 else()
     target_link_libraries(bbgpu PUBLIC PkgConfig::X11)
 endif()
@@ -322,7 +332,7 @@ if (WIN32)
     target_include_directories(fsr411-compare PRIVATE ${SHADER_INCLUDE})
     add_dependencies(fsr411-compare host_shaders)
     add_executable(object-motion-cache-test EXCLUDE_FROM_ALL ../tests/test_object_motion_cache.cpp
-        ${BB_RUNTIME} ../src/compat_win.c)
+        ${BB_RUNTIME} ../src/compat_win.c ../tests/test_probe_stubs.c)
     target_include_directories(object-motion-cache-test PRIVATE .. ../src shim shadps4 third_party/gcn/include)
     target_link_libraries(object-motion-cache-test PRIVATE bbgpu atrac9 onecore bcrypt ws2_32 -pthread)
     # The PS4 range (64 GiB - 1 TiB) must stay free: no high-entropy ASLR for heaps and stacks.
@@ -341,6 +351,11 @@ add_executable(fsr411-requirements-test EXCLUDE_FROM_ALL ../tests/test_fsr411_re
 target_include_directories(fsr411-requirements-test PRIVATE shim)
 target_link_libraries(fsr411-requirements-test PRIVATE Vulkan::Headers)
 target_compile_options(fsr411-requirements-test PRIVATE -UNDEBUG -Wall -Wextra -Werror -Wno-missing-field-initializers)
+
+# lbppc: the photo JPEG codec (encode, decode, header, size limits): ninja -C out/gpu jpeg-test, then run it.
+add_executable(jpeg-test EXCLUDE_FROM_ALL ../tests/test_jpeg.c ../src/runtime_jpeg_codec.c)
+target_include_directories(jpeg-test PRIVATE ../src)
+target_compile_options(jpeg-test PRIVATE -UNDEBUG -Wall -Wextra -Werror)
 
 add_executable(command-buffer-test EXCLUDE_FROM_ALL ../tests/test_command_buffers.cpp)
 target_compile_options(command-buffer-test PRIVATE -UNDEBUG -Wall -Wextra -Werror)
@@ -373,7 +388,7 @@ target_include_directories(ui-composition-sharp-test PRIVATE ..)
 
 if (WIN32)
     add_executable(scene-resolution-test EXCLUDE_FROM_ALL ../tests/test_scene_resolution.cpp
-        ${BB_RUNTIME} ../src/compat_win.c)
+        ${BB_RUNTIME} ../src/compat_win.c ../tests/test_probe_stubs.c)
     target_include_directories(scene-resolution-test PRIVATE .. ../src)
     target_link_libraries(scene-resolution-test PRIVATE atrac9 onecore bcrypt ws2_32 -pthread)
 else()
@@ -391,17 +406,23 @@ set_source_files_properties(../tests/test_scene_resolution.cpp PROPERTIES
 target_link_libraries(scene-resolution-test PRIVATE bbgpu)
 add_executable(taa-shader-test EXCLUDE_FROM_ALL ../tests/test_taa_shader.cpp ../tests/test_gpu_runtime_stubs.cpp)
 target_include_directories(taa-shader-test PRIVATE shim shadps4 ${SHADER_INCLUDE} third_party/gcn/include)
-target_compile_options(taa-shader-test PRIVATE -UNDEBUG -fPIC)
+target_compile_options(taa-shader-test PRIVATE -fPIC)
 set_source_files_properties(../tests/test_taa_shader.cpp PROPERTIES
     COMPILE_OPTIONS "-fvisibility=hidden;-fvisibility-inlines-hidden")
 target_link_libraries(taa-shader-test PRIVATE bbgpu)
 add_dependencies(taa-shader-test host_shaders)
+if (WIN32)
+    target_link_libraries(taa-shader-test PRIVATE onecore)
+endif()
 
 add_executable(camera-motion-test EXCLUDE_FROM_ALL ../tests/test_camera_motion.cpp ../tests/test_gpu_runtime_stubs.cpp)
 target_include_directories(camera-motion-test PRIVATE shim shadps4 ${SHADER_INCLUDE} third_party/gcn/include)
-target_compile_options(camera-motion-test PRIVATE -UNDEBUG -fPIC)
+target_compile_options(camera-motion-test PRIVATE -fPIC)
 target_link_libraries(camera-motion-test PRIVATE bbgpu)
 add_dependencies(camera-motion-test host_shaders)
+if (WIN32)
+    target_link_libraries(camera-motion-test PRIVATE onecore)
+endif()
 
 # bbport: the generated SRT walker with tables that change between draws (null and bad pointers):
 # ninja -C out/gpu srt-walker-test, then run it. No GPU.
@@ -449,7 +470,7 @@ if (WIN32)
     target_link_libraries(fsr-driver-test PRIVATE bcrypt)
     add_dependencies(fsr-driver-test fsr-driver-fixture fsr-driver-invalid-fixture)
     add_executable(shared-graphics-overlay-test EXCLUDE_FROM_ALL ../tests/test_shared_graphics_overlay.cpp
-        ${BB_RUNTIME} ../src/compat_win.c)
+        ${BB_RUNTIME} ../src/compat_win.c ../tests/test_probe_stubs.c)
     target_include_directories(shared-graphics-overlay-test PRIVATE .. ../src shim shadps4
         third_party/gcn/include third_party/imgui third_party/imgui/backends)
     target_compile_definitions(shared-graphics-overlay-test PRIVATE IMGUI_IMPL_VULKAN_NO_PROTOTYPES

@@ -399,3 +399,36 @@
 397|L'aggiornamento viene letto dalla sua cartella: le cartelle del gioco e dell'aggiornamento restano come sono
 398|{folder} è un DLC per la versione {region} di LittleBigPlanet 3 ({id}). LBPPC ha bisogno della versione statunitense o europea ({ids}) e dei suoi DLC.
 399|Quell'aggiornamento è per {update}, ma il gioco è {game}. Scegli l'aggiornamento della stessa edizione.
+400|Nuovo salvataggio...
+401|Rinomina o elimina {name}
+402|Nuovo salvataggio
+403|I suoi progressi restano in una cartella a parte. Eliminandolo, una copia resta in user\save_backups, così si può recuperare.
+404|Un nuovo salvataggio fa ricominciare LittleBigPlanet 3 dall'inizio. Gli altri salvataggi restano come sono. Impostazioni, DLC e account online sono condivisi.
+405|Nome
+406|Salvataggio
+407|Rinomina / elimina
+408|Salvataggio: {name}
+409|Da 1 a 24 lettere, cifre, spazi, - o _.
+410|Rinomina
+411|Crea
+412|Elimina
+413|Premi di nuovo Elimina per eliminare {name}. Una copia resta in user\save_backups.
+414|Progressi separati. Impostazioni, DLC e account online sono condivisi.
+415|Principale
+416|Chiudi il gioco prima di cambiare salvataggio
+417|Non è stato possibile cambiare salvataggio: {error}
+418|Questa cartella contiene solo i file di sistema di un pacchetto ({size} MB: param.sfo, npbind.dat e simili) e nessuno dei suoi file di gioco. Una cartella completa dell'aggiornamento 1.28 pesa circa 1,3 GB, con dentro eboot.bin e patch_001.farc.
+419|I suoi file deltainfo lo indicano come aggiornamento delta: contiene solo le modifiche rispetto alla versione precedente, che la PS4 applica durante l'installazione, quindi non si può usare da solo. LBPPC ha bisogno dell'aggiornamento 1.28 completo.
+420|I file dell'aggiornamento 1.28 non sono nel tuo gioco (mancanti: {count}, tra cui patch_001.farc, 1,2 GB). Scegli la cartella completa dell'aggiornamento 1.28: circa 1,3 GB, con dentro eboot.bin e patch_001.farc.
+421|La tua copia ha {have} GB dei {want} GB di LittleBigPlanet 3 1.28 (mancanti: {count}, per esempio {file}). L'estrazione si è fermata a metà o ha saltato dei file: estrai di nuovo il gioco e controlla che ci sia abbastanza spazio libero.
+422|Il nome di un salvataggio ha da 1 a 24 lettere, cifre, spazi, - o _, e inizia con una lettera o una cifra.
+423|Windows non consente quel nome. Scegline un altro.
+424|Esiste già un salvataggio chiamato {name}.
+425|Il salvataggio Principale non si può rinominare.
+426|Il salvataggio Principale non si può eliminare.
+427|Non esiste un salvataggio chiamato {name}.
+428|Collegamento creato sul desktop: avvia il gioco senza il launcher
+429|Collegamento
+430|Non è stato possibile creare il collegamento: {error}
+431|Il download non è un'AppImage di LBPPC: non installato.
+432|LBPPC non è riuscito a sostituire {name} ({error}). Scarica invece la nuova versione dalla pagina della release.

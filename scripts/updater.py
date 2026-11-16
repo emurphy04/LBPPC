@@ -11,6 +11,10 @@ place with the player's files kept. Standard library only (it runs inside the fr
    of the install aside to out/update/old/, copies the new one in, and starts the updated launcher. Any failure puts
    everything back as it was. The new version's own code does the installing, so an update can fix the updater.
 
+Linux (the AppImage): the release's LBPPC-<version>-linux-x86_64.AppImage instead of the zip, its SHA-256 checked the
+same way. It is copied next to the running AppImage and put in its place (a running AppImage can be replaced), and
+the new one is started. Run any other way on Linux (from a checkout), no update is offered.
+
 Never replaced: the player's files (KEEP): user/ (saves, launcher settings), out/ (the prepared game, logs, the update
 itself), lbppc.ini, input.ini.
 """
@@ -41,7 +45,9 @@ except ImportError:
 REPO = 'emurphy04/LBPPC'
 API = f'https://api.github.com/repos/{REPO}/releases/latest'
 API = os.environ.get('LBPPC_UPDATE_API') or API  # tests: a release served on this PC
-ASSET = re.compile(r'^LBPPC-(\d+\.\d+\.\d+)-windows\.zip$')
+LINUX = sys.platform.startswith('linux')
+ASSET = re.compile(r'^LBPPC-(\d+\.\d+\.\d+)-linux-x86_64\.AppImage$' if LINUX else
+                   r'^LBPPC-(\d+\.\d+\.\d+)-windows\.zip$')
 KEEP = {'user', 'out', 'lbppc.ini', 'bbport.ini', 'input.ini', 'input.ini.bak'}
 USER_AGENT = 'LBPPC-launcher'  # GitHub's API wants one; nothing about the player
 MAX_ZIP = 2 << 30
@@ -76,6 +82,8 @@ def check(current, timeout=10):
         raise UpdateError(t('Could not check for updates: {error}', error=error)) from error
     if data.get('draft') or data.get('prerelease'):
         return None
+    if LINUX and not appimage():
+        return None  # not the AppImage: nothing this updater can replace
     zips = [a for a in data.get('assets', []) if ASSET.match(a.get('name', ''))]
     if not zips:
         return None
@@ -97,15 +105,23 @@ def check(current, timeout=10):
                 sha256 = ''
     if not sha256:
         return None  # nothing to check the download against: not offered
-    return Release(version, (data.get('body') or '').strip(), asset['browser_download_url'], asset.get('size', 0),
-                   sha256, data.get('html_url', f'https://github.com/{REPO}/releases/latest'))
+    release = Release(version, (data.get('body') or '').strip(), asset['browser_download_url'], asset.get('size', 0),
+                      sha256, data.get('html_url', f'https://github.com/{REPO}/releases/latest'))
+    release.name = asset['name']
+    return release
+
+
+def appimage():
+    """Linux: the AppImage this launcher runs from (its runtime sets APPIMAGE), or None."""
+    path = os.environ.get('APPIMAGE')
+    return Path(path) if LINUX and path and Path(path).is_file() else None
 
 
 def download(release, folder, progress=None, cancelled=lambda: False):
     """The release's zip in `folder`, its SHA-256 checked. Returns its path, or None when cancelled."""
     folder = Path(folder)
     folder.mkdir(parents=True, exist_ok=True)
-    target = folder / f'LBPPC-{release.version}-windows.zip'
+    target = folder / (getattr(release, 'name', '') or f'LBPPC-{release.version}-windows.zip')
     part = target.with_suffix('.part')
     digest = hashlib.sha256()
     done = 0
@@ -138,7 +154,15 @@ def download(release, folder, progress=None, cancelled=lambda: False):
 
 
 def stage(zip_path, staging):
-    """The zip unpacked into `staging` (emptied first), without its top LBPPC/ folder. Returns `staging`."""
+    """The zip unpacked into `staging` (emptied first), without its top LBPPC/ folder. Returns `staging`.
+    Linux: the AppImage checked to be one (an ELF program) and made executable; returns its path."""
+    if LINUX:
+        with open(zip_path, 'rb') as file:
+            head = file.read(11)
+        if head[:4] != b'\x7fELF' or head[8:11] != b'AI\x02':
+            raise UpdateError(t('The download is not an LBPPC AppImage: not installed.'))
+        os.chmod(zip_path, 0o755)
+        return Path(zip_path)
     staging = Path(staging)
     remove(staging)
     staging.mkdir(parents=True)
@@ -173,7 +197,30 @@ def remove(path):
 
 
 def start_apply(staging, install):
-    """Starts the new launcher from `staging` to install itself over `install` once this process has closed."""
+    """Starts the new launcher from `staging` to install itself over `install` once this process has closed.
+    Linux: the new AppImage (`staging`, from stage()) put in place of the running one, and started."""
+    if LINUX:
+        current = appimage()
+        if not current:
+            raise OSError('not started from an AppImage')
+        beside = current.with_name(f'.{current.name}.new')
+        try:
+            shutil.copy2(staging, beside)  # beside it first: the same drive, so the swap below is one step
+            os.chmod(beside, 0o755)
+            os.replace(beside, current)
+        except OSError as error:
+            beside.unlink(missing_ok=True)
+            raise OSError(t('LBPPC could not replace {name} ({error}). Download the new version from the '
+                            'release page instead.', name=current.name, error=error)) from error
+        env = dict(os.environ, LBPPC_UPDATED='1')
+        for name in ('LD_LIBRARY_PATH', 'TCL_LIBRARY', 'TK_LIBRARY', 'SSL_CERT_FILE', 'SSL_CERT_DIR'):
+            original = env.pop(f'{name}_ORIG', None)  # PyInstaller's: the system's own value
+            if original:
+                env[name] = original
+            else:
+                env.pop(name, None)
+        subprocess.Popen([str(current)], cwd=str(current.parent), env=env, close_fds=True, start_new_session=True)
+        return
     flags = getattr(subprocess, 'DETACHED_PROCESS', 0) | getattr(subprocess, 'CREATE_NEW_PROCESS_GROUP', 0)
     subprocess.Popen([str(Path(staging) / 'LBPPC.exe'), '--apply-update', str(install), str(os.getpid())],
                      cwd=str(staging), creationflags=flags, close_fds=True)

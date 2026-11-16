@@ -399,3 +399,36 @@
 397|La mise à jour est lue depuis son propre dossier : vos dossiers du jeu et de la mise à jour restent tels quels
 398|{folder} est un DLC pour la version {region} de LittleBigPlanet 3 ({id}). LBPPC a besoin de la version américaine ou européenne ({ids}), et de ses DLC.
 399|Cette mise à jour est pour {update}, mais le jeu est {game}. Choisissez la mise à jour de la même édition.
+400|Nouvelle sauvegarde...
+401|Renommer ou supprimer {name}
+402|Nouvelle sauvegarde
+403|Sa progression reste dans son propre dossier. Supprimer garde une copie dans user\save_backups, pour pouvoir la récupérer.
+404|Une nouvelle sauvegarde commence LittleBigPlanet 3 depuis le début. Vos autres sauvegardes restent telles quelles. Les réglages, les DLC et votre compte en ligne sont partagés.
+405|Nom
+406|Sauvegarde
+407|Renommer / supprimer
+408|Sauvegarde : {name}
+409|1 à 24 lettres, chiffres, espaces, - ou _.
+410|Renommer
+411|Créer
+412|Supprimer
+413|Appuyez de nouveau sur Supprimer pour supprimer {name}. Une copie est gardée dans user\save_backups.
+414|Progression séparée. Les réglages, les DLC et votre compte en ligne sont partagés.
+415|Principale
+416|Fermez le jeu avant de changer de sauvegarde
+417|La sauvegarde n'a pas pu être changée : {error}
+418|Ce dossier ne contient que les fichiers système d'un paquet ({size} Mo : param.sfo, npbind.dat, etc.) et aucun de ses fichiers de jeu. Un dossier complet de la mise à jour 1.28 fait environ 1,3 Go, avec eboot.bin et patch_001.farc dedans.
+419|Ses fichiers deltainfo indiquent une mise à jour delta : elle ne contient que les changements depuis la version précédente, que la PS4 applique à l'installation, donc elle ne peut pas servir seule. LBPPC a besoin de la mise à jour 1.28 complète.
+420|Les fichiers de la mise à jour 1.28 ne sont pas dans votre jeu (manquants : {count}, dont patch_001.farc, 1,2 Go). Choisissez le dossier complet de la mise à jour 1.28 : environ 1,3 Go, avec eboot.bin et patch_001.farc dedans.
+421|Votre copie contient {have} Go sur les {want} Go de LittleBigPlanet 3 1.28 (manquants : {count}, par exemple {file}). L'extraction s'est arrêtée en cours de route ou a sauté des fichiers : extrayez de nouveau le jeu, et vérifiez qu'il y a assez d'espace libre.
+422|Un nom de sauvegarde a 1 à 24 lettres, chiffres, espaces, - ou _, et commence par une lettre ou un chiffre.
+423|Windows n'accepte pas ce nom. Choisissez-en un autre.
+424|Il existe déjà une sauvegarde nommée {name}.
+425|La sauvegarde Principale ne peut pas être renommée.
+426|La sauvegarde Principale ne peut pas être supprimée.
+427|Il n'y a pas de sauvegarde nommée {name}.
+428|Raccourci créé sur le bureau : il lance le jeu sans le lanceur
+429|Raccourci
+430|Le raccourci n'a pas pu être créé : {error}
+431|Le téléchargement n'est pas une AppImage LBPPC : non installé.
+432|LBPPC n'a pas pu remplacer {name} ({error}). Téléchargez plutôt la nouvelle version depuis la page de la version.

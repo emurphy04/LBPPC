@@ -60,6 +60,9 @@ else
     echo 'No DLSS in this package (packaging/windows/import_dlss.py)' >&2
 fi
 cp -r scripts "$dest/"
+# The red-zone sites (scripts/link_modules.py reads them from patches/ beside scripts/): without them the crash fix
+# for newer Intel CPUs and Wine is skipped without a word.
+cp -r patches "$dest/"
 cp tools/shadnet_account.py tools/refresh_account.py "$dest/tools/"
 cp run.py input.ini LICENSE LICENSE-GPL-2.0 README.md "$dest/"
 mkdir -p "$dest/assets" && cp launcher/assets/logo-128.rgba "$dest/assets/"  # the game window's icon (run.py)

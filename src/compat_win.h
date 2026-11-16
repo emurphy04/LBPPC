@@ -86,5 +86,10 @@ int compat_cond_timedwait(pthread_cond_t *cond, pthread_mutex_t *mutex, const st
 #define runtime_cond_timedwait compat_cond_timedwait
 #else
 #define runtime_cond_timedwait pthread_cond_timedwait
+/* The two Win32 thread calls the runtime's log lines and spin waits use (with _GNU_SOURCE, for gettid). */
+#include <sched.h>
+#include <unistd.h>
+#define GetCurrentThreadId() ((unsigned long)gettid())
+#define SwitchToThread() sched_yield()
 #endif
 #endif

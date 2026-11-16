@@ -2,8 +2,8 @@
 #define BB_RUNTIME_H
 #include <stdint.h>
 #include <stddef.h>
-#ifdef _WIN32
 #include "compat_win.h"
+#ifdef _WIN32
 /* No signals on Windows: the exception handler resumes the thread in bb_longjmp
  * (gpu/shim/bbport_toggles.h uses the same buffer type). */
 typedef bb_jmp_buf sigjmp_buf;

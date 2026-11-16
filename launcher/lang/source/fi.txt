@@ -399,3 +399,36 @@
 397|Päivitys luetaan sen omasta kansiosta: peli- ja päivityskansiosi pysyvät ennallaan
 398|{folder} on DLC LittleBigPlanet 3:n {region} versiolle ({id}). LBPPC tarvitsee yhdysvaltalaisen tai eurooppalaisen version ({ids}) ja sen DLC:t.
 399|Tämä päivitys on pelille {update}, mutta peli on {game}. Valitse saman painoksen päivitys.
+400|Uusi tallennus...
+401|Nimeä uudelleen tai poista {name}
+402|Uusi tallennus
+403|Sen edistyminen pysyy omassa kansiossaan. Poistettaessa kopio jää kansioon user\save_backups, joten sen voi palauttaa.
+404|Uusi tallennus aloittaa LittleBigPlanet 3:n alusta. Muut tallennuksesi pysyvät ennallaan. Asetukset, DLC:t ja verkkotilisi ovat yhteisiä.
+405|Nimi
+406|Tallennus
+407|Nimeä uudelleen / poista
+408|Tallennus: {name}
+409|1–24 kirjainta, numeroa, välilyöntiä, - tai _.
+410|Nimeä uudelleen
+411|Luo
+412|Poista
+413|Paina Poista uudelleen poistaaksesi tallennuksen {name}. Kopio jää kansioon user\save_backups.
+414|Erillinen edistyminen. Asetukset, DLC:t ja verkkotilisi ovat yhteisiä.
+415|Pää
+416|Sulje peli ennen kuin vaihdat tallennusta
+417|Tallennusta ei voitu vaihtaa: {error}
+418|Tässä kansiossa on vain paketin järjestelmätiedostot ({size} Mt: param.sfo, npbind.dat ja vastaavat) eikä yhtään sen pelitiedostoa. Täydellinen päivityksen 1.28 kansio on noin 1,3 Gt, ja sen sisällä ovat eboot.bin ja patch_001.farc.
+419|Sen deltainfo-tiedostot merkitsevät sen delta-päivitykseksi: se sisältää vain muutokset edelliseen versioon, jotka PS4 tekee asentaessaan, joten sitä ei voi käyttää yksinään. LBPPC tarvitsee täydellisen päivityksen 1.28.
+420|Päivityksen 1.28 tiedostot puuttuvat pelistäsi (puuttuu: {count}, muun muassa patch_001.farc, 1,2 Gt). Valitse täydellinen päivityksen 1.28 kansio: noin 1,3 Gt, ja sen sisällä eboot.bin ja patch_001.farc.
+421|Kopiossasi on {have} Gt LittleBigPlanet 3 1.28:n {want} gigatavusta (puuttuu: {count}, esimerkiksi {file}). Purku pysähtyi kesken tai ohitti tiedostoja: pura peli uudelleen ja tarkista, että vapaata tilaa on tarpeeksi.
+422|Tallennuksen nimessä on 1–24 kirjainta, numeroa, välilyöntiä, - tai _, ja se alkaa kirjaimella tai numerolla.
+423|Windows ei salli tätä nimeä. Valitse toinen.
+424|Tallennus nimeltä {name} on jo olemassa.
+425|Päätallennusta ei voi nimetä uudelleen.
+426|Päätallennusta ei voi poistaa.
+427|Tallennusta nimeltä {name} ei ole.
+428|Työpöydän pikakuvake luotu: se käynnistää pelin ilman käynnistintä
+429|Pikakuvake
+430|Pikakuvaketta ei voitu luoda: {error}
+431|Lataus ei ole LBPPC:n AppImage: ei asennettu.
+432|LBPPC ei voinut korvata tiedostoa {name} ({error}). Lataa uusi versio julkaisusivulta.

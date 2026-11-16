@@ -66,8 +66,10 @@ vk::SurfaceKHR CreateSurface(vk::Instance instance, const Frontend::WindowSDL& e
 
 #if defined(VK_USE_PLATFORM_WIN32_KHR)
     if (window_info.type == Frontend::WindowSystemType::Windows) {
+        // lbppc: the module's handle, as Vulkan requires (VUID-VkWin32SurfaceCreateInfoKHR-
+        // hinstance-01307): a null one is ignored by some drivers, not by every one.
         const vk::Win32SurfaceCreateInfoKHR win32_ci = {
-            .hinstance = nullptr,
+            .hinstance = GetModuleHandleW(nullptr),
             .hwnd = static_cast<HWND>(window_info.render_surface),
         };
 

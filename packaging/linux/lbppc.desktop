@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=LBPPC
+Comment=LittleBigPlanet 3 on PC
+Exec=LBPPC
+Icon=lbppc
+Terminal=false
+Categories=Game;

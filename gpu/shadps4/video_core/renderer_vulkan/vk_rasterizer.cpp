@@ -9,6 +9,7 @@
 #include "video_core/renderer_vulkan/ui_composition.h"
 #include "bbport_toggles.h"
 #include "video_core/renderer_vulkan/vk_frame_capture.h"
+#include "common/hash.h"
 #include "common/debug.h"
 #include "core/debug_state.h"
 #include "core/emulator_settings.h"
@@ -1222,6 +1223,54 @@ void Rasterizer::DrawRecord(const GraphicsPipeline* pipeline, const PreparedDraw
     if (FrameCapture::Active()) {
         const auto* ps = pipeline->GetStages()[u32(Shader::SwStage::Fragment)];
         FrameCapture::Draw(vs_info.pgm_hash, ps ? ps->pgm_hash : 0, num_indices, num_instances);
+        {
+            // lbppc (debug, lights #9/#32): shader variants and clip state of the draw.
+            const auto& gk = pipeline->GetGraphicsKey();
+            auto perm = [](u64 base, u64 combined) -> int {
+                for (int i = 0; i < 32; ++i) {
+                    if (::HashCombine(base, u64(i)) == combined) {
+                        return i;
+                    }
+                }
+                return -1;
+            };
+            char note[200];
+            std::snprintf(note, sizeof(note),
+                          "\n  variants vs %d ps %d, user clip planes %#x, vs clip dist %u, cull dist %u, interp %u",
+                          perm(vs_info.pgm_hash, gk.stage_hashes[u32(Shader::SwStage::Vertex)]),
+                          ps ? perm(ps->pgm_hash, gk.stage_hashes[u32(Shader::SwStage::Fragment)]) : -2,
+                          u32(regs.clipper_control.user_clip_plane_enable),
+                          u32(regs.vs_output_control.clip_distance_enable),
+                          u32(regs.vs_output_control.cull_distance_enable), u32(regs.num_interp));
+            FrameCapture::Note(note);
+            const auto& vp = regs.viewports[0];
+            const auto& sc = regs.viewport_scissors[0];
+            const auto& gs = regs.generic_scissor;
+            const u32 isz = regs.index_buffer_type.index_type == AmdGpu::IndexType::Index16 ? 2u : 4u;
+            const VAddr ia = is_indexed ? regs.index_base_address.Address<VAddr>() + u64(index_offset) * isz : 0;
+            u32 idx[4]{};
+            if (ia && memory->IsValidGpuMapping(ia, 0)) {
+                for (u32 k = 0; k < 4; ++k) {
+                    idx[k] = isz == 2 ? reinterpret_cast<const u16*>(ia)[k] : reinterpret_cast<const u32*>(ia)[k];
+                }
+            }
+            char geom[300];
+            std::snprintf(geom, sizeof(geom),
+                          "\n  geom: indexed %d at %#llx (offset %u) first %u %u %u %u, vertex offset %u, vp scale %g,%g off %g,%g, "
+                          "vp scissor %u,%u-%u,%u, generic %u,%u-%u,%u",
+                          int(is_indexed), (unsigned long long)ia, index_offset, idx[0], idx[1], idx[2], idx[3],
+                          vertex_offset, vp.xscale, vp.yscale, vp.xoffset, vp.yoffset, u32(sc.top_left_x),
+                          u32(sc.top_left_y), u32(sc.bottom_right_x), u32(sc.bottom_right_y), u32(gs.top_left_x),
+                          u32(gs.top_left_y), u32(gs.bottom_right_x), u32(gs.bottom_right_y));
+            FrameCapture::Note(geom);
+            const auto& cb0 = regs.color_buffers[0];
+            std::snprintf(geom, sizeof(geom),
+                          "\n  cb0: base %#llx slices %u..%u (base slice %u, count %u), linear_general %u, target mask %#x",
+                          (unsigned long long)(u64(cb0.base_address) << 8), u32(cb0.view.slice_start),
+                          u32(cb0.view.slice_max), cb0.BaseSlice(), cb0.NumSlices(), u32(cb0.info.linear_general),
+                          u32(regs.color_target_mask.raw));
+            FrameCapture::Note(geom);
+        }
         if (const auto& bc = regs.blend_control[0]; bc.enable && regs.color_buffers[0]) {
             char note[128];
             std::snprintf(note, sizeof(note), "\n  blend ps %08x idx %u: src %u dst %u func %u z %u%u",
@@ -1879,6 +1928,41 @@ void Rasterizer::ResolveVertexBuffers(const GraphicsPipeline* pipeline,
                                               guest_buffers.size() * sizeof(AmdGpu::Buffer));
     }
     // Object motion research: vertex streams of G-buffer draws.
+    // lbppc (debug, lights #9/#32): every draw's vertex streams, with their first values as guest memory holds them.
+    if (FrameCapture::Active() && !gbuffer_draw) {
+        if (fetch) {
+            const auto& vs_fetch_info = pipeline->GetStage(Shader::SwStage::Vertex);
+            if (vs_fetch_info.has_fetch_shader) {
+                const u32* code = Shader::Gcn::GetFetchShaderCode(vs_fetch_info, vs_fetch_info.fetch_shader_sgpr_base);
+                std::string words = "\n  fetch code:";
+                for (u32 i = 0; i < std::min<u32>(fetch->size, 48); ++i) {
+                    words += std::format(" {:08x}", code[i]);
+                }
+                FrameCapture::Note(words.c_str());
+            }
+            for (const auto& a : fetch->attributes) {
+                const auto& vs_info = pipeline->GetStage(Shader::SwStage::Vertex);
+                const auto sharp = a.GetSharp(vs_info);
+                char note[200];
+                std::snprintf(note, sizeof(note),
+                              "\n  attr %u: vgpr %u, %u elements, V# at %#llx stride %u dfmt %u nfmt %u, inst offset %u, "
+                              "typed %u/%u, instance %u, sgpr %u dword %u",
+                              a.semantic, a.dest_vgpr, a.num_elements,
+                              (unsigned long long)sharp.base_address, u32(sharp.GetStride()),
+                              u32(sharp.GetDataFmt()), u32(sharp.GetNumberFmt()), a.inst_offset, a.data_format,
+                              a.num_format, a.instance_data, a.sgpr_base, a.dword_offset);
+                FrameCapture::Note(note);
+            }
+        }
+        for (u32 i = 0; i < guest_buffers.size(); ++i) {
+            const auto& vb = guest_buffers[i];
+            if (vb.base_address != 0 && vb.GetSize() != 0) {
+                FrameCapture::Buffer(0xffffffff00000000ULL | i, vb.GetStride(), vb.base_address,
+                                     reinterpret_cast<const void*>(vb.base_address),
+                                     std::min<u64>(vb.GetSize(), 256));
+            }
+        }
+    }
     if (FrameCapture::Active() && gbuffer_draw) {
         for (const auto& vb : guest_buffers) {
             char note[128];

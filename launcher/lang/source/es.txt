@@ -399,3 +399,36 @@
 397|La actualización se lee desde su propia carpeta: las carpetas del juego y de la actualización quedan como están
 398|{folder} es un DLC para la versión {region} de LittleBigPlanet 3 ({id}). LBPPC necesita la versión estadounidense o europea ({ids}), y sus DLC.
 399|Esa actualización es para {update}, pero el juego es {game}. Elige la actualización de la misma edición.
+400|Nueva partida...
+401|Cambiar nombre o borrar {name}
+402|Nueva partida
+403|Su progreso queda en su propia carpeta. Al borrarla se guarda una copia en user\save_backups, para poder recuperarla.
+404|Una nueva partida empieza LittleBigPlanet 3 desde el principio. Tus otras partidas se quedan como están. Los ajustes, los DLC y tu cuenta en línea se comparten.
+405|Nombre
+406|Partida
+407|Cambiar nombre / borrar
+408|Partida: {name}
+409|De 1 a 24 letras, números, espacios, - o _.
+410|Cambiar nombre
+411|Crear
+412|Borrar
+413|Pulsa Borrar otra vez para borrar {name}. Se guarda una copia en user\save_backups.
+414|Progreso separado. Los ajustes, los DLC y tu cuenta en línea se comparten.
+415|Principal
+416|Cierra el juego antes de cambiar de partida
+417|No se pudo cambiar la partida: {error}
+418|Esta carpeta solo tiene los archivos de sistema de un paquete ({size} MB: param.sfo, npbind.dat y similares) y ninguno de sus archivos de juego. Una carpeta completa de la actualización 1.28 ocupa unos 1,3 GB, con eboot.bin y patch_001.farc dentro.
+419|Sus archivos deltainfo indican que es una actualización delta: solo tiene los cambios respecto a la versión anterior, que la PS4 aplica al instalarla, así que no sirve por sí sola. LBPPC necesita la actualización 1.28 completa.
+420|Los archivos de la actualización 1.28 no están en tu juego (faltan: {count}, entre ellos patch_001.farc, 1,2 GB). Elige la carpeta completa de la actualización 1.28: unos 1,3 GB, con eboot.bin y patch_001.farc dentro.
+421|Tu copia tiene {have} GB de los {want} GB de LittleBigPlanet 3 1.28 (faltan: {count}, por ejemplo {file}). La extracción se detuvo a medias o se saltó archivos: vuelve a extraer el juego y comprueba que haya suficiente espacio libre.
+422|El nombre de una partida tiene de 1 a 24 letras, números, espacios, - o _, y empieza por una letra o un número.
+423|Windows no permite ese nombre. Elige otro.
+424|Ya hay una partida llamada {name}.
+425|La partida Principal no se puede renombrar.
+426|La partida Principal no se puede borrar.
+427|No hay ninguna partida llamada {name}.
+428|Acceso directo creado en el escritorio: inicia el juego sin el lanzador
+429|Acceso directo
+430|No se pudo crear el acceso directo: {error}
+431|La descarga no es una AppImage de LBPPC: no se ha instalado.
+432|LBPPC no ha podido reemplazar {name} ({error}). Descarga la nueva versión desde la página de la versión.

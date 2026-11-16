@@ -20,13 +20,14 @@ import struct
 import subprocess
 import sys
 import threading
+import time
 import tkinter as tk
 import webbrowser
 from tkinter import filedialog, font as tkfont, messagebox, ttk
 
 from PIL import Image, ImageTk
 
-VERSION = '0.1.3'
+VERSION = '0.1.4'
 DISCORD = 'https://discord.gg/YqfBQCU4vc'  # the permanent invite: help, bug reports, finding co-op partners
 # Discord Rich Presence (scripts/discord_presence.py): LBPPC's application on the Discord Developer Portal, whose name
 # Discord shows ("Playing LBPPC") and whose art asset "lbppc" is the picture. Empty: no presence.
@@ -35,13 +36,14 @@ BLURPLE = (88, 101, 242)  # Discord's own colour, for its button
 # Packaged (frozen with PyInstaller): LBPPC.exe sits in the package folder and runs run.py itself (--script).
 FROZEN = getattr(sys, 'frozen', False)
 ROOT = Path(sys.executable).resolve().parent if FROZEN else Path(__file__).resolve().parent.parent
-BIN = ROOT / 'bin' if (ROOT / 'bin' / 'LBPPC-Game.exe').is_file() else ROOT / 'out'
+BIN = ROOT / 'bin' if (ROOT / 'bin' / ('LBPPC-Game.exe' if os.name == 'nt' else 'LBPPC-Game')).is_file() else ROOT / 'out'
 if not FROZEN:
     sys.path.insert(0, str(ROOT / 'scripts'))  # frozen, PyInstaller bundles the module
 import online_accounts  # noqa: E402
 import game_setup  # noqa: E402
 import game_files  # noqa: E402
 import save_import  # noqa: E402
+import save_files  # noqa: E402
 import log_privacy  # noqa: E402
 import discord_presence  # noqa: E402
 import updater  # noqa: E402
@@ -51,16 +53,23 @@ import lbppc_theme as theme  # noqa: E402
 from i18n import N_, t  # noqa: E402
 import i18n  # noqa: E402
 import input_settings  # noqa: E402
-USER = ROOT / 'user'
+# The player's files (user/, out/, lbppc.ini, input.ini): next to the program, or in LBPPC_DATA_DIR, which the Linux
+# AppImage's AppRun sets to ~/.local/share/LBPPC (its program files are read-only). run.py reads the same variable.
+DATA = Path(os.environ['LBPPC_DATA_DIR']).expanduser() if os.environ.get('LBPPC_DATA_DIR') else ROOT
+LINUX = sys.platform.startswith('linux')
+# Running from the AppImage (Linux): the AppImage file itself, which is what starts the launcher again (its program
+# files are a mount that goes away when this launcher closes).
+APPIMAGE = Path(os.environ['APPIMAGE']) if LINUX and os.environ.get('APPIMAGE') else None
+USER = DATA / 'user'
 SETTINGS = USER / 'launcher.json'
-INI = ROOT / 'lbppc.ini'
+INI = DATA / 'lbppc.ini'
 if not INI.exists() and (ROOT / 'bbport.ini').is_file():  # its name before 0.1.1 (the Bloodborne port's): kept
     try:
         (ROOT / 'bbport.ini').rename(INI)
     except OSError:
         pass
-INPUT_INI = ROOT / 'input.ini'  # the game's controls (runtime_input_config.c), the Controls page's
-LOG = ROOT / 'out' / 'last_run.log'
+INPUT_INI = DATA / 'input.ini'  # the game's controls (runtime_input_config.c), the Controls page's
+LOG = DATA / 'out' / 'last_run.log'
 
 # The game renders at these sizes natively (LBPPC_RENDER_RES: its render targets are made that large).
 # Other aspects widen the view (ultrawide: more of the level at the sides, the menus laid out for it). Wider than
@@ -100,8 +109,26 @@ LANGUAGES = [(N_('Automatic'), 'auto'), ('English (US)', '1'), ('English (UK)', 
 OPTIONS[-1] = OPTIONS[-1][:2] + (LANGUAGES,) + OPTIONS[-1][3:]
 
 
+def linux_language():
+    """The game language for the desktop's language (LC_ALL, LC_MESSAGES, LANG: "fr_FR.UTF-8"), English (US) when
+    the game doesn't have it."""
+    name = next((os.environ[v] for v in ('LC_ALL', 'LC_MESSAGES', 'LANG') if os.environ.get(v)), '')
+    language, _, country = name.split('.')[0].split('@')[0].partition('_')
+    language, country = language.lower(), country.upper()
+    if language == 'en':
+        return '1' if country in ('', 'US', 'CA') else '18'
+    if language == 'es':
+        return '3' if country in ('', 'ES') else '20'
+    if language == 'pt':
+        return '17' if country == 'BR' else '7'
+    return {'fr': '2', 'de': '4', 'it': '5', 'nl': '6', 'ru': '8', 'fi': '12', 'sv': '13', 'da': '14', 'nb': '15',
+            'no': '15', 'nn': '15', 'pl': '16'}.get(language, '1')
+
+
 def windows_language():
     """The game language for Windows' display language (Automatic), English (US) when the game doesn't have it."""
+    if LINUX:
+        return linux_language()
     try:
         import ctypes
         lang = ctypes.windll.kernel32.GetUserDefaultUILanguage()
@@ -143,7 +170,7 @@ OVERLAY = [('show_fps', N_('Frame rate'), False), ('show_frame_times', N_('Frame
            ('counter_colors', N_('Colour-coded values'), True)]
 DEFAULTS = {'game': '', 'update': '', 'language': 'auto', 'logs_scrubbed': False, 'resolution': '1920x1080', 'display': 'borderless', 'frame_gen': 'dlss', 'latency': 'on',
             'upscaling': 'off', 'sharpening': 'medium', 'beta_notice_seen': False,
-            'online': False, 'online_name': '', 'password': '', 'discord_presence': True, 'discord_app_id': '',
+            'online': False, 'online_name': '', 'password': '', 'discord_presence': True, 'save_file': save_files.MAIN, 'discord_app_id': '',
             'diagnostics': {key: on for key, _env, _title, _hint, on in DIAGNOSTICS},
             # Not shown: the LBPPC server unless launcher.json names another (a test server on this PC).
             'server': online_accounts.OFFICIAL_SERVER}
@@ -274,7 +301,7 @@ def load_settings():
 
 
 def save_settings(values):
-    USER.mkdir(exist_ok=True)
+    USER.mkdir(parents=True, exist_ok=True)
     # The password is kept locked with DPAPI, not as text; plain text only where DPAPI is missing.
     stored = dict(values)
     stored.pop('shadnet_password', None)
@@ -283,11 +310,43 @@ def save_settings(values):
         stored['password'] = ''
         stored['password_protected'] = base64.b64encode(locked).decode('ascii')
     SETTINGS.write_text(json.dumps(stored, indent=2), encoding='utf-8')
+    if os.name != 'nt':
+        # No DPAPI here: the password is in the file as text, so only this user may read it.
+        try:
+            os.chmod(SETTINGS, 0o600)
+        except OSError:
+            pass
     # lbppc.ini: frame_gen set, its other lines kept.
     lines = INI.read_text(encoding='utf-8').splitlines() if INI.is_file() else []
     lines = [line for line in lines if not line.startswith('frame_gen=')]
     lines.append(f"frame_gen={values['frame_gen']}")
     INI.write_text('\n'.join(lines) + '\n', encoding='utf-8')
+
+
+def host_environment():
+    """The environment for programs of the system (the file manager, a new launcher from the AppImage): on Linux
+    without what PyInstaller changed for the bundled Python (it keeps earlier values in <NAME>_ORIG)."""
+    env = dict(os.environ)
+    if LINUX and FROZEN:
+        for name in ('LD_LIBRARY_PATH', 'TCL_LIBRARY', 'TK_LIBRARY', 'SSL_CERT_FILE', 'SSL_CERT_DIR'):
+            original = env.pop(f'{name}_ORIG', None)
+            if original:
+                env[name] = original
+            else:
+                env.pop(name, None)
+    return env
+
+
+def launcher_command():
+    """What starts this launcher again: the AppImage, LBPPC.exe, or the script with this Python."""
+    if APPIMAGE:
+        return [str(APPIMAGE)]
+    return [sys.executable] if FROZEN else [sys.executable, str(Path(__file__).resolve())]
+
+
+def shutil_which(name):
+    import shutil
+    return shutil.which(name)
 
 
 def open_path(path):
@@ -296,7 +355,7 @@ def open_path(path):
     if os.name == 'nt':
         os.startfile(str(path))  # noqa: S606 - opens the folder or log in Explorer / the text editor
     else:
-        subprocess.Popen(['xdg-open', str(path)])
+        subprocess.Popen(['xdg-open', str(path)], env=host_environment())
 
 
 def known_players(friends):
@@ -316,7 +375,7 @@ def report_scrubber(settings, friends=None):
 def scrub_old_logs(settings, friends=None):
     """Once: the logs kept from before 0.1.1, written with the player's details in them, rewritten without."""
     scrub = report_scrubber(settings, friends)
-    for log in [*sorted((ROOT / 'out' / 'logs').glob('run-*.log')), LOG]:
+    for log in [*sorted((DATA / 'out' / 'logs').glob('run-*.log')), LOG]:
         try:
             if log.is_file():
                 log_privacy.scrub_file(log, scrub)
@@ -330,7 +389,7 @@ def make_report(friends=None):
     its path."""
     import time
     import zipfile
-    reports = ROOT / 'out' / 'reports'
+    reports = DATA / 'out' / 'reports'
     reports.mkdir(parents=True, exist_ok=True)
     path = reports / time.strftime('LBPPC-report-%Y%m%d-%H%M%S.zip')
     # The same replacements as the logs get while the game runs (scripts/log_privacy.py), one scrubber for the
@@ -338,9 +397,9 @@ def make_report(friends=None):
     settings = load_settings()
     scrub = report_scrubber(settings, friends)
 
-    logs = sorted((ROOT / 'out' / 'logs').glob('run-*.log'))[-3:]
+    logs = sorted((DATA / 'out' / 'logs').glob('run-*.log'))[-3:]
     files = [(log, f'logs/{log.name}') for log in logs] + [(LOG, 'last_run.log'), (INI, 'lbppc.ini'),
-                                                           (ROOT / 'input.ini', 'input.ini')]
+                                                           (INPUT_INI, 'input.ini')]
     settings = {k: v for k, v in settings.items() if k != 'password'}
     with zipfile.ZipFile(path, 'w', zipfile.ZIP_DEFLATED) as archive:
         for source, name in files:
@@ -348,6 +407,19 @@ def make_report(friends=None):
                 archive.writestr(name, scrub.text(source.read_text(encoding='utf-8', errors='replace')))
         archive.writestr('launcher.json', scrub.text(json.dumps(settings, indent=2)))
     return path
+
+
+def activate(window):
+    """`window` (a Tk toplevel) made the active window, with the keyboard: Tk's focus_force alone moves the focus
+    inside the program but doesn't activate a borderless window on Windows."""
+    try:
+        if os.name == 'nt':
+            import ctypes
+            hwnd = int(window.wm_frame(), 16)
+            ctypes.windll.user32.SetForegroundWindow(hwnd)
+        window.focus_force()
+    except (OSError, ValueError, tk.TclError):
+        pass
 
 
 class Scene(tk.Canvas):
@@ -527,7 +599,7 @@ class BetaNotice:
         shade.tk.call('raise', shade._w, launcher._w)
         window.deiconify()
         window.tk.call('raise', window._w, shade._w)
-        window.focus_force()
+        activate(window)  # the active window, with the keyboard: its fields can be typed in at once
         window.grab_set()
         self.animate(0, opening=True)
         self.window.after(400, self.keep_on_top)
@@ -630,8 +702,13 @@ class BetaNotice:
         if frame < self.FRAMES:
             self.window.after(self.FRAME_MS, self.animate, frame + 1, opening)
         elif not opening:
+            # The launcher made the active window before the card goes, while LBPPC still holds the focus: left to
+            # Windows, the activation went to no window or another program's (the borderless launcher is passed
+            # over), so typing in the launcher did nothing and the next click sent it behind other windows.
+            activate(self.launcher)
             self.shade.destroy()
             self.window.destroy()
+            self.launcher.after(50, lambda: activate(self.launcher))
             if getattr(self.launcher, 'card', None) is self:
                 self.launcher.card = None
             if getattr(self, 'on_closed', None):
@@ -1092,7 +1169,7 @@ class UpdateNotice(BetaNotice):
         self.scene.itemconfigure(self.trough, state='normal')
         self.scene.itemconfigure(self.bar, state='normal')
         self.say(t('Downloading LBPPC {version}...', version=self.release.version), TEXT)
-        folder = ROOT / 'out' / 'update'
+        folder = DATA / 'out' / 'update'
 
         def work():
             try:
@@ -1163,6 +1240,115 @@ class UpdateNotice(BetaNotice):
 def zipfile_errors():
     import zipfile
     return zipfile.BadZipFile
+
+
+class SaveFileCard(BetaNotice):
+    """New save file, or Rename or delete one (scripts/save_files.py): a card over the dimmed launcher, as Setup.
+    `current`: the save file to rename or delete; None makes a new one. on_done(name) after a change (Main when
+    deleted)."""
+
+    W = 520
+
+    def __init__(self, launcher, current=None, on_done=None):
+        self.launcher, self.closing, self.on_closed, self.current, self.on_done = launcher, False, None, current, on_done
+        card, self.field_y, self.status_y, self.buttons_y = self.draw()
+        scene = self.open_window(card)
+        self.name = tk.StringVar(value=current or '')
+        entry = field(self.window, self.name)
+        scene.widget(entry, 30, self.field_y, self.W - 60, 30)
+        entry.bind('<Return>', lambda _e: self.confirm())
+        self.status = scene.create_text(30, self.status_y, text=t('1 to 24 letters, digits, spaces, - or _.'),
+                                        font=HINT_FONT, fill=MUTED, anchor='nw', width=self.W - 60)
+        self.go = Tab(scene, t('Rename') if current else t('Create'), self.confirm, self.W - 30, self.buttons_y, 'e',
+                      size=16)
+        self.cancel = Tab(scene, t('Cancel'), self.close, self.go.cx - self.go.width / 2 - 16, self.buttons_y, 'e',
+                          size=15, fill=theme.GREY)
+        self.tabs = [self.go, self.cancel]
+        if current:
+            self.armed = False
+            self.delete = Tab(scene, t('Delete'), self.remove, 30, self.buttons_y, 'w', size=14, tilt=-2,
+                              fill=(200, 70, 60))
+            self.tabs.append(self.delete)
+        self.present()
+        self.entry = entry
+
+        def focus():
+            activate(self.window)
+            entry.focus_set()
+            entry.icursor('end')
+            entry.select_range(0, 'end')
+        self.window.after(60, focus)
+
+    def draw(self):
+        w, pad = self.W, 30
+        heading = t('Rename or delete {name}', name=self.current) if self.current else t('New save file')
+        title = theme.text_image(heading, 26, theme.hex_colour(theme.ORANGE), 'Bold', outline=theme.CREAM)
+        title = theme.shadowed(title.rotate(1.5, resample=Image.BICUBIC, expand=True), 4, (0, 2))[0]
+        text = (t('Its progress stays in its own folder. Deleting keeps a copy in user\\save_backups, so it can be '
+                  'brought back.') if self.current else
+                t('A new save file starts LittleBigPlanet 3 from the beginning. Your other save files are kept as '
+                  'they are. Settings, DLC and your online account are shared.'))
+        intro = theme.paragraph(text, 14, w - 2 * pad, TEXT, 'Regular')
+        label = theme.text_image(t('Name'), 15, theme.hex_colour(theme.LIME), 'SemiBold')
+        y = 44
+        parts = [(title, pad - 10, y - 14)]
+        y += title.height - 14
+        parts.append((intro, pad, y))
+        y += intro.height + 16
+        parts.append((label, pad, y))
+        y += label.height + 8
+        field_y = y
+        status_y = field_y + 38
+        buttons_y = status_y + 52
+        card = theme.notice_card(w, buttons_y + 40, t('Save file'))
+        for image, x, top in parts:
+            card.alpha_composite(image, (int(x), int(top)))
+        return card, field_y, status_y, buttons_y
+
+    def say(self, text, colour=MUTED):
+        self.scene.itemconfigure(self.status, text=text, fill=colour)
+
+    def confirm(self):
+        try:
+            if self.current:
+                name = save_files.rename(USER, self.current, self.name.get())
+            else:
+                name = save_files.create(USER, self.name.get())
+        except save_files.SaveFileError as error:
+            self.say(str(error), ERROR)
+            return
+        except OSError as error:
+            self.say(t('The save file could not be changed: {error}', error=error), ERROR)
+            return
+        self.finish(name)
+
+    def remove(self):
+        """Delete asks once more: the first press arms it, the second deletes."""
+        if not self.armed:
+            self.armed = True
+            self.say(t('Press Delete again to delete {name}. A copy is kept in user\\save_backups.',
+                       name=self.current), WARN)
+            return
+        try:
+            save_files.delete(USER, self.current)
+        except (save_files.SaveFileError, OSError) as error:
+            self.say(str(error), ERROR)
+            return
+        self.finish(save_files.MAIN)
+
+    def finish(self, name):
+        if self.on_done:
+            self.on_done(name)
+        self.close()
+
+    def close(self, force=False):
+        if self.closing:
+            return
+        self.closing = True
+        for tab in self.tabs:
+            tab.forget()
+        self.window.grab_release()
+        self.animate(0, opening=False)
 
 
 class TitleBar:
@@ -1350,8 +1536,13 @@ class Launcher(tk.Tk):
     BAR_Y = ONLINE_Y + 216
     HEIGHT = BAR_Y + 92
 
-    def __init__(self):
+    def __init__(self, direct=False):
         super().__init__()
+        # LBPPC.exe --play (the desktop shortcut from Shortcut): the game starts with no launcher on screen; the
+        # launcher shows itself only when something needs the player (see direct_play).
+        self.direct = direct
+        if direct:
+            self.withdraw()
         ui_scale.fonts(self)
         self.title('LBPPC')
         self.set_icon()
@@ -1400,6 +1591,9 @@ class Launcher(tk.Tk):
         gc.disable()
         self.after(5000, self.collect_garbage)
         self.after(600, self.first_start)
+        if direct:
+            self.direct_started = None
+            self.after(900, self.direct_play)
         self.after_update()
         # A newer LBPPC on GitHub (scripts/updater.py): asked in the background, offered once nothing else is open.
         self.update_found = None
@@ -1431,6 +1625,8 @@ class Launcher(tk.Tk):
     def offer_update(self):
         """The update card once the check has answered, no other card is open and the game isn't running."""
         cleaning = self.update_cleaner and self.update_cleaner.is_alive()  # it empties out/update/, the download's
+        if self.direct:
+            return  # started straight into the game: the update is offered the next time the launcher is opened
         if self.update_found is None or self.card or self.process or cleaning:
             self.after(1000, self.offer_update)
         elif self.update_found:
@@ -1440,7 +1636,7 @@ class Launcher(tk.Tk):
         """An update just installed (or failed and put the old version back): said in the bar; its leftovers go."""
         self.update_cleaner = None
         if FROZEN:
-            self.update_cleaner = threading.Thread(target=updater.clean_up, args=(ROOT,), daemon=True)
+            self.update_cleaner = threading.Thread(target=updater.clean_up, args=(DATA,), daemon=True)
             self.update_cleaner.start()
         if os.environ.pop('LBPPC_UPDATED', None):
             self.set_state(t('Updated to LBPPC {version}', version=VERSION), GOOD)
@@ -1508,6 +1704,23 @@ class Launcher(tk.Tk):
             scene.widget(box, cx, cy + 22, half, 28)
             self.text(cx + 2, cy + 54, self.fit(t(hint), half))
             self.choices[key] = (var, values)
+        # Save file: the eighth cell (save_files.py). Its list ends with New save file... and Manage...
+        index = len(OPTIONS)
+        self.save_x, self.save_y = (x + 20, right)[index % 2], y + 44 + (index // 2) * 76
+        self.label('label:save_file', self.save_x, self.save_y, t('Save file'))
+        self.save_var = tk.StringVar()
+        self.save_box = ttk.Combobox(self, textvariable=self.save_var, state='readonly', font=UI_FONT,
+                                     style='Night.TCombobox')
+        self.save_box.bind('<<ComboboxSelected>>', lambda _e: (self.save_file_chosen(), self.selection_clear()))
+        # Rename or delete: a button beside the list (greyed while Main, which can't be changed, is chosen).
+        self.save_edit = Tab(scene, t('Rename / delete'), self.edit_save_file, self.save_x + half, self.save_y + 36,
+                             'e', size=13, tilt=2)
+        box_w = int(half - self.save_edit.width - 12)
+        scene.widget(self.save_box, self.save_x, self.save_y + 22, box_w, 28)
+        self.text(self.save_x + 2, self.save_y + 54, self.fit(t('Separate progress. Settings, DLC and your '
+                                                                  'online account are shared.'), half))
+        self.save_half = half
+        self.fill_save_files()
 
         # Online: one account (name and password) on the LBPPC server's shadNet (sign-in, friends, multiplayer)
         # and Refresh (levels, profiles).
@@ -1554,7 +1767,8 @@ class Launcher(tk.Tk):
                                       (N_('Show log'), self.toggle_log), (N_('Make a report'), self.report),
                                       (N_('Log file'), lambda: LOG.is_file() and open_path(LOG)),
                                       (N_('Import save'), self.import_save),
-                                      (N_('Saves'), lambda: open_path(USER)))):
+                                      (N_('Saves'), lambda: open_path(USER)),
+                                      (N_('Shortcut'), self.make_shortcut))):
             colour = '#8c9eff' if text == 'Discord' else theme.hex_colour((200, 225, 150))  # Discord's blurple, lighter
             item = self.text(lx, y + 28, t(text), ('Segoe UI Semibold', 10), colour, 'e')
             scene.tag_bind(item, '<Button-1>', lambda _e, act=action: act())
@@ -1603,6 +1817,51 @@ class Launcher(tk.Tk):
         for tab in getattr(self, 'page_tabs', {}).values():  # the page tabs sit on the banner
             self.scene.tag_raise(tab.item)
 
+    NEW_SAVE = N_('New save file...')
+
+    def fill_save_files(self):
+        current = self.settings.get('save_file') or save_files.MAIN
+        names = save_files.names(USER)
+        if current not in names:
+            current = self.settings['save_file'] = save_files.MAIN
+        shown = [t('Main') if n == save_files.MAIN else n for n in names]
+        self.save_box.configure(values=shown + [t(self.NEW_SAVE)])
+        self.save_names = dict(zip(shown, names))
+        self.save_var.set(t('Main') if current == save_files.MAIN else current)
+        if hasattr(self, 'save_edit'):
+            self.save_edit.set_enabled(current != save_files.MAIN)
+
+    def save_file_chosen(self):
+        """A save file chosen, or New save file... from the same list (SaveFileCard)."""
+        choice = self.save_var.get()
+        if self.process and (choice == t(self.NEW_SAVE) or
+                             self.save_names.get(choice) != self.settings.get('save_file')):
+            self.set_state(t('Close the game before changing save files'), WARN)
+            self.fill_save_files()
+            return
+        if choice == t(self.NEW_SAVE):
+            self.fill_save_files()  # the list shows the current one until the card makes another
+            if not getattr(self, 'card', None):
+                SaveFileCard(self, None, self.save_file_done)
+            return
+        self.settings['save_file'] = self.save_names.get(choice, save_files.MAIN)
+        save_settings(self.settings)
+        self.fill_save_files()
+
+    def save_file_done(self, name):
+        self.settings['save_file'] = name
+        save_settings(self.settings)
+        self.fill_save_files()
+        self.set_state(t('Save file: {name}', name=t('Main') if name == save_files.MAIN else name), GOOD)
+
+    def edit_save_file(self):
+        """Rename / delete, beside the list: the chosen save file (not Main)."""
+        current = self.settings.get('save_file') or save_files.MAIN
+        if self.process:
+            self.set_state(t('Close the game before changing save files'), WARN)
+        elif current != save_files.MAIN and not getattr(self, 'card', None):
+            SaveFileCard(self, current, self.save_file_done)
+
     def import_save(self):
         """A decrypted PS4 save into LBPPC (scripts/save_import.py); LBPPC's own save of that kind backed up first."""
         if self.process:
@@ -1624,7 +1883,9 @@ class Launcher(tk.Tk):
             return
         try:
             game_root = game_setup.Folder(self.settings['game']).root if self.settings.get('game') else None
-            backup = save_import.import_saves(saves, USER, save_import.game_title(game_root, self.settings.get('update') or None))
+            chosen = self.settings.get('save_file') or save_files.MAIN
+            backup = save_import.import_saves(saves, USER, save_import.game_title(game_root, self.settings.get('update') or None),
+                                              None if chosen == save_files.MAIN else save_files.folder(USER, chosen))
         except OSError as error:
             self.set_state(t('The save could not be imported: {error}', error=error), ERROR)
             return
@@ -1645,9 +1906,8 @@ class Launcher(tk.Tk):
         if self.process:
             self.set_state(t('The launcher changes language the next time it starts.'), MUTED)
             return
-        command = [sys.executable] if FROZEN else [sys.executable, str(Path(__file__).resolve())]
         try:
-            subprocess.Popen(command, cwd=ROOT, close_fds=True)
+            subprocess.Popen(launcher_command(), cwd=ROOT, close_fds=True, env=host_environment())
         except OSError:
             self.set_state(t('The launcher changes language the next time it starts.'), MUTED)
             return
@@ -1704,13 +1964,115 @@ class Launcher(tk.Tk):
         self.store()
         SetupWizard(self)
 
+    def direct_play(self):
+        """--play: Play pressed for the player once the launcher has started. Anything that needs them (the first-run
+        notice or setup, a game folder that isn't ready, online sign-in refused) shows the launcher instead."""
+        if not self.direct or not self.winfo_exists():
+            return
+        if self.card:
+            self.reveal()  # the beta notice or the setup wizard
+            return
+        if self.process:
+            return
+        if self.direct_started is None:
+            state = self.refresh_game()
+            if state not in ('ready', 'warn'):
+                self.reveal()
+                return
+            self.direct_started = time.monotonic()
+            self.play()
+        elif self.friends.busy and time.monotonic() - self.direct_started < 20:
+            pass  # play() waits for the friends list to sign out, then starts the game itself
+        else:
+            self.reveal()  # play() said why in the status bar (online sign-in, for example)
+            return
+        if not self.process:
+            self.after(300, self.direct_play)
+
+    def reveal(self):
+        """The launcher on screen after all (--play)."""
+        if self.direct:
+            self.direct = False
+            self.deiconify()
+            self.lift()
+            activate(self)
+            self.after(1500, self.offer_update)
+
+    def make_shortcut(self):
+        """A desktop shortcut that starts the game straight away (LBPPC.exe --play), skipping the launcher."""
+        if os.name != 'nt':
+            self.make_linux_shortcut()
+            return
+        if FROZEN:
+            target, arguments = Path(sys.executable), '--play'
+        else:
+            exe = Path(sys.executable)
+            target = exe.with_name('pythonw.exe') if exe.with_name('pythonw.exe').is_file() else exe
+            arguments = f'"{Path(__file__).resolve()}" --play'
+        icon = theme.ASSETS / 'lbppc.ico'
+        script = ('$s=(New-Object -ComObject WScript.Shell).CreateShortcut($env:LBPPC_LNK);'
+                  '$s.TargetPath=$env:LBPPC_TARGET;$s.Arguments=$env:LBPPC_ARGS;$s.WorkingDirectory=$env:LBPPC_DIR;'
+                  'if($env:LBPPC_ICON){$s.IconLocation=$env:LBPPC_ICON};$s.Description=\"LBPPC\";$s.Save()')
+        try:
+            desktop = subprocess.run(['powershell', '-NoProfile', '-Command', '[Environment]::GetFolderPath("Desktop")'],
+                                     capture_output=True, text=True, timeout=20,
+                                     creationflags=subprocess.CREATE_NO_WINDOW).stdout.strip()
+            link = Path(desktop) / 'LBPPC (direct).lnk'
+            env = dict(os.environ, LBPPC_LNK=str(link), LBPPC_TARGET=str(target), LBPPC_ARGS=arguments,
+                       LBPPC_DIR=str(ROOT), LBPPC_ICON=str(icon) if icon.is_file() else '')
+            done = subprocess.run(['powershell', '-NoProfile', '-Command', script], env=env, capture_output=True,
+                                  text=True, timeout=20, creationflags=subprocess.CREATE_NO_WINDOW)
+            if done.returncode != 0 or not link.is_file():
+                raise OSError(done.stderr.strip() or 'PowerShell could not save it')
+        except (OSError, subprocess.SubprocessError) as error:
+            self.set_state(t('The shortcut could not be made: {error}', error=error), ERROR)
+            return
+        self.set_state(t('Desktop shortcut made: it starts the game without the launcher'), GOOD)
+
+    def make_linux_shortcut(self):
+        """Linux: an "LBPPC (direct)" entry in the applications menu, and on the desktop when there is one, that runs
+        the AppImage with --play. (Steam: add the AppImage as a non-Steam game with --play as its launch option.)"""
+        if APPIMAGE:
+            command = [str(APPIMAGE), '--play']
+        else:
+            command = [sys.executable, '--play'] if FROZEN else [sys.executable, str(Path(__file__).resolve()), '--play']
+
+        def quoted(word):  # the desktop entry spec's quoting
+            return '"' + re.sub(r'(["`$\\])', r'\\\1', word) + '"'
+        icon = theme.ASSETS / 'logo.png'
+        entry = ('[Desktop Entry]\nType=Application\nName=LBPPC (direct)\n'
+                 'Comment=LittleBigPlanet 3 on PC, straight into the game\n'
+                 f'Exec={" ".join(quoted(word) for word in command)}\n'
+                 'Icon=lbppc\nTerminal=false\nCategories=Game;\n')
+        try:
+            data_home = Path(os.environ.get('XDG_DATA_HOME') or Path.home() / '.local' / 'share')
+            if icon.is_file():  # the menu's icon (the AppImage's own is inside its mount, gone when it closes)
+                icons = data_home / 'icons' / 'hicolor' / '256x256' / 'apps'
+                icons.mkdir(parents=True, exist_ok=True)
+                icons.joinpath('lbppc.png').write_bytes(icon.read_bytes())
+            places = [data_home / 'applications']
+            desktop = subprocess.run(['xdg-user-dir', 'DESKTOP'], capture_output=True, text=True, timeout=10,
+                                     env=host_environment()).stdout.strip() if shutil_which('xdg-user-dir') else ''
+            desktop = Path(desktop) if desktop else Path.home() / 'Desktop'
+            if desktop.is_dir() and desktop != Path.home():
+                places.append(desktop)
+            for place in places:
+                place.mkdir(parents=True, exist_ok=True)
+                link = place / 'lbppc-direct.desktop'
+                link.write_text(entry, encoding='utf-8')
+                link.chmod(0o755)  # desktops only start entries marked executable
+        except (OSError, subprocess.SubprocessError) as error:
+            self.set_state(t('The shortcut could not be made: {error}', error=error), ERROR)
+            return
+        self.set_state(t('Desktop shortcut made: it starts the game without the launcher'), GOOD)
+
     def first_start(self):
         """The beta notice until it's turned off, then the setup wizard while there's no game ready to play."""
         def offer_setup():
             if self.winfo_exists() and check_game(self.game.get().strip(),
                                                   self.settings.get('update'))[0] in ('setup', 'missing'):
                 SetupWizard(self)
-        if not self.settings.get('beta_notice_seen'):
+        if not self.settings.get('beta_notice_seen') and not self.direct:  # --play: straight to the game
             BetaNotice(self, on_closed=offer_setup)
         else:
             offer_setup()
@@ -1825,6 +2187,8 @@ class Launcher(tk.Tk):
         self.store()
         env = dict(os.environ)
         env['LBPPC_RENDER_RES'] = self.settings['resolution']
+        env.pop('LBPPC_SAVE_DIR', None); env.pop('LBPPC_SAVE_NAME', None)
+        env.update(save_files.environment(USER, self.settings.get('save_file')))
         if self.settings['display'] != 'windowed':
             env['BB_WINDOW_MODE'] = self.settings['display']
         else:
@@ -1887,7 +2251,8 @@ class Launcher(tk.Tk):
         self.process = subprocess.Popen(command + [str(ROOT / 'run.py'), self.settings['game'],
                                                    *(['--update', update] if update else [])], cwd=ROOT,
                                         env=env, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
-                                        stderr=subprocess.STDOUT, creationflags=flags)
+                                        stderr=subprocess.STDOUT, creationflags=flags,
+                                        start_new_session=os.name != 'nt')  # Stop ends its group (end_process)
         threading.Thread(target=self.read_output, args=(self.process,), daemon=True).start()
         self.play_button.set_enabled(False)
         self.stop_button.set_enabled(True)
@@ -1954,19 +2319,36 @@ class Launcher(tk.Tk):
             self.set_state(t('Closed'), MUTED)
         else:
             self.set_state(t('Ended with an error: see the log'), ERROR)
+            if self.direct:
+                self.reveal()
             if not self.log_shown:
                 self.toggle_log()
         self.refresh_game()
+        if self.direct and (stopped or code == 0):
+            self.close()  # the game closed normally: nothing to show
 
     @staticmethod
     def end_process(process):
         """run.py's game process is its child: the whole tree ends (on Windows before run.py itself, whose
         children taskkill finds through it). taskkill returns once the game is gone: in a level, Windows and the
-        driver take about 6 s to free its memory and GPU resources."""
+        driver take about 6 s to free its memory and GPU resources. Elsewhere run.py starts a process group of its
+        own (play), which ends together: asked first, then made to after 10 s."""
         if os.name == 'nt':
             subprocess.run(['taskkill', '/T', '/F', '/PID', str(process.pid)], capture_output=True,
                            creationflags=subprocess.CREATE_NO_WINDOW)
-        process.terminate()
+            process.terminate()
+            return
+        import signal
+        try:
+            os.killpg(process.pid, signal.SIGTERM)
+            process.wait(10)
+        except subprocess.TimeoutExpired:
+            try:
+                os.killpg(process.pid, signal.SIGKILL)
+            except OSError:
+                pass
+        except OSError:
+            process.terminate()
 
     def stop(self):
         """Stop: the game ended on a thread, so the launcher answers while Windows frees it. finished() runs when
@@ -2696,4 +3078,4 @@ if __name__ == '__main__':
     else:
         # The launcher at the screen's size (ui_scale.py).
         ui_scale.install(ui_scale.choose(WIDTH, Launcher.HEIGHT))
-        Launcher().mainloop()
+        Launcher(direct='--play' in sys.argv[1:]).mainloop()

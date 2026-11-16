@@ -5,6 +5,9 @@
 #include <cstdio>
 #include <cstring>
 #include <boost/container/small_vector.hpp>
+#include <filesystem>
+#include <format>
+#include <set>
 #include <xxhash.h>
 
 #include "bbport_overlay.h"
@@ -41,7 +44,8 @@ TextureCache::TextureCache(const Vulkan::Instance& instance_, Vulkan::Scheduler&
     : instance{instance_}, scheduler{scheduler_}, runtime{runtime_}, liverpool{liverpool_},
       buffer_cache{buffer_cache_}, tracker{tracker_}, blit_helper{instance, scheduler},
       tile_manager{instance, scheduler, runtime, buffer_cache.GetStreamBuffer()},
-      readback_linear_images{EmulatorSettings.IsReadbackLinearImagesEnabled()} {
+      readback_linear_images{EmulatorSettings.IsReadbackLinearImagesEnabled()},
+      readback_linear_max_pixels{EmulatorSettings.ReadbackLinearMaxPixels()} {
 
     u32 max_samplers = instance.GetMaxSamplerAllocationCount();
     trigger_gc_samplers = max_samplers * 3 / 4;
@@ -574,6 +578,27 @@ std::tuple<ImageId, int, int> TextureCache::ResolveOverlap(const ImageInfo& imag
     return {merged_image_id, -1, -1};
 }
 
+// lbppc (debug, lights #9/#32): LBPPC_WATCH_ADDR=<hex>: each distinct use of an image at that address (by image
+// uid and kind of use), so a draw target and a sampled texture that are different images show up.
+static void WatchImage(const char* what, const Image& image, u32 slice, ImageId id) {
+    static const VAddr watch = [] {
+        const char* env = std::getenv("LBPPC_WATCH_ADDR");
+        return env ? VAddr(std::strtoull(env, nullptr, 16)) : VAddr(0);
+    }();
+    if (!watch || image.info.guest_address != watch) {
+        return;
+    }
+    static std::set<std::tuple<std::string, u64, u32>> seen;
+    static u64 lines = 0;
+    if (!seen.insert({what, image.image_uid, std::string(what) == "target" ? slice : 0u}).second || ++lines > 600) {
+        return;
+    }
+    std::printf("Watch %#llx: %s uid %llu id %u type %d %ux%ux%u layers %u fmt %d tile %d size %#llx slice %u\n",
+                (unsigned long long)watch, what, (unsigned long long)image.image_uid, id.index, int(image.info.type),
+                image.info.size.width, image.info.size.height, image.info.size.depth, image.info.resources.layers,
+                int(image.info.pixel_format), int(image.info.tile_mode), (unsigned long long)image.info.guest_size, slice);
+}
+
 ImageId TextureCache::ExpandImage(const ImageInfo& info, ImageId image_id) {
     const auto new_image_id = InsertImage(info);
     RegisterImage(new_image_id);
@@ -602,7 +627,15 @@ static void ClampViewRange(TextureCache::ImageDesc& desc, const Image& image) {
     auto& range = desc.view_info.range;
     // In u32 throughout: the counts are u16 since 1.9 (u32 before).
     const u32 levels = std::max<u32>(image.info.resources.levels, 1u);
-    const u32 layers = std::max<u32>(image.info.resources.layers, 1u);
+    // lbppc (lights #9/#32): a 2D view of a volume (a render target drawn into one depth slice, as LBP3's
+    // lighting volumes are) names a depth slice as its layer: a volume has as many as its depth at that
+    // mip, not its one array layer. Clamping to that layer sent every slice's draw into slice 0.
+    const bool volume_slices =
+        image.info.props.is_volume && desc.view_info.type != AmdGpu::ImageType::Color3D;
+    const u32 layers =
+        volume_slices
+            ? std::max<u32>(image.info.size.depth >> std::min<u32>(range.base.level, levels - 1), 1u)
+            : std::max<u32>(image.info.resources.layers, 1u);
     if (u32(range.base.level) + range.extent.levels <= levels &&
         u32(range.base.layer) + range.extent.layers <= layers) {
         return;
@@ -830,9 +863,67 @@ ImageId TextureCache::FindImageFromRange(VAddr address, size_t size, bool ensure
     return {};
 }
 
+// lbppc: LBP3 draws its lights into 16 colour targets of 512x256, back to back in memory, and then samples that
+// memory as one 512x4096 texture (#9, #32: lights lit nothing). On the PS4 it is one block of memory; here each
+// target is its own image, so the tall texture was filled from memory the GPU never wrote. Each target that lies
+// whole rows into a taller sampled image of the same width, pitch and format, holding what the GPU drew, is copied
+// into those rows before the texture is read. BbToggle::StackedTargets set: not copied (as before).
+void TextureCache::GatherStackedTargets(ImageId image_id) {
+    if (BbToggle::Disabled(BbToggle::StackedTargets)) {
+        return;
+    }
+    Image& image = slot_images[image_id];
+    const ImageInfo& info = image.info;
+    if (info.props.is_depth || info.props.is_block || info.type != AmdGpu::ImageType::Color2D ||
+        info.resources.levels != 1 || info.resources.layers != 1 || info.num_samples != 1 ||
+        info.guest_address == 0) {
+        return;
+    }
+    const u64 row_bytes = u64(info.pitch) * info.num_bits / 8;
+    if (row_bytes == 0) {
+        return;
+    }
+    boost::container::small_vector<std::pair<ImageId, u32>, 16> parts;
+    ForEachImageInRegion(info.guest_address, info.guest_size, [&](ImageId part_id, Image& part) {
+        const ImageInfo& p = part.info;
+        if (part_id == image_id || p.guest_address < info.guest_address ||
+            p.size.width != info.size.width || p.pitch != info.pitch ||
+            p.size.height >= info.size.height || p.pixel_format != info.pixel_format ||
+            p.type != info.type || p.resources.levels != 1 || p.resources.layers != 1 ||
+            p.num_samples != 1 || p.props.is_depth || !part.SafeToDownload()) {
+            return;
+        }
+        const u64 offset = p.guest_address - info.guest_address;
+        if (offset % row_bytes != 0) {
+            return;
+        }
+        const u64 y = offset / row_bytes;
+        if (y + p.size.height > info.size.height || ((info.props.is_tiled || p.props.is_tiled) && y % 8 != 0)) {
+            return;
+        }
+        parts.emplace_back(part_id, static_cast<u32>(y));
+    });
+    if (parts.size() < 2) {
+        return; // one target at the image's own address is the usual overlap, handled when the image was found
+    }
+    static int logged;
+    if (logged < 8) {
+        ++logged;
+        std::printf("Stacked targets: %zu targets of %ux%u gathered into the %ux%u texture at %#llx\n",
+                    parts.size(), slot_images[parts[0].first].info.size.width,
+                    slot_images[parts[0].first].info.size.height, info.size.width, info.size.height,
+                    static_cast<unsigned long long>(info.guest_address));
+    }
+    runtime.BeforeImageAccess();
+    for (const auto& [part_id, y] : parts) {
+        runtime.CopyIntoRows(&slot_images[part_id], &image, y);
+    }
+}
+
 ImageView& TextureCache::FindTexture(ImageId image_id, const ImageDesc& desc, ViewMemo* memo,
                                      bool refresh) {
     Image& image = slot_images[image_id];
+    WatchImage(desc.type == BindingType::Storage ? "storage" : "texture", image, 0, image_id);
     if (image.info.props.is_depth && !desc.info.props.is_depth) {
         static int logged;
         if (logged++ < 6) {
@@ -852,6 +943,7 @@ ImageView& TextureCache::FindTexture(ImageId image_id, const ImageDesc& desc, Vi
         image.flags |= ImageFlagBits::GpuModified;
         image.MarkGpuWritten();
         if (readback_linear_images && (!image.info.props.is_tiled || image.info.size.width <= 8) &&
+            ReadbackSizeOk(image.info) &&
             image.info.guest_address != 0) {
             std::unique_lock lk{download_images_mutex};
             download_images.emplace(image_id);
@@ -859,6 +951,60 @@ ImageView& TextureCache::FindTexture(ImageId image_id, const ImageDesc& desc, Vi
     }
     if (refresh) {
         UpdateImage(image_id);
+        if (desc.type != BindingType::Storage) {
+            GatherStackedTargets(image_id);
+        }
+        // lbppc (debug): the file LBPPC_TEX_DUMP_TRIGGER names what to dump: hex addresses (comma or space separated),
+        // or "all" for each texture sampled from then on (up to 120, compressed formats left out). Each one is written,
+        // as the draw sampling it reads it, to BB_DUMP_DIR as tex_<addr>_<W>x<H>_<bits>.raw; the file goes when done.
+        static const char* dump_trigger = std::getenv("LBPPC_TEX_DUMP_TRIGGER");
+        if (dump_trigger) {
+            static std::set<VAddr> pending, done;
+            static bool armed = false, all = false;
+            static u64 next_check = 0;
+            const u64 now = std::chrono::duration_cast<std::chrono::milliseconds>(
+                                std::chrono::steady_clock::now().time_since_epoch()).count();
+            if (!armed && now >= next_check) {
+                next_check = now + 250;
+                std::error_code ec;
+                if (std::filesystem::exists(dump_trigger, ec)) {
+                    std::string text;
+                    if (FILE* f = std::fopen(dump_trigger, "rb")) {
+                        char buf[4096];
+                        text.assign(buf, std::fread(buf, 1, sizeof(buf), f));
+                        std::fclose(f);
+                    }
+                    armed = true;
+                    all = text.find("all") != std::string::npos;
+                    pending.clear();
+                    done.clear();
+                    for (const char* c = text.c_str(); *c;) {
+                        char* e = nullptr;
+                        const unsigned long long v = std::strtoull(c, &e, 16);
+                        if (e == c) { ++c; continue; }
+                        if (v) pending.insert(v);
+                        c = e;
+                    }
+                    std::printf("Texture dump: armed (%s)\n", all ? "all" : std::format("{} addresses", pending.size()).c_str());
+                }
+            }
+            Image& dumped = slot_images[image_id];
+            const VAddr a = dumped.info.guest_address;
+            if (armed && (all ? (!dumped.info.props.is_block && done.insert(a).second) : pending.erase(a) > 0)) {
+                const char* dir = std::getenv("BB_DUMP_DIR");
+                runtime.DumpImage(&dumped, std::format("{}/tex_{:x}_{}x{}_{}.raw", dir && *dir ? dir : "out/dump", a,
+                                                       dumped.info.size.width, dumped.info.size.height,
+                                                       dumped.info.num_bits));
+                std::printf("Texture dump: %#llx %ux%u, %u bits, format %d\n", (unsigned long long)a,
+                            dumped.info.size.width, dumped.info.size.height, dumped.info.num_bits,
+                            int(dumped.info.pixel_format));
+                if ((all && done.size() >= 120) || (!all && pending.empty())) {
+                    armed = false;
+                    std::error_code ec;
+                    std::filesystem::remove(dump_trigger, ec);
+                }
+            }
+        }
     }
     if (memo && !BbToggle::Disabled(BbToggle::TextureViewMemo)) {
         if (memo->image_id == image_id && memo->backing == image.backing && memo->view_id) {
@@ -878,6 +1024,7 @@ ImageView& TextureCache::FindTexture(ImageId image_id, const ImageDesc& desc, Vi
 
 ImageView& TextureCache::FindRenderTarget(ImageId image_id, const ImageDesc& desc) {
     Image& image = slot_images[image_id];
+    WatchImage("target", image, desc.view_info.range.base.layer, image_id);
     // lbppc test: LBPPC_TEX_LOG: each render target the first time it is bound.
     static const bool rt_log = std::getenv("LBPPC_TEX_LOG") != nullptr;
     if (rt_log && !image.usage.render_target) {
@@ -895,7 +1042,8 @@ ImageView& TextureCache::FindRenderTarget(ImageId image_id, const ImageDesc& des
     }
     image.flags |= ImageFlagBits::GpuModified;
     image.MarkGpuWritten();
-    if (readback_linear_images && (!image.info.props.is_tiled || image.info.size.width <= 8)) {
+    if (readback_linear_images && (!image.info.props.is_tiled || image.info.size.width <= 8) &&
+        ReadbackSizeOk(image.info)) {
         std::unique_lock lk{download_images_mutex};
         download_images.emplace(image_id);
     }
@@ -1718,6 +1866,7 @@ ImageId TextureCache::InsertImage(const ImageInfo& info) {
                     u32(info.guest_size), __builtin_return_address(0));
     }
     const ImageId image_id = slot_images.insert(instance, runtime, slot_image_views, info);
+    WatchImage("created", slot_images[image_id], 0, image_id);
     if (!slot_images[image_id].allocation_failed) [[likely]] {
         return image_id;
     }
@@ -1792,6 +1941,7 @@ u64 TextureCache::ReclaimMemoryFor(VAddr addr, size_t size, u64 bytes) {
 
 void TextureCache::DeleteImage(ImageId image_id, bool now) {
     Image& image = slot_images[image_id];
+    WatchImage("deleted", image, 0, image_id);
     ASSERT_MSG(!image.IsTracked(), "Image was not untracked");
     ASSERT_MSG(False(image.flags & ImageFlagBits::Registered), "Image was not unregistered");
 

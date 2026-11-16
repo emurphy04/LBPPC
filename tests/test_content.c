@@ -92,6 +92,25 @@ static void make_addons(void) {
         }
     }
 }
+/* More packs than the 64 LBPPC once stopped at (#33): LBPDLCMANY000000 onwards, made and removed. */
+#define MANY 150
+static void many_addons(int make) {
+    char path[700], label[17], content[64];
+    for (unsigned i=0;i<MANY;++i) {
+        snprintf(label,sizeof(label),"LBPDLCMANY%06u",i);
+        snprintf(path,sizeof(path),"%s/addcont/CUSA00473/%s",user_dir,label);
+        char sce[720], sfo[740];
+        snprintf(sce,sizeof(sce),"%s/sce_sys",path);
+        snprintf(sfo,sizeof(sfo),"%s/param.sfo",sce);
+        if (make) {
+            assert(!MAKE_DIR(path) && !MAKE_DIR(sce));
+            snprintf(content,sizeof(content),"UP9000-CUSA00473_00-%s",label);
+            write_sfo(sfo,"ac",content);
+        } else {
+            remove(sfo); REMOVE_DIR(sce); REMOVE_DIR(path);
+        }
+    }
+}
 typedef int32_t (ABI *Module)(uint16_t);
 typedef int32_t (ABI *Init)(const void *,void *);
 typedef int32_t (ABI *Param)(uint32_t,int32_t *);
@@ -168,12 +187,20 @@ int main(int argc,char **argv) {
     assert(runtime_content_addon("LBPDLCSONYCO0001",folder,sizeof(folder)) && strstr(folder,"LBPDLCSONYCO0001"));
     assert(!runtime_content_addon("LBPDLCFAKEFAKE01",NULL,0) && !runtime_content_addon("LBPDLCSONYMP0001",NULL,0));
     assert(!runtime_content_addon("../../x",NULL,0) && !runtime_content_addon("",NULL,0));
+    /* The game asks for the count, then for a list of that many: every pack is in it, past 64. */
+    many_addons(1);
+    assert(list(0,NULL,0,&h.hits)==0 && h.hits==MANY+2);
+    static unsigned char big[(MANY+2)*24];
+    assert(list(1,big,MANY+2,&h.hits)==0 && h.hits==MANY+2);
+    assert(listed(big,h.hits,"LBPDLCMANY000149",0) && listed(big,h.hits,"LBPDLCMANY000000",0) &&
+           listed(big,h.hits,"LBPDLCSONYCO0001",0));
+    many_addons(0);
     remove_test_dirs();
     assert(list(0,NULL,0,&h.hits)==0 && h.hits==0);
     assert(unload(0xb4)==0 && loaded(0xb4)==0);
     assert((uint32_t)init(initial,b.boot)==0x80d90003);
     assert(unload(0xb4)==0 && (uint32_t)loaded(0xb4)==0x805a1001);
     assert(load(0xb4)==0 && init(initial,b.boot)==0 && unload(0xb4)==0);
-    puts("PASS: AppContent lifecycle, profile, output boundaries and DLC dumps");
+    puts("PASS: AppContent lifecycle, profile, output boundaries and DLC dumps (150 and more)");
     return 0;
 }

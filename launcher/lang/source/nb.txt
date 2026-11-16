@@ -399,3 +399,36 @@
 397|Oppdateringen leses fra sin egen mappe: spill- og oppdateringsmappene dine blir som de er
 398|{folder} er DLC for den {region} versjonen av LittleBigPlanet 3 ({id}). LBPPC trenger den amerikanske eller europeiske versjonen ({ids}) og DLC-ene til den.
 399|Den oppdateringen er for {update}, men spillet er {game}. Velg oppdateringen for samme utgave.
+400|Ny lagring...
+401|Gi nytt navn til eller slett {name}
+402|Ny lagring
+403|Fremgangen ligger i en egen mappe. Når den slettes, tas en kopi vare på i user\save_backups, så den kan hentes tilbake.
+404|En ny lagring starter LittleBigPlanet 3 fra begynnelsen. De andre lagringene dine forblir som de er. Innstillinger, DLC og nettkontoen din deles.
+405|Navn
+406|Lagring
+407|Gi nytt navn / slett
+408|Lagring: {name}
+409|1 til 24 bokstaver, sifre, mellomrom, - eller _.
+410|Gi nytt navn
+411|Opprett
+412|Slett
+413|Trykk på Slett igjen for å slette {name}. En kopi tas vare på i user\save_backups.
+414|Egen fremgang. Innstillinger, DLC og nettkontoen din deles.
+415|Hoved
+416|Lukk spillet før du bytter lagring
+417|Lagringen kunne ikke byttes: {error}
+418|Denne mappen inneholder bare systemfilene til en pakke ({size} MB: param.sfo, npbind.dat og lignende) og ingen av spillfilene. En komplett mappe med oppdatering 1.28 er rundt 1,3 GB, med eboot.bin og patch_001.farc inni.
+419|Deltainfo-filene markerer den som en deltaoppdatering: den inneholder bare endringene fra versjonen før, som en PS4 bruker når den installeres, så den kan ikke brukes alene. LBPPC trenger den komplette oppdateringen 1.28.
+420|Filene fra oppdatering 1.28 er ikke i spillet ditt (mangler: {count}, blant dem patch_001.farc, 1,2 GB). Velg den komplette mappen med oppdatering 1.28: rundt 1,3 GB, med eboot.bin og patch_001.farc inni.
+421|Kopien din har {have} GB av de {want} GB som LittleBigPlanet 3 1.28 har (mangler: {count}, for eksempel {file}). Utpakkingen stoppet halvveis eller hoppet over filer: pakk ut spillet på nytt, og sjekk at det er nok ledig plass.
+422|Et lagringsnavn har 1 til 24 bokstaver, sifre, mellomrom, - eller _, og begynner med en bokstav eller et siffer.
+423|Windows tillater ikke det navnet. Velg et annet.
+424|Det finnes allerede en lagring som heter {name}.
+425|Hovedlagringen kan ikke få nytt navn.
+426|Hovedlagringen kan ikke slettes.
+427|Det finnes ingen lagring som heter {name}.
+428|Snarvei på skrivebordet laget: den starter spillet uten oppstartsprogrammet
+429|Snarvei
+430|Snarveien kunne ikke lages: {error}
+431|Nedlastingen er ikke et LBPPC-AppImage: ikke installert.
+432|LBPPC kunne ikke erstatte {name} ({error}). Last ned den nye versjonen fra utgivelsessiden i stedet.

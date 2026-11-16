@@ -70,6 +70,10 @@ enum : std::uint64_t {
     // On by default (bit set: off): history of a thin feature this jitter phase missed is kept
     // when nothing moves. Static-camera flicker of railings/window bars p99.9 -45% (2026-10-03).
     TaaKeepNearerHistory = 1ull << 55,
+    // lbppc: render targets stacked back to back in memory and sampled as one taller texture reach it
+    // (TextureCache::GatherStackedTargets, LBP3's lights, #9/#32). Set: the texture is read from memory only, as
+    // before. In user/toggles.txt: 72057594037927936.
+    StackedTargets = 1ull << 56,
     SceneMipBias = 1ull << 57, ///< negative LOD bias of G-buffer samplers at reduced scene sizes
     ZpassInOrder = 1ull << 58, ///< occlusion counter dumps in order with the guest's own writes
     // Game memory backing the GPU has not used for a while is released when VRAM runs short

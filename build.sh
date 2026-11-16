@@ -15,9 +15,10 @@ MINGW*|MSYS*)
           ! -f gpu/third_party/xbyak/xbyak/xbyak.h ]]; then
         git submodule update --init --recursive
     fi
+    # --ignore-whitespace: a fresh Windows checkout can have the library's files with CRLF line ends.
     for patch in gpu/patches/fsr-vulkan/*.patch; do
-        if ! git -C gpu/third_party/fsr-vulkan apply --reverse --check "$PWD/$patch" 2>/dev/null; then
-            git -C gpu/third_party/fsr-vulkan apply "$PWD/$patch"
+        if ! git -C gpu/third_party/fsr-vulkan apply --reverse --check --ignore-whitespace "$PWD/$patch" 2>/dev/null; then
+            git -C gpu/third_party/fsr-vulkan apply --ignore-whitespace "$PWD/$patch"
         fi
     done
     cmake -S gpu -B out/gpu -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBB_PGO=off \
@@ -90,7 +91,7 @@ fi
 "$CC" -std=c11 -O2 -g -Wall -Wextra -Werror -pthread -no-pie "${includes[@]}" -I. -Isrc src/probe.c "${runtime[@]}" src/vulkan_smoke.c out/libatrac9.a -lm "${gpu[@]}" "${libraries[@]}" -o out/LBPPC-Game
 echo "Built $PWD/out/LBPPC-Game"
 # GPU check for run.sh (live_resolution=auto): links only the Vulkan loader.
-"$CC" -std=c11 -O2 -Wall -Wextra -Werror tools/gpu_capabilities.c "${libraries[@]}" -o out/bb-gpu-capabilities
+"$CC" -std=c11 -O2 -Wall -Wextra -Werror "${includes[@]}" tools/gpu_capabilities.c "${libraries[@]}" -o out/bb-gpu-capabilities
 if [[ ${1:-} == --test ]]; then
     "$CC" -std=c11 -O2 -g -Wall -Wextra -Werror -pthread "${includes[@]}" -I. -Isrc tests/test_pad.c src/runtime_input_config.c src/runtime_motion.c src/runtime_mouse_touch.c -lm "${libraries[@]}" -o out/pad-test
     out/pad-test
@@ -98,18 +99,20 @@ if [[ ${1:-} == --test ]]; then
     out/pad-triggers-test
     "$CC" -std=c11 -O2 -g -Wall -Wextra -Werror -pthread "${includes[@]}" -I. -Isrc tests/test_input_config.c src/runtime_input_config.c "${libraries[@]}" -o out/input-config-test
     out/input-config-test
-    "$CC" -std=c11 -O2 -g -Wall -Wextra -Werror -pthread -I. -Isrc tests/test_runtime.c "${runtime[@]}" out/libatrac9.a -lm "${gpu[@]}" "${libraries[@]}" -o out/runtime-test
+    "$CC" -std=c11 -O2 -g -Wall -Wextra -Werror -pthread "${includes[@]}" -I. -Isrc tests/test_runtime.c tests/test_probe_stubs.c "${runtime[@]}" out/libatrac9.a -lm "${gpu[@]}" "${libraries[@]}" -o out/runtime-test
     out/runtime-test
     "$CC" -std=c11 -O2 -g -Wall -Wextra -Werror -pthread -Isrc tests/test_file_mods.c -o out/file-mods-test
     out/file-mods-test
     "$CC" -std=c11 -O2 -g -Wall -Wextra -Werror -pthread -Isrc tests/test_file_edits.c $([[ $OSTYPE == msys ]] && echo src/compat_win.c -lbcrypt) -o out/file-edits-test
     out/file-edits-test
-    "$CC" -std=c11 -O2 -g -Wall -Wextra -Werror -pthread -I. -Isrc tests/test_sema.c "${runtime[@]}" out/libatrac9.a -lm "${gpu[@]}" "${libraries[@]}" -o out/sema-test
+    "$CC" -std=c11 -O2 -g -Wall -Wextra -Werror -pthread "${includes[@]}" -I. -Isrc tests/test_sema.c tests/test_probe_stubs.c "${runtime[@]}" out/libatrac9.a -lm "${gpu[@]}" "${libraries[@]}" -o out/sema-test
     out/sema-test
     "$CC" -std=c11 -D_GNU_SOURCE -O2 -g -Wall -Wextra -Werror -I. -Isrc tests/test_content.c src/runtime_content.c -o out/content-test
     out/content-test
     "$CC" -std=c11 -O2 -g -Wall -Wextra -Werror -Isrc tests/test_motion.c src/runtime_motion.c -lm -o out/motion-test
+    "$CC" -std=c11 -O2 -g -Wall -Wextra -Werror -Isrc tests/test_jpeg.c src/runtime_jpeg_codec.c -lm -o out/jpeg-test
     out/motion-test
+    out/jpeg-test
     "$CC" -std=c11 -O2 -g -Wall -Wextra -Werror -Isrc tests/test_mouse_touch.c src/runtime_mouse_touch.c -lm -o out/mouse-touch-test
     out/mouse-touch-test
 fi

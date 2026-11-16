@@ -53,7 +53,8 @@ def N_(text):
 
 # The launcher's code that holds t() texts (relative to the LBPPC checkout).
 SOURCES = ['launcher/lbppc_launcher.py', 'launcher/input_settings.py', 'scripts/game_setup.py', 'scripts/updater.py',
-           'scripts/online_accounts.py', 'scripts/game_files.py', 'scripts/save_import.py']
+           'scripts/online_accounts.py', 'scripts/game_files.py', 'scripts/save_import.py',
+           'scripts/save_files.py']
 
 
 def extract(root):

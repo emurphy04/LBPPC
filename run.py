@@ -14,7 +14,12 @@ import sys
 import time
 
 HERE = Path(__file__).resolve().parent
-OUT = HERE / 'out'
+# The player's files (out/: the prepared game and logs; user/: saves; lbppc.ini and input.ini) live next to the
+# program, unless LBPPC_DATA_DIR says otherwise: the Linux AppImage's program files are read-only, so its AppRun
+# points it at ~/.local/share/LBPPC.
+DATA = Path(os.environ['LBPPC_DATA_DIR']).expanduser() if os.environ.get('LBPPC_DATA_DIR') else HERE
+OUT = DATA / 'out'
+LINUX = sys.platform.startswith('linux')
 sys.path.insert(0, str(HERE / 'scripts'))
 import prepare as dump  # noqa: E402  (param.sfo)
 import log_privacy  # noqa: E402
@@ -73,9 +78,89 @@ def system_summary():
         status = MemoryStatus(length=ctypes.sizeof(MemoryStatus))
         if ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(status)):
             ram = f'{status.total / 2**30:.0f} GB'
+    elif LINUX:
+        cpu = cpu_info().get('model name', cpu)
+        try:
+            ram = f"{os.sysconf('SC_PAGE_SIZE') * os.sysconf('SC_PHYS_PAGES') / 2**30:.0f} GB"
+        except (OSError, ValueError, AttributeError):
+            pass
+        try:  # the distribution ("SteamOS 3.7.13") says more than the kernel's version
+            with open('/etc/os-release', encoding='utf-8', errors='replace') as release:
+                fields = dict(line.rstrip().split('=', 1) for line in release if '=' in line)
+            distro = fields.get('PRETTY_NAME', '').strip('"')
+        except (OSError, ValueError):
+            distro = ''
+        session = os.environ.get('XDG_SESSION_TYPE') or '?'
+        if os.environ.get('GAMESCOPE_WAYLAND_DISPLAY') or os.environ.get('SteamDeck') == '1':
+            session += ', gamescope'
+        version = os.environ.get('LBPPC_VERSION', 'development build')
+        return (f'System: LBPPC {version} (Linux); {distro or "Linux"}, kernel {platform.release()}, {session}; '
+                f'{cpu}, {os.cpu_count()} threads; {ram} RAM\n')
     version = os.environ.get('LBPPC_VERSION', 'development build')
     return (f'System: LBPPC {version}; {platform.system()} {platform.release()} ({platform.version()}); {cpu}, '
             f'{os.cpu_count()} threads; {ram} RAM\n')
+
+
+def cpu_info():
+    """Linux: the first processor's fields in /proc/cpuinfo (vendor_id, model name); empty elsewhere."""
+    fields = {}
+    try:
+        with open('/proc/cpuinfo', encoding='utf-8', errors='replace') as info:
+            for line in info:
+                if not line.strip():
+                    break
+                name, sep, value = line.partition(':')
+                if sep:
+                    fields[name.strip()] = value.strip()
+    except OSError:
+        pass
+    return fields
+
+
+def host_environment(env):
+    """Linux: the game's environment without what the launcher's bundled Python changed for itself. PyInstaller
+    keeps a variable's earlier value in <NAME>_ORIG, and the AppRun keeps the system's in LBPPC_HOST_<NAME>. The
+    game gets the system's libraries and those packaged with it (lib/). LD_PRELOAD (Steam's overlay library,
+    which Steam preloads into everything it starts) is never passed on: its Vulkan layer still reaches the game."""
+    env = dict(env)
+    for name in ('LD_LIBRARY_PATH', 'LD_PRELOAD', 'PYTHONHOME', 'PYTHONPATH', 'TCL_LIBRARY', 'TK_LIBRARY',
+                 'SSL_CERT_FILE', 'SSL_CERT_DIR'):
+        original = env.pop(f'{name}_ORIG', None)
+        host = env.pop(f'LBPPC_HOST_{name}', None)
+        original = original if original is not None else host
+        if original and name != 'LD_PRELOAD':
+            env[name] = original
+        else:
+            env.pop(name, None)
+    folders = [HERE / 'lib'] if (HERE / 'lib').is_dir() else []
+    # lib/compat: the C++ library the game was built with, used only when the system's is older (a newer one on the
+    # system is kept: the graphics driver may need it).
+    if (HERE / 'lib' / 'compat' / 'NEEDS').is_file() and not system_has(
+            (HERE / 'lib' / 'compat' / 'NEEDS').read_text(encoding='ascii').strip()):
+        folders.insert(0, HERE / 'lib' / 'compat')
+    if folders:
+        env['LD_LIBRARY_PATH'] = os.pathsep.join([*map(str, folders), *filter(None, [env.get('LD_LIBRARY_PATH')])])
+    return env
+
+
+def system_has(version):
+    """Whether the system's libstdc++ provides `version` ("GLIBCXX_3.4.33"); True when that can't be told."""
+    if not version:
+        return True
+    try:
+        listing = subprocess.run(['/sbin/ldconfig', '-p'], capture_output=True, text=True, timeout=10).stdout
+    except (OSError, subprocess.SubprocessError):
+        listing = ''
+    paths = [line.split('=>', 1)[1].strip() for line in listing.splitlines()
+             if 'libstdc++.so.6 ' in line and 'x86-64' in line and '=>' in line]
+    paths += ['/usr/lib/libstdc++.so.6', '/usr/lib64/libstdc++.so.6', '/usr/lib/x86_64-linux-gnu/libstdc++.so.6']
+    for path in paths:
+        try:
+            with open(path, 'rb') as library:
+                return version.encode() + b'\0' in library.read()  # the names end in a NUL
+        except OSError:
+            continue
+    return True
 
 
 KEY_NAMES = {'space': 'SPACE', 'lshift': 'SHIFT', 'rshift': 'SHIFT', 'lctrl': 'CTRL', 'rctrl': 'CTRL',
@@ -192,12 +277,14 @@ def main(argv):
         files_line = 'Game files: not checked (no file list)'
     # Packaged releases keep the runtime in bin/; development builds in out/.
     # A release ships the game as bin/LBPPC-Game.exe; a checkout builds out/LBPPC-Game.exe (out/LBPPC-Game elsewhere).
-    probe = HERE / 'bin' / 'LBPPC-Game.exe' if (HERE / 'bin' / 'LBPPC-Game.exe').is_file() else OUT / ('LBPPC-Game.exe' if os.name == 'nt' else 'LBPPC-Game')
+    name = 'LBPPC-Game.exe' if os.name == 'nt' else 'LBPPC-Game'
+    probe = HERE / 'bin' / name if (HERE / 'bin' / name).is_file() else HERE / 'out' / name
     if not probe.is_file():
         sys.exit(f'{probe.relative_to(HERE).as_posix()} not found: build it with build.sh (MSYS2 CLANG64 on Windows)')
     # LBPPC_USER_DIR (tests): saves and settings somewhere other than user/.
-    user = Path(os.environ['LBPPC_USER_DIR']) if os.environ.get('LBPPC_USER_DIR') else HERE / 'user'
-    user.mkdir(exist_ok=True)
+    user = Path(os.environ['LBPPC_USER_DIR']) if os.environ.get('LBPPC_USER_DIR') else DATA / 'user'
+    user.mkdir(parents=True, exist_ok=True)
+    OUT.mkdir(parents=True, exist_ok=True)
     clear_download_cache(user)
     with_update = ('--update', update) if update else ()
     script('prepare.py', game, '--out', OUT, *with_update)
@@ -213,11 +300,22 @@ def main(argv):
     # AMD's: their approximations differ between CPU makers, and the game was made on the PS4's AMD one. On an Intel
     # CPU the story's intro cutscene (c01_intro) stopped for good after Newton's line cs01_100: a scripted step that
     # never came. LBPPC_EXACT_MATH=0 turns it off, =1 on whatever the CPU.
-    cpu = f"{os.environ.get('PROCESSOR_IDENTIFIER', '')} {platform.processor()}"
+    cpu = f"{os.environ.get('PROCESSOR_IDENTIFIER', '')} {platform.processor()} {cpu_info().get('vendor_id', '')}"
     if 'AuthenticAMD' not in cpu and 'AMD' not in cpu.split():
         env.setdefault('LBPPC_EXACT_MATH', '1')
     if (OUT / 'file_edits.bin').is_file():
         env.setdefault('LBPPC_FILE_EDITS', str(OUT / 'file_edits.bin'))
+    # Other programs' Vulkan overlays, which Windows loads into every Vulkan game and which do nothing for this one:
+    # Overwolf's (overlay and its OBS hook, made for Vulkan 1.2), Epic Online Services' and Rockstar's. A Radeon PC
+    # with them had every swapchain refused (the game then presents through DXGI, slower). Steam's overlay, OBS's
+    # game capture and the GPU makers' own layers stay. A VK_LOADER_LAYERS_DISABLE of the player's own is kept.
+    if sys.platform == 'win32':
+        env.setdefault('VK_LOADER_LAYERS_DISABLE', 'VK_LAYER_OW_*,VK_LAYER_EOS_Overlay,VK_LAYER_ROCKSTAR_GAMES_*')
+    # Started from Steam (a Steam shortcut, the Steam Deck), the game gets Steam's Vulkan layers. Its shader
+    # pre-caching (Fossilize) cannot record the port's pipelines ("Cannot copy unknown pNext sType") and was followed
+    # by a crash in AMD's driver; the game keeps its own pipeline cache. Steam's overlay stays. (The Bloodborne
+    # launcher did this; it went with that launcher.)
+    env.setdefault('DISABLE_VK_LAYER_VALVE_steam_fossilize_1', '1')
     # The logo on the game window (launcher/assets in a checkout, assets/ in a release).
     for icon in (HERE / 'launcher' / 'assets' / 'logo-128.rgba', HERE / 'assets' / 'logo-128.rgba'):
         if icon.is_file():
@@ -262,7 +360,7 @@ def main(argv):
     # LBPPC_KEY_PROMPTS=1 (unfinished, off; key_prompts.h): the face button icons show the keys bound to them in
     # input.ini.
     if env.get('LBPPC_KEY_PROMPTS') == '1':
-        env.setdefault('LBPPC_KEY_LABELS', key_labels(HERE / 'input.ini'))
+        env.setdefault('LBPPC_KEY_LABELS', key_labels(DATA / 'input.ini'))
     # Online: LBPPC_NP_USER=<name> signs in locally as that player (no PSN or shadNet account) and
     # LBPPC_SERVER=<url> sends the game's server requests (Sony's, now closed) to a custom server, such as a
     # Refresh instance.
@@ -296,6 +394,10 @@ def main(argv):
         env['SHADPS4_HTTP_HOST_OVERRIDES_JSON'] = str(overrides)
     if MSYS2_BIN.is_dir():
         env['PATH'] = f'{MSYS2_BIN}{os.pathsep}{env.get("PATH", "")}'
+    if LINUX:
+        env = host_environment(env)
+        # The GPU layer's caches (shaders, pipelines) beside the saves.
+        env.setdefault('BB_GPU_USER_DIR', str(user))
     command = [str(probe), str(OUT / 'boot-linked.bin'), '--content-profile', str(OUT / 'content.bin'),
                '--app0', str(game), *(('--update', str(update)) if update else ()), *system_args,
                '--user', str(user), '--timeout', '0', *argv[1:]]
@@ -309,7 +411,7 @@ def main(argv):
         sys.stdout.write(summary)
         while True:
             process = subprocess.Popen(command, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
-                                       stderr=subprocess.STDOUT, env=env, cwd=HERE)
+                                       stderr=subprocess.STDOUT, env=env, cwd=DATA)  # lbppc.ini, input.ini
             for raw in process.stdout:
                 line = scrub(raw.decode('utf-8', 'replace')).encode('utf-8')
                 log.write(line)
@@ -322,7 +424,15 @@ def main(argv):
     if code:
         # Windows status codes say how it ended: 0xC00000FD stack overflow, 0xC0000374 heap corruption,
         # 0xC0000409 fast fail (abort, a security check), 0xC0000005 access violation.
-        print(f'Game exited with 0x{code & 0xffffffff:08X}', file=sys.stderr)
+        if os.name != 'nt' and code < 0:  # ended by a signal: SIGSEGV is Windows' access violation
+            import signal
+            try:
+                name = signal.Signals(-code).name
+            except ValueError:
+                name = f'signal {-code}'
+            print(f'Game exited with {name}', file=sys.stderr)
+        else:
+            print(f'Game exited with 0x{code & 0xffffffff:08X}', file=sys.stderr)
     return 0 if code == 0 else 1
 
 

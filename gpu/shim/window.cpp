@@ -124,6 +124,14 @@ void WindowSDL::BeginTextInput(const std::string& initial, const std::string& pr
     text_requested = true;
 }
 
+void WindowSDL::FinishTextInput(bool accept) {
+    std::scoped_lock lock{text_mutex};
+    if (!text_active && !text_requested) return;
+    text_requested = false;
+    text_state = accept ? 1 : 2;
+    text_stop_requested = true;
+}
+
 int WindowSDL::PollTextInput(std::string& out) {
     std::scoped_lock lock{text_mutex};
     out = text;
@@ -144,6 +152,12 @@ bool WindowSDL::PollEvents() {
             text_requested = false;
             text_active = true;
             SDL_StartTextInput(window);
+            UpdateTextTitle();
+        }
+        if (text_stop_requested) { // FinishTextInput from the pad reader
+            text_stop_requested = false;
+            text_active = false;
+            SDL_StopTextInput(window);
             UpdateTextTitle();
         }
     }

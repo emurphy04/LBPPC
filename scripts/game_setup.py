@@ -24,6 +24,7 @@ import stat
 import struct
 import sys
 
+import game_files  # the known-good copy's files: what a complete game and update hold
 import game_view  # where the game's files are read from (the update over the game, the system files in an Sc0)
 
 try:  # the launcher's language (launcher/i18n.py); run on its own, English
@@ -128,6 +129,55 @@ def package_files(folder):
         return []
 
 
+SYSTEM_ONLY_LIMIT = 200 << 20  # a folder this small with a param.sfo but no eboot.bin holds system files only
+
+
+def system_files_only(folder):
+    """(size in bytes, delta) when `folder` holds a PS4 package's system files (param.sfo, npbind.dat, trophy...)
+    but none of its game files: no eboot.bin in it or two levels down, and under 200 MB in all. `delta`: its
+    origin-/target-deltainfo.dat mark a delta update, which holds only the changes a PS4 applies to the version
+    before. None for any other folder."""
+    folder = Path(folder)
+    try:
+        files = [p for p in folder.rglob('*') if p.is_file()]
+    except OSError:
+        return None
+    names = {p.name.lower() for p in files}
+    if 'param.sfo' not in names or 'eboot.bin' in names:
+        return None
+    size = sum(p.stat().st_size for p in files)
+    if size > SYSTEM_ONLY_LIMIT:
+        return None
+    return size, bool({'origin-deltainfo.dat', 'target-deltainfo.dat'} & names)
+
+
+_QUICK = {}  # (game, update): (when, result): Set up rebuilds its plan as folders are typed; the check is kept 20 s
+
+
+def quick_check(game, update=None):
+    import time
+    key, now = (str(game), str(update or '')), time.monotonic()
+    if key not in _QUICK or now - _QUICK[key][0] > 20:
+        try:
+            result = game_files.check(game, update=update)
+        except (OSError, ValueError):
+            result = None  # no file list (a development checkout without it): not checked
+        _QUICK[key] = (now, result)
+    return _QUICK[key][1]
+
+
+def system_files_problem(found):
+    size, delta = found
+    text = t("This folder holds only a package's system files ({size} MB: param.sfo, npbind.dat and the like) and "
+             'none of its game files. A complete 1.28 update folder is about 1.3 GB, with eboot.bin and '
+             'patch_001.farc inside.', size=max(1, round(size / 1e6)))
+    if delta:
+        text += ' ' + t('Its deltainfo files mark it as a delta update: it holds only the changes from the version '
+                        "before, which a PS4 applies when it installs it, so it can't be used on its own. LBPPC needs "
+                        'the complete 1.28 update.')
+    return text
+
+
 class Folder:
     """One of the player's folders, read: where its files are, which game and version it is."""
 
@@ -153,7 +203,14 @@ class Folder:
             return t('Choose your game folder.') if what == 'game' else t('Choose your update folder.')
         if not self.chosen.is_dir():
             return t('That folder doesn\'t exist.')
+        if self.root and what == 'update' and not (self.root / 'eboot.bin').is_file():
+            found = system_files_only(self.root)
+            if found:
+                return system_files_problem(found)
         if not self.root or (what == 'game' and not (self.root / 'eboot.bin').is_file()):
+            found = system_files_only(self.chosen)
+            if found:
+                return system_files_problem(found)
             if package_files(self.chosen):
                 return t('That\'s a .pkg file. It must be extracted first: choose the folder it was extracted to.')
             if self.many:
@@ -237,6 +294,11 @@ class Plan:
                 raise SetupError(t('That update is for {update}, but the game is {game}. Choose the update of the '
                                    'same edition.', update=update.title_id, game=game.title_id))
         self.update = update
+        # Every file of the game and update there at the right size (a second: sizes only), before it is used: a copy
+        # cut short or an update with no game files is said in words now, not as a game that won't start.
+        files = quick_check(game.root, update.root if update else None)
+        if files and not files.ok:
+            raise SetupError(files.summary(False))
         # The player's DLC, copied (never moved) into <user>/addcont/CUSA00473/<label>, where the game finds it.
         self.dlc = []
         if dlc_folder:

@@ -37,6 +37,8 @@ void bbgpu_set_frame_limit(unsigned fps);
  * no window exists; poll returns 0 typing, 1 confirmed, 2 cancelled (UTF-8 text). */
 int bbgpu_text_input_begin(const char *initial_utf8, const char *prompt_utf8);
 int bbgpu_text_input_poll(char *out_utf8, uint64_t size);
+/* lbppc: ends the text entry: accept (Cross) or cancel (Circle), from the pad reader. */
+void bbgpu_text_input_finish(int accept);
 /* 1 while the in-game settings menu is open: the game's pad input is held neutral. */
 int bbgpu_overlay_captures_input(void);
 /* lbppc: joins the newest invitation waiting (bbport_invite.h), from LBP3's own prompt; 0 when none. Any

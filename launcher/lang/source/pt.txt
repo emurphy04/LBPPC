@@ -399,3 +399,36 @@
 397|A atualização é lida da sua própria pasta: as pastas do jogo e da atualização ficam como estão
 398|{folder} é um DLC para a versão {region} do LittleBigPlanet 3 ({id}). O LBPPC precisa da versão norte-americana ou europeia ({ids}) e dos seus DLC.
 399|Essa atualização é para {update}, mas o jogo é {game}. Escolhe a atualização da mesma edição.
+400|Novo jogo guardado...
+401|Mudar o nome ou eliminar {name}
+402|Novo jogo guardado
+403|O progresso fica na sua própria pasta. Ao eliminar, fica uma cópia em user\save_backups, para o poder recuperar.
+404|Um novo jogo guardado começa o LittleBigPlanet 3 do início. Os teus outros jogos guardados ficam como estão. As definições, os DLC e a tua conta online são partilhados.
+405|Nome
+406|Jogo guardado
+407|Mudar o nome / eliminar
+408|Jogo guardado: {name}
+409|De 1 a 24 letras, algarismos, espaços, - ou _.
+410|Mudar o nome
+411|Criar
+412|Eliminar
+413|Carrega outra vez em Eliminar para eliminar {name}. Fica uma cópia em user\save_backups.
+414|Progresso separado. As definições, os DLC e a tua conta online são partilhados.
+415|Principal
+416|Fecha o jogo antes de mudar de jogo guardado
+417|Não foi possível mudar de jogo guardado: {error}
+418|Esta pasta tem apenas os ficheiros de sistema de um pacote ({size} MB: param.sfo, npbind.dat e semelhantes) e nenhum dos seus ficheiros de jogo. Uma pasta completa da atualização 1.28 tem cerca de 1,3 GB, com eboot.bin e patch_001.farc lá dentro.
+419|Os seus ficheiros deltainfo indicam uma atualização delta: tem apenas as alterações em relação à versão anterior, que a PS4 aplica ao instalá-la, por isso não pode ser usada sozinha. O LBPPC precisa da atualização 1.28 completa.
+420|Os ficheiros da atualização 1.28 não estão no teu jogo (em falta: {count}, entre eles patch_001.farc, 1,2 GB). Escolhe a pasta completa da atualização 1.28: cerca de 1,3 GB, com eboot.bin e patch_001.farc lá dentro.
+421|A tua cópia tem {have} GB dos {want} GB do LittleBigPlanet 3 1.28 (em falta: {count}, por exemplo {file}). A extração parou a meio ou saltou ficheiros: extrai o jogo outra vez e verifica se há espaço livre suficiente.
+422|O nome de um jogo guardado tem de 1 a 24 letras, algarismos, espaços, - ou _, e começa com uma letra ou um algarismo.
+423|O Windows não permite esse nome. Escolhe outro.
+424|Já existe um jogo guardado chamado {name}.
+425|O jogo guardado Principal não pode mudar de nome.
+426|O jogo guardado Principal não pode ser eliminado.
+427|Não existe nenhum jogo guardado chamado {name}.
+428|Atalho criado no ambiente de trabalho: inicia o jogo sem o launcher
+429|Atalho
+430|Não foi possível criar o atalho: {error}
+431|A transferência não é uma AppImage do LBPPC: não instalada.
+432|O LBPPC não conseguiu substituir {name} ({error}). Transfira a nova versão a partir da página da versão.

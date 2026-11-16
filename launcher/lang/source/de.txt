@@ -399,3 +399,36 @@
 397|Das Update wird aus seinem eigenen Ordner gelesen: Deine Spiel- und Update-Ordner bleiben, wie sie sind
 398|{folder} ist ein DLC für die {region} Version von LittleBigPlanet 3 ({id}). LBPPC braucht die US- oder europäische Version ({ids}) und ihre DLCs.
 399|Dieses Update ist für {update}, aber das Spiel ist {game}. Wähle das Update derselben Edition.
+400|Neuer Spielstand...
+401|{name} umbenennen oder löschen
+402|Neuer Spielstand
+403|Sein Fortschritt bleibt in einem eigenen Ordner. Beim Löschen bleibt eine Kopie in user\save_backups, damit er sich zurückholen lässt.
+404|Ein neuer Spielstand beginnt LittleBigPlanet 3 von vorn. Deine anderen Spielstände bleiben, wie sie sind. Einstellungen, DLC und dein Online-Konto werden geteilt.
+405|Name
+406|Spielstand
+407|Umbenennen / löschen
+408|Spielstand: {name}
+409|1 bis 24 Buchstaben, Ziffern, Leerzeichen, - oder _.
+410|Umbenennen
+411|Erstellen
+412|Löschen
+413|Drücke noch einmal auf Löschen, um {name} zu löschen. Eine Kopie bleibt in user\save_backups.
+414|Eigener Fortschritt. Einstellungen, DLC und dein Online-Konto werden geteilt.
+415|Haupt
+416|Schließe das Spiel, bevor du den Spielstand wechselst
+417|Der Spielstand konnte nicht gewechselt werden: {error}
+418|Dieser Ordner enthält nur die Systemdateien eines Pakets ({size} MB: param.sfo, npbind.dat und Ähnliches) und keine seiner Spieldateien. Ein vollständiger Ordner des Updates 1.28 ist etwa 1,3 GB groß, mit eboot.bin und patch_001.farc darin.
+419|Seine deltainfo-Dateien kennzeichnen es als Delta-Update: Es enthält nur die Änderungen zur vorigen Version, die eine PS4 beim Installieren anwendet, und lässt sich daher nicht allein verwenden. LBPPC braucht das vollständige Update 1.28.
+420|Die Dateien des Updates 1.28 sind nicht in deinem Spiel (fehlend: {count}, darunter patch_001.farc, 1,2 GB). Wähle den vollständigen Ordner des Updates 1.28: etwa 1,3 GB, mit eboot.bin und patch_001.farc darin.
+421|Deine Kopie hat {have} GB der {want} GB von LittleBigPlanet 3 1.28 (fehlend: {count}, zum Beispiel {file}). Das Entpacken hat mittendrin aufgehört oder Dateien übersprungen: Entpacke das Spiel erneut und prüfe, ob genug Speicherplatz frei ist.
+422|Ein Spielstandname hat 1 bis 24 Buchstaben, Ziffern, Leerzeichen, - oder _ und beginnt mit einem Buchstaben oder einer Ziffer.
+423|Windows erlaubt diesen Namen nicht. Wähle einen anderen.
+424|Es gibt schon einen Spielstand namens {name}.
+425|Der Haupt-Spielstand kann nicht umbenannt werden.
+426|Der Haupt-Spielstand kann nicht gelöscht werden.
+427|Es gibt keinen Spielstand namens {name}.
+428|Desktop-Verknüpfung erstellt: Sie startet das Spiel ohne den Launcher
+429|Verknüpfung
+430|Die Verknüpfung konnte nicht erstellt werden: {error}
+431|Der Download ist kein LBPPC-AppImage: nicht installiert.
+432|LBPPC konnte {name} nicht ersetzen ({error}). Lade die neue Version stattdessen von der Release-Seite herunter.

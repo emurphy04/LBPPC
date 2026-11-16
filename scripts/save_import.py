@@ -143,13 +143,14 @@ def game_title(game_folder, update_folder=None):
     return TITLE_ID
 
 
-def save_root(user_dir, title=TITLE_ID):
-    return Path(user_dir) / 'savedata' / '1' / title
+def save_root(user_dir, title=TITLE_ID, save_dir=None):
+    """`save_dir`: the chosen save file's folder (save_files.py), else the Main one."""
+    return (Path(save_dir) if save_dir else Path(user_dir) / 'savedata') / '1' / title
 
 
-def import_saves(saves, user_dir, title=TITLE_ID):
+def import_saves(saves, user_dir, title=TITLE_ID, save_dir=None):
     """Copies `saves` in, LBPPC's own saves of the same kind moved to a backup first. Returns the backup folder."""
-    root = save_root(user_dir, title)
+    root = save_root(user_dir, title, save_dir)
     root.mkdir(parents=True, exist_ok=True)
     backup = Path(user_dir) / 'save_backups' / datetime.now().strftime('%Y%m%d-%H%M%S')
     for save in saves:

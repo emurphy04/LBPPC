@@ -88,8 +88,23 @@ static int make_dirs(const char *path) {
     for (char *p=buffer+1;*p;++p) if (*p=='/') { *p=0; mkdir(buffer,0755); *p='/'; }
     return mkdir(buffer,0755) && errno!=EEXIST ? -1 : 0;
 }
+/* lbppc: the save file the launcher chose (LBPPC_SAVE_DIR: <user>/saves/<name>/savedata); else <user>/savedata, the
+ * one save file of 0.1.3 and before ("Main"). Only the game's progress is per save file: settings, DLC, the online
+ * account and caches are shared. */
+static const char *save_base(void) {
+    static char base[600];
+    if (!base[0]) {
+        const char *chosen=getenv("LBPPC_SAVE_DIR");
+        if (chosen && *chosen && !strstr(chosen,"..")) snprintf(base,sizeof(base),"%s",chosen);
+        else snprintf(base,sizeof(base),"%s/savedata",runtime_file_user_dir());
+        const char *name=getenv("LBPPC_SAVE_NAME");
+        printf("Runtime: save file %s\n",chosen && *chosen && name && *name ? name : "Main");
+    }
+    return base;
+}
 static void root(int32_t user, const char *title, char *out, size_t size) {
-    snprintf(out,size,"%s/savedata/%d/%s",runtime_file_user_dir(),user,title && *title ? title : title_id);
+    const int n=snprintf(out,size,"%s/%d/%s",save_base(),user,title && *title ? title : title_id);
+    if (n<0 || (size_t)n>=size) printf("Runtime: save folder path too long (%d bytes), cut to %s\n",n,out);
 }
 static int valid_name(const char *name, size_t max) {
     size_t n=strnlen(name,max);

@@ -8,6 +8,8 @@
 #include <inttypes.h>
 #include <math.h>
 #include <cpuid.h>
+#include <time.h>
+#include <pthread.h>
 #include "runtime.h"
 #include "gpu/bbgpu.h"
 #if !defined(__x86_64__) || !defined(__GNUC__)
@@ -30,6 +32,7 @@
 #include <execinfo.h>
 #include <sys/syscall.h>
 #include <sys/uio.h>
+#include "compat_posix.h"
 #endif
 
 typedef struct { uint64_t address, size, flags; } Segment;
@@ -119,6 +122,7 @@ static uintptr_t trace_wrap(uintptr_t target, const char *name) {
 /* BB_HOOK=offset:length,... (diagnostics): at those guest offsets the first `length` bytes (whole
  * instructions, at least 5, no rip-relative ones) become a jump to a stub that logs the first two arguments,
  * the int each points to (when readable) and the return address, runs the moved bytes and jumps back. */
+#ifdef _WIN32 /* The thread-sampling, FP-trap and watchpoint diagnostics below are Windows-only. */
 static volatile LONG watch_hits;
 /* LBPPC_PROFILE=start,seconds (diagnostics): from `start` seconds after launch, for `seconds`, every thread is
  * sampled about once a millisecond; samples in the image walk the guest frame-pointer chain. At the end, per thread
@@ -340,7 +344,9 @@ static int fptrap_report(EXCEPTION_POINTERS *info) {
 }
 /* BB_WATCH_ADDR=address: hardware write watchpoints on its first 32 bytes (four 8-byte slots) on every
  * thread, re-applied every 50 ms for new threads; each write is logged (vectored_fault, first 40). */
+#endif
 static uint64_t watch_address;
+#ifdef _WIN32
 static DWORD WINAPI watch_all_threads(LPVOID arg) {
     (void)arg;
     /* BB_WATCH_DELAY=seconds: armed only after that long. */
@@ -391,9 +397,13 @@ static DWORD WINAPI watch_all_threads(LPVOID arg) {
     }
     return 0;
 }
+#endif
 /* BB_WATCH=offset (with BB_HOOK at the same function): a hardware watchpoint on the 8 bytes at entry rsp -
  * offset (a stack canary slot: entry rsp - 0x38 for push rbp + canary at rbp-0x30), reporting every write. */
 static void watch_slot(uint64_t entry_rsp) {
+#ifndef _WIN32
+    (void)entry_rsp; /* hardware watchpoints: Windows only */
+#else
     const char *spec=getenv("BB_WATCH");
     if (!spec) return;
     CONTEXT c={.ContextFlags=CONTEXT_DEBUG_REGISTERS};
@@ -404,6 +414,7 @@ static void watch_slot(uint64_t entry_rsp) {
     int n=snprintf(line,sizeof(line),"WATCH %p (thread %lu)\n",(void *)(uintptr_t)c.Dr0,GetCurrentThreadId());
     DWORD written;
     WriteFile(GetStdHandle(STD_ERROR_HANDLE),line,(DWORD)n,&written,NULL);
+#endif
 }
 /* lbppc: LBP3's online sync check. Every 60 world frames each game hashes its players' matrices (0x1acaa0: world+0x120,
  * up to 4 players, ->8 ->0x40 ->0x10, matrix at +0x40) and sends frame and hash to the others (0x256cc0); the receiver
@@ -413,9 +424,60 @@ static void watch_slot(uint64_t entry_rsp) {
 enum { SYNC_SEND_SITE=0x256d9a, SYNC_RECEIVE_SITE=0x269ed6 };
 typedef struct { unsigned char id[0x24]; uint32_t where_a, where_b, frame, hash, session; } SyncRecord;
 static volatile uint64_t sync_last_frame; /* the world frame of the last sync check (net log) */
+/* lbppc: co-op freeze tracking (#7, the softlock after returning to the pod). Each world checks every 2 s; when ours
+ * stops checking, or nothing comes from the others, while two or more are playing, a "Sync: WATCH" line says so (and
+ * again when it recovers), with how long, the last frames and the session, so both players' logs can be lined up at
+ * the moment one world froze. Logging only: the game's behaviour is unchanged. A loading screen pauses checks too,
+ * so a WATCH line followed by recovery within seconds is a level change, not a freeze. */
+static volatile int64_t sync_send_ms, sync_receive_ms;
+static volatile uint32_t sync_players, sync_session, sync_received_frame;
+static int64_t sync_now_ms(void) {
+    struct timespec t;
+    clock_gettime(CLOCK_MONOTONIC,&t);
+    return (int64_t)t.tv_sec*1000+t.tv_nsec/1000000;
+}
+static void *sync_watchdog(void *arg) {
+    (void)arg;
+    enum { QUIET_MS=6000 };
+    int ours_quiet=0, theirs_quiet=0;
+    for (;;) {
+        struct timespec pause={2,0};
+        nanosleep(&pause,NULL);
+        const int64_t now=sync_now_ms(), sent=sync_send_ms, received=sync_receive_ms;
+        if (sync_players<2) { ours_quiet=theirs_quiet=0; continue; }
+        const int64_t ours=now-sent, theirs=received ? now-received : 0;
+        if (ours>QUIET_MS && !ours_quiet) {
+            ours_quiet=1;
+            printf("Sync: WATCH this game has made no sync check for %.1f s (last frame %llu, session %u, %u players): "
+                   "its world may be frozen\n",(double)ours/1000.0,(unsigned long long)sync_last_frame,sync_session,
+                   sync_players);
+        } else if (ours<=QUIET_MS && ours_quiet) {
+            ours_quiet=0;
+            printf("Sync: WATCH this game's checks resumed (frame %llu)\n",(unsigned long long)sync_last_frame);
+        }
+        if (received && theirs>QUIET_MS && !theirs_quiet) {
+            theirs_quiet=1;
+            printf("Sync: WATCH nothing from the other player(s) for %.1f s (last received frame %u, session %u)\n",
+                   (double)theirs/1000.0,sync_received_frame,sync_session);
+        } else if (theirs<=QUIET_MS && theirs_quiet) {
+            theirs_quiet=0;
+            printf("Sync: WATCH the other player(s) are checking again (frame %u)\n",sync_received_frame);
+        }
+        fflush(stdout);
+    }
+    return NULL;
+}
 static void sync_log_send(uint64_t world, uint64_t frame) {
     sync_last_frame=frame;
+    sync_send_ms=sync_now_ms();
+    static int watching;
+    if (!watching) {
+        watching=1;
+        pthread_t thread;
+        if (!pthread_create(&thread,NULL,sync_watchdog,NULL)) pthread_detach(thread);
+    }
     const uint32_t count=*(uint32_t *)(uintptr_t)(world+0x128);
+    sync_players=count;
     const uint64_t *players=*(const uint64_t **)(uintptr_t)(world+0x120);
     printf("Sync: frame %llu, %u players\n",(unsigned long long)frame,count);
     for (uint32_t i=0;i<count && i<4;++i) {
@@ -466,6 +528,9 @@ static unsigned char sync_tolerance_step(SyncTolerance *t, int outcome, unsigned
 static void sync_log_receive(uint64_t game, const SyncRecord *message) {
     static int kick=-1;
     static SyncTolerance tolerance;
+    sync_receive_ms=sync_now_ms();
+    sync_received_frame=message->frame;
+    sync_session=*(uint32_t *)(uintptr_t)(game+0x564);
     if (kick<0) { const char *v=getenv("LBPPC_DIVERGE_KICK"); kick=!(v && v[0]=='0'); }
     if (!kick) *(unsigned char *)(uintptr_t)(game+0x5e8)=1;
     else {
@@ -742,6 +807,7 @@ static ABI void hook_log(uint64_t offset, uint64_t a, uint64_t b, uint64_t slot,
         static volatile long checked;
         InterlockedIncrement(&checked);
         static __thread int dr_reported;
+#ifdef _WIN32
         if (getenv("BB_WATCH_ADDR") && !dr_reported++) {
             CONTEXT dc={.ContextFlags=CONTEXT_DEBUG_REGISTERS};
             GetThreadContext(GetCurrentThread(),&dc);
@@ -749,6 +815,9 @@ static ABI void hook_log(uint64_t offset, uint64_t a, uint64_t b, uint64_t slot,
             int n=snprintf(l,sizeof(l),"DR check (thread %lu): Dr0=%llx Dr7=%llx\n",GetCurrentThreadId(),(unsigned long long)dc.Dr0,(unsigned long long)dc.Dr7);
             DWORD w; WriteFile(GetStdHandle(STD_ERROR_HANDLE),l,(DWORD)n,&w,NULL);
         }
+#else
+        (void)dr_reported; /* the debug registers: Windows only */
+#endif
         if (!list || count>4096) return;
         for (uint64_t i=0; i<count && bad==UINT64_MAX; ++i)
             if (list[i]<0x800000000ull || list[i]>=0xfc00000000ull) bad=i;
@@ -992,6 +1061,10 @@ static void render_res_install(void) {
     const uint64_t mask=getenv("LBPPC_RENDER_RES_MASK") ? strtoull(getenv("LBPPC_RENDER_RES_MASK"),NULL,0) : ~0ull;
     for (size_t i=0;i<sizeof(targets)/sizeof(*targets);++i) {
         if (!(mask>>i&1)) continue;
+        /* The 1280x720, 640x360 and 320x180 targets (0x427d1d, 0x427d3e, 0x427d62) keep their size: the game's own
+           code copies photos, stickers made from them and costume icons out of them as pictures of exactly that size,
+           and scaled up they came out sheared into slanted streaks (#14, #29). */
+        if (targets[i].w_at==0x427d1d || targets[i].w_at==0x427d3e || targets[i].w_at==0x427d62) continue;
         uint32_t tw=(uint32_t)(((uint64_t)targets[i].w*w+960)/1920), th=(uint32_t)(((uint64_t)targets[i].h*h+540)/1080);
         /* The smaller targets (1280x720 and below at 1080p) grow with the size but never shrink below it: the game
            cuts a centred 256x256 square from one of them (0x4014f0, picked by the screen's height), and at 720p
@@ -1043,6 +1116,7 @@ static void language_install(void) {
 enum { STUB_POOL=2u<<20 };
 static unsigned char *stub_pool;
 static size_t stub_pool_used;
+#ifdef _WIN32 /* called from the Windows start-up; on Linux the pool stays empty */
 static void stub_pool_reserve(void) {
     const char *base=getenv("LBPPC_LOW_BASE");
     const uintptr_t load=base ? (uintptr_t)strtoull(base,NULL,0) : 0;
@@ -1053,6 +1127,7 @@ static void stub_pool_reserve(void) {
     DWORD was;
     if (stub_pool) VirtualProtect(stub_pool,STUB_POOL,PAGE_NOACCESS,&was);
 }
+#endif
 /* Security: patch code is written once, while the game is set up, and is then made read-only and executable
  * (stub_memory_seal), so nothing can write code there later. A block whose stub keeps data it changes while the
  * game runs (LBPPC_SIM_DIVIDE, research) stays writable (stub_keep_writable). */
@@ -1387,6 +1462,41 @@ static int net_hook_call(unsigned char *stub,uint64_t site,uint64_t callee,void 
     memcpy(image+site+1,&rel,4);
     return 1;
 }
+/* lbppc: LittleBigPlanet 2 content (the pause menu's LBP2 unlocks, #18). The script's HasLBP2(part) (0x822bc0) calls
+ * 0x7d8d90: true when the player's server profile says LBP2 (clientsConnected/lbp2, record byte 0x3b) and the pin for
+ * that part has progress (0x4f9040 on the pin table at player+0x1b0; parts 2, 4, 8, 16, 32, 64 each have their own
+ * pin). Each part asked about is logged once with its answer, and again if the answer changes. */
+enum { HAS_LBP2_SITE=0x822bcb, HAS_LBP2=0x7d8d90 };
+static ABI uint64_t (*has_lbp2)(uint64_t);
+static ABI uint64_t has_lbp2_hook(uint64_t part) {
+    /* lbppc: every part answered yes (Ethan's decision, 2026-11-15): the "Unlock LittleBigPlanet 2 Content" import in
+     * Settings > My Unlocks brings in the objects collected by playing LBP2's story (free rewards, not sold DLC; paid
+     * LBP2 packs stay with the player's installed DLC). On PS4 the pins came from LBP2 progress synced over PSN, which
+     * no player has now. No pins are made: nothing is added to profiles or the server. LBPPC_LBP2_ALL=0: the game's
+     * own answer. */
+    static int all=-1;
+    if (all<0) all=!(getenv("LBPPC_LBP2_ALL") && getenv("LBPPC_LBP2_ALL")[0]=='0');
+    const uint64_t r=all ? 1 : has_lbp2(part);
+    static int answer[128];  /* 0 not asked yet, 1 no, 2 yes */
+    const unsigned slot=(unsigned)part&127, now=(r&0xff) ? 2u : 1u;
+    if ((unsigned)answer[slot]!=now) {
+        answer[slot]=(int)now;
+        static const struct { unsigned part; uint32_t pin; } pins[]={{2,0xf42e56e2u},{4,0xf6070765u},{8,0xee17f3deu},
+                                                                     {16,0x87f15c41u},{32,0xb2ad2759u},{64,0xc903e850u}};
+        uint32_t pin=0;
+        for (unsigned k=0;k<sizeof(pins)/sizeof(pins[0]);++k) if (pins[k].part==(unsigned)part) pin=pins[k].pin;
+        printf("LBP2 content: part %llu (pin %#010x) %s\n",(unsigned long long)part,pin,now==2 ? "unlocked" : "locked");
+        fflush(stdout);
+    }
+    return r;
+}
+static void lbp2_log_install(void) {
+    unsigned char *s=near_image_alloc();
+    if (!s) return;
+    has_lbp2=(ABI uint64_t (*)(uint64_t))(uintptr_t)(image+HAS_LBP2);
+    if (!net_hook_call(s,HAS_LBP2_SITE,HAS_LBP2,(void *)has_lbp2_hook))
+        printf("LBP2 content: check not logged (unexpected game code)\n");
+}
 static void net_log_install(void) {
     const char *npid=getenv("BB_SHADNET_NPID"), *wanted=getenv("LBPPC_POS_LOG");
     if (!npid || !*npid || !wanted || wanted[0]!='1') return;
@@ -1601,6 +1711,7 @@ static void hooks_install(const char *spec) {
         fprintf(stderr,"Hook: guest 0x%llx hooked (%u bytes moved)\n",(unsigned long long)offset,length);
     }
 }
+#ifdef _WIN32 /* The thread and main-thread profilers: Windows thread names, module names and cycle counts. */
 /* lbppc: performance diagnostics (LBPPC_PROFILE=1; the thread lines also online). The frame lines say a frame waited
  * for the game, not why: "Threads:" is the CPU each thread used every 5 seconds, from cycle counts (100% is one core),
  * and "Profile:" is where the game's main thread was during each slow frame's game time, sampled about 1000 times a
@@ -1845,8 +1956,11 @@ static DWORD WINAPI main_thread_profiler(LPVOID arg) {
         summary_frames=0;
     }
 }
+#endif
 static void sync_log_install(void) {
-    const char *online=getenv("BB_ONLINE"), *profile=getenv("LBPPC_PROFILE");
+    const char *online=getenv("BB_ONLINE");
+#ifdef _WIN32
+    const char *profile=getenv("LBPPC_PROFILE");
     const int profiling=profile && profile[0]=='1';
     if (profiling || (online && online[0]=='1')) CloseHandle(CreateThread(NULL,0,thread_load_monitor,NULL,0,NULL));
     if (profiling) {
@@ -1858,6 +1972,7 @@ static void sync_log_install(void) {
         lbppc_slow_frame_hook=slow_frame_seen;
         CloseHandle(CreateThread(NULL,0,main_thread_profiler,NULL,0,NULL));
     }
+#endif
     const char *sort_fix=getenv("LBPPC_SORT_KEYS_FIX");
     if (sort_fix ? sort_fix[0]=='1' : getenv("LBPPC_SIM_DIVIDE")!=NULL) {
         static const unsigned char site[]={0x4c,0x89,0xf7,0x4c,0x89,0xfe,0x44,0x89,0xe1};
@@ -2797,6 +2912,7 @@ int main(int argc, char **argv) {
     quit_menu_install();
     friend_log_install();
     net_log_install();
+    lbp2_log_install();
     sim_divide_install();
     hooks_install(getenv("BB_HOOK"));
     sync_log_install();

@@ -11,6 +11,7 @@
 #include "video_core/renderer_vulkan/vk_scene_resolution.h"
 #include "video_core/renderer_vulkan/vk_scheduler.h"
 #include "video_core/texture_cache/blit_helper.h"
+#include <vk_mem_alloc.h>
 #include "video_core/texture_cache/image.h"
 
 #include <vulkan/vulkan_format_traits.hpp>
@@ -505,6 +506,70 @@ void Runtime::CopyMip(VideoCore::Image* src, VideoCore::Image* dst, u32 mip, u32
     dst->flags |= (src->flags & VideoCore::ImageFlagBits::GpuModified);
     dst->flags &= ~VideoCore::ImageFlagBits::Dirty;
     dst->MarkGpuWritten();
+}
+
+void Runtime::CopyIntoRows(VideoCore::Image* src, VideoCore::Image* dst, u32 dst_y) {
+    const vk::ImageCopy image_copy{
+        .srcSubresource{.aspectMask = src->aspect_mask, .mipLevel = 0, .baseArrayLayer = 0, .layerCount = 1},
+        .dstSubresource{.aspectMask = dst->aspect_mask, .mipLevel = 0, .baseArrayLayer = 0, .layerCount = 1},
+        .dstOffset = {0, static_cast<s32>(dst_y), 0},
+        .extent = {src->info.size.width, src->info.size.height, 1},
+    };
+    scheduler.EndRendering();
+    bool needs_flush =
+        Transit(src, vk::ImageLayout::eTransferSrcOptimal, vk::PipelineStageFlagBits2::eCopy,
+                vk::AccessFlagBits2::eTransferRead);
+    needs_flush |= Transit(dst, vk::ImageLayout::eTransferDstOptimal,
+                           vk::PipelineStageFlagBits2::eCopy, vk::AccessFlagBits2::eTransferWrite);
+    if (needs_flush) {
+        FlushBarriers();
+    }
+    scheduler.Record([src_image = src->GetImage(), dst_image = dst->GetImage(),
+                      image_copy](vk::CommandBuffer cmdbuf) {
+        cmdbuf.copyImage(src_image, vk::ImageLayout::eTransferSrcOptimal, dst_image,
+                         vk::ImageLayout::eTransferDstOptimal, image_copy);
+    });
+    dst->flags |= VideoCore::ImageFlagBits::GpuModified;
+    dst->MarkGpuWritten();
+}
+
+void Runtime::DumpImage(VideoCore::Image* image, const std::string& path) {
+    const u32 w = image->info.size.width, h = image->info.size.height;
+    const u32 d = image->info.props.is_volume ? std::max(image->info.size.depth, 1u) : 1u;
+    const VkDeviceSize size = VkDeviceSize(w) * h * d * std::max(image->info.num_bits / 8, 1u);
+    const VkBufferCreateInfo buffer_ci{.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+                                       .size = size,
+                                       .usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT};
+    const VmaAllocationCreateInfo alloc_ci{
+        .flags = VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT,
+        .usage = VMA_MEMORY_USAGE_AUTO_PREFER_HOST};
+    VkBuffer buffer{};
+    VmaAllocation allocation{};
+    VmaAllocationInfo info{};
+    if (vmaCreateBuffer(instance.GetAllocator(), &buffer_ci, &alloc_ci, &buffer, &allocation,
+                        &info) != VK_SUCCESS) {
+        return;
+    }
+    scheduler.EndRendering();
+    if (Transit(image, vk::ImageLayout::eTransferSrcOptimal, vk::PipelineStageFlagBits2::eCopy,
+                vk::AccessFlagBits2::eTransferRead)) {
+        FlushBarriers();
+    }
+    scheduler.Record([src = image->GetImage(), aspect = image->aspect_mask, buffer, w,
+                      h, d](vk::CommandBuffer cmdbuf) {
+        cmdbuf.copyImageToBuffer(src, vk::ImageLayout::eTransferSrcOptimal, buffer,
+                                 vk::BufferImageCopy{.imageSubresource = {aspect, 0, 0, 1},
+                                                     .imageExtent = {w, h, d}});
+    });
+    scheduler.DeferPriorityOperation([allocator = instance.GetAllocator(), buffer, allocation, info,
+                                      size, path] {
+        vmaInvalidateAllocation(allocator, allocation, 0, VK_WHOLE_SIZE);
+        if (FILE* f = std::fopen(path.c_str(), "wb")) {
+            std::fwrite(info.pMappedData, 1, size, f);
+            std::fclose(f);
+        }
+        vmaDestroyBuffer(allocator, buffer, allocation);
+    });
 }
 
 void Runtime::CopyColorAndDepth(VideoCore::Image* src, VideoCore::Image* dst) {

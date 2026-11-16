@@ -8,11 +8,11 @@ LBPPC runs the PS4 game's own code directly on your PC's processor. It is a nati
 community servers bring back creating, sharing and playing levels together, which ended when the original servers
 shut down.
 
-**Status:** 0.1.3, a public beta. It supports LittleBigPlanet 3 US (CUSA00473) and European (CUSA00063), version
+**Status:** 0.1.4, a public beta. It supports LittleBigPlanet 3 US (CUSA00473) and European (CUSA00063), version
 1.28. You need your own copy and its 1.28 update, extracted to folders on your PC.
 
 [Download and guide](https://lbppc.com/download) · [Discord](https://discord.gg/YqfBQCU4vc) ·
-[Release notes](docs/releases/0.1.1.md)
+[Release notes](docs/releases/0.1.4.md)
 
 ## What you get
 
@@ -86,7 +86,7 @@ Being worked on for later updates, with no dates yet:
 - **Better upscaling:** DLSS and FSR temporal upscaling fitted to LBP3.
 - **Mouse and keyboard:** the mouse as the PS4's touchpad (for Create mode), and keyboard keys shown in place of
   PlayStation buttons.
-- **Linux and Steam Deck**, once tested on more hardware.
+- **Linux and Steam Deck**: a native version is being built and tested.
 
 ## Found a problem?
 
@@ -123,7 +123,9 @@ don't post game files in issues or pull requests, and don't ask for them.
 ## Building
 
 Windows, with MSYS2 CLANG64: `./build.sh`. The packages it needs are listed in
-[packaging/windows/README.md](packaging/windows/README.md). The launcher is Python; `run.py` starts the game from a
+[packaging/windows/README.md](packaging/windows/README.md). Linux: `bash build.sh`, then
+`bash packaging/linux/package.sh` for the AppImage; [.github/workflows/linux-appimage.yml](.github/workflows/linux-appimage.yml)
+lists the packages and builds it on Ubuntu 24.04. The launcher is Python; `run.py` starts the game from a
 checkout.
 
 | Folder | What's there |

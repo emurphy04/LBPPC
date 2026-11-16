@@ -19,6 +19,7 @@
 #include "runtime_input_config.h"
 #include "runtime_motion.h"
 #include "runtime_mouse_touch.h"
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -575,6 +576,7 @@ static const InputConfig *active_config(void) {
     return loaded_config ? loaded_config : &default_config;
 }
 
+static int sampling_for_dialog; /* sample_host reads the pad even while the overlay has it */
 static void sample_host(PadData *d) {
     memset(d,0,sizeof(*d));
     d->left_x=d->left_y=d->right_x=d->right_y=128;
@@ -586,15 +588,16 @@ static void sample_host(PadData *d) {
     /* The controller as it is now, not as the window thread last took its events (up to a
      * millisecond or two before): SDL locks its joysticks for this itself. */
     if (g) SDL_UpdateGamepads();
-    if (bbgpu_overlay_captures_input()) return; /* settings menu open: neutral input */
+    if (!sampling_for_dialog && bbgpu_overlay_captures_input()) return; /* settings menu open: neutral input */
     const InputConfig *cfg=active_config();
     BbMouseInput mouse; bbgpu_mouse_take(&mouse); /* MOU-008: drains dx/dy; buttons/wheel persist */
     static HostState host; /* ~1 KB with the held-combo list: kept off the game thread's stack */
     /* Mouse as the touchpad: its left and middle buttons and wheel are the touchpad's, not their bindings'. */
     const int touch_mouse=mouse.captured && cfg->mouse.stick==3;
-    host=(HostState){SDL_WasInit(SDL_INIT_VIDEO) ? SDL_GetKeyboardState(NULL) : NULL, g,
-        mouse.captured ? mouse.buttons & (touch_mouse ? ~(SDL_BUTTON_LMASK|SDL_BUTTON_MMASK) : ~0u) : 0,
-        mouse.captured && !touch_mouse ? mouse.wheel : 0, 0, 0, {0}, 0};
+    /* For the text dialog only controllers count: the keyboard is typing (Space is often Cross), Enter/Esc end it. */
+    host=(HostState){SDL_WasInit(SDL_INIT_VIDEO) && !sampling_for_dialog ? SDL_GetKeyboardState(NULL) : NULL, g,
+        mouse.captured && !sampling_for_dialog ? mouse.buttons & (touch_mouse ? ~(SDL_BUTTON_LMASK|SDL_BUTTON_MMASK) : ~0u) : 0,
+        mouse.captured && !touch_mouse && !sampling_for_dialog ? mouse.wheel : 0, 0, 0, {0}, 0};
     host.back_combo=back_combo_wanted(g,cfg);
     host.back_down=host.back_combo && SDL_GetGamepadButton(g,SDL_GAMEPAD_BUTTON_BACK);
     find_held_combos(&host,cfg);
@@ -898,11 +901,27 @@ void bbgpu_input_note_read(void); /* gpu/shim/bbgpu.cpp: input freshness log */
 /* lbppc (LBPPC_POS_LOG, test): the buttons the game read since the last world step, and the left stick last read. */
 uint32_t runtime_pad_buttons_seen;
 uint8_t runtime_pad_left_stick[2];
+/* lbppc (#19): the game's text dialog (sceImeDialog) is finished by Cross (accept) or Circle (cancel) from whatever
+ * the player uses: a controller, the keyboard bindings in input.ini, the test pad. Before, only Enter/Esc or a
+ * controller's own button events reached the dialog, and players whose presses came another way were stuck in it.
+ * The press that opened the dialog is still held at first: only a new press counts. */
+int runtime_ime_running(void); /* runtime_services.c */
+static void dialog_buttons(void) {
+    static uint32_t held; static int fresh=1;
+    if (!runtime_ime_running()) { fresh=1; return; }
+    PadData raw;
+    sampling_for_dialog=1; sample_host(&raw); sampling_for_dialog=0;
+    read_inject();
+    const uint32_t buttons=raw.buttons|injected.buttons, pressed=fresh ? 0 : buttons&~held;
+    held=buttons; fresh=0;
+    if (pressed&BTN_CROSS) bbgpu_text_input_finish(1);
+    else if (pressed&BTN_CIRCLE) bbgpu_text_input_finish(0);
+}
 static void sample(PadData *d) {
     bbgpu_input_note_read();
     reload_config_if_requested();
     sample_host(d);
-    if (bbgpu_overlay_captures_input()) { hold_after_capture=1; return; }
+    if (bbgpu_overlay_captures_input()) { dialog_buttons(); hold_after_capture=1; return; }
     record_sample(d);
     read_inject();
     replay_sample(d);

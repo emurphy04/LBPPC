@@ -1,0 +1,40 @@
+#!/bin/bash
+# LBPPC's AppImage: runs the launcher (opt/lbppc/LBPPC). `--play` goes straight into the game with the launcher's
+# saved settings, for the desktop shortcut the launcher makes or as a Steam launch option.
+# The program files are read-only inside the AppImage, so the player's files (saves, settings, logs, the prepared
+# game) live in ~/.local/share/LBPPC, or LBPPC_DATA_DIR when that is set. run.py and the launcher both read it.
+HERE="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
+APP="$HERE/opt/lbppc"
+
+export LBPPC_DATA_DIR="${LBPPC_DATA_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/LBPPC}"
+mkdir -p "$LBPPC_DATA_DIR" || { echo "LBPPC: cannot make $LBPPC_DATA_DIR" >&2; exit 1; }
+# The default controls the first time (the launcher's Controls page and the game change this copy).
+[ -f "$LBPPC_DATA_DIR/input.ini" ] || cp "$APP/input.ini" "$LBPPC_DATA_DIR/input.ini"
+
+# The system's own values, for what the launcher starts outside its bundled Python: the game (run.py's
+# host_environment) and the system's programs (the file manager, the folder picker).
+for name in LD_LIBRARY_PATH SSL_CERT_FILE SSL_CERT_DIR; do
+    if [ -n "${!name}" ]; then export "LBPPC_HOST_$name=${!name}"; fi
+done
+unset PYTHONHOME PYTHONPATH
+# Steam preloads its overlay library into every program it starts. It means nothing to the launcher (a plain X11
+# window) and is kept from the game too: Steam's overlay reaches the game through its Vulkan layer.
+unset LD_PRELOAD
+
+# The bundled Python's OpenSSL looks for certificates where Ubuntu keeps them: point it at this system's bundle.
+if [ -z "$SSL_CERT_FILE" ]; then
+    for bundle in /etc/ssl/certs/ca-certificates.crt /etc/pki/tls/certs/ca-bundle.crt /etc/ssl/cert.pem \
+                  /etc/ssl/ca-bundle.pem /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem; do
+        if [ -r "$bundle" ]; then export SSL_CERT_FILE="$bundle"; break; fi
+    done
+fi
+
+# Tk is an X11 toolkit: on a Wayland desktop it runs through XWayland (always there on the Steam Deck).
+if [ -z "$DISPLAY" ] && [ -n "$WAYLAND_DISPLAY" ]; then
+    echo "LBPPC: DISPLAY is not set. The launcher needs XWayland on a Wayland desktop." >&2
+fi
+
+case "$1" in
+    --version) sed -n 's/^LBPPC_VERSION=//p' "$APP/VERSION"; exit 0 ;;
+esac
+exec "$APP/LBPPC" "$@"

@@ -19,6 +19,7 @@ struct Target {
     VAddr address{};
     vk::Format format{};
     u32 width{}, height{};
+    u32 depth{1}, layers{1}, type{}; // lbppc (debug, lights #9/#32)
     bool operator==(const Target&) const = default;
 };
 
@@ -57,14 +58,19 @@ std::array<std::atomic<VAddr>, 16> display_list{};
 std::atomic<u32> display_count{0};
 
 Target ToTarget(const VideoCore::ImageInfo& info) {
-    return {info.guest_address, info.pixel_format, info.size.width, info.size.height};
+    return {info.guest_address, info.pixel_format, info.size.width, info.size.height,
+            info.size.depth, info.resources.layers, u32(info.type)};
 }
 
 std::string Describe(const Target& t) {
     if (!t.address) {
         return "-";
     }
-    return std::format("{:#x} {} {}x{}", t.address, vk::to_string(t.format), t.width, t.height);
+    std::string out = std::format("{:#x} {} {}x{}", t.address, vk::to_string(t.format), t.width, t.height);
+    if (t.depth > 1 || t.layers > 1 || t.type != 9u /* Color2D */) {
+        out += std::format(" (depth {}, layers {}, type {})", t.depth, t.layers, t.type);
+    }
+    return out;
 }
 
 void AddSampled(Entry& entry) {

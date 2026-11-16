@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: Copyright 2024-2026 shadPS4 Emulator Project
 // SPDX-License-Identifier: GPL-2.0-or-later
 
+#include <atomic>
 #include <chrono>
 #include <pthread.h>
 #ifndef _WIN32
@@ -343,6 +344,50 @@ void RunWriteData(Vulkan::Rasterizer& rasterizer, const u8* data) {
 // list the game copies into a 256 KiB heap every frame. The list grew ~17 objects a second until
 // that heap ran out after ~28 minutes (memcpy to NULL at guest 0x21d5b45). In order now,
 // like WriteData (BbToggle::ZpassInOrder set: at once, as before).
+// lbppc (debug): LBPPC_KNOB_FILE names a text file read twice a second while the game runs: "zpass_step=<hex>" sets
+// how many pixels each occlusion counter dump moves the counter by (default 0x2ffffff), "zpass_log=<n>" logs the next
+// n dumps (address, value). For the lights investigation (#9, #32).
+namespace {
+struct DebugKnobs {
+    std::atomic<u64> zpass_step{0x2FFFFFFULL};
+    std::atomic<int> zpass_log{0};
+};
+DebugKnobs& Knobs() {
+    static DebugKnobs knobs;
+    static const char* file = std::getenv("LBPPC_KNOB_FILE");
+    static std::atomic<s64> next{0};
+    if (file) {
+        const s64 now = std::chrono::duration_cast<std::chrono::milliseconds>(
+                            std::chrono::steady_clock::now().time_since_epoch()).count();
+        if (now >= next.load(std::memory_order_relaxed)) {
+            next.store(now + 500, std::memory_order_relaxed);
+            if (FILE* f = std::fopen(file, "rb")) {
+                char line[256];
+                while (std::fgets(line, sizeof(line), f)) {
+                    unsigned long long v;
+                    int n;
+                    if (std::sscanf(line, "zpass_step=%llx", &v) == 1 && v != knobs.zpass_step.load()) {
+                        knobs.zpass_step.store(v);
+                        std::printf("Knobs: zpass_step %#llx\n", v);
+                    } else if (std::sscanf(line, "zpass_log=%d", &n) == 1 && n > 0) {
+                        knobs.zpass_log.store(n);
+                    }
+                }
+                std::fclose(f);
+                if (knobs.zpass_log.load() > 0) {
+                    // a one-off request: the file keeps only the step
+                    if (FILE* w = std::fopen(file, "wb")) {
+                        std::fprintf(w, "zpass_step=%llx\n", (unsigned long long)knobs.zpass_step.load());
+                        std::fclose(w);
+                    }
+                }
+            }
+        }
+    }
+    return knobs;
+}
+} // namespace
+
 struct ZpassDump {
     u64 address;
     u64 value;
@@ -1160,7 +1205,14 @@ Liverpool::Task Liverpool::ProcessGraphics(std::span<const u32> dcb, std::span<c
                         const ZpassDump dump{event->Address<u64>(),
                                              pixel_counter | OcclusionCounterValidMask,
                                              static_cast<u32>(num_counter_pairs)};
-                        pixel_counter += OcclusionCounterStep;
+                        auto& knobs = Knobs();
+                        if (knobs.zpass_log.load(std::memory_order_relaxed) > 0) {
+                            knobs.zpass_log.fetch_sub(1);
+                            std::printf("Zpass: dump at %#llx value %#llx (%u pairs)\n",
+                                        static_cast<unsigned long long>(dump.address),
+                                        static_cast<unsigned long long>(dump.value), dump.pairs);
+                        }
+                        pixel_counter += knobs.zpass_step.load(std::memory_order_relaxed);
                         if (rasterizer && !BbToggle::Disabled(BbToggle::ZpassInOrder)) {
                             if (rasterizer->RunInOrder(&RunZpassDump, &dump, sizeof(dump),
                                                        BbToggle::PipelinedMemoryWrites)) {

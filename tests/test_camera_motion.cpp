@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 // Execute production camera motion SPIR-V: distant geometry, sky and stale object vectors.
 #include <array>
-#include <cassert>
 #include <cmath>
 #include <cstdio>
 #include "video_core/renderer_vulkan/vk_instance.h"
@@ -9,6 +8,10 @@
 #include "video_core/texture_cache/image.h"
 #include "video_core/host_shaders/camera_motion_comp.h"
 #include <vk_mem_alloc.h>
+// Renderer headers are built as the GPU library builds them (NDEBUG: vulkan.hpp's dispatcher has a
+// debug-only member, so the layouts must match); this test's own assert checks are enabled after them.
+#undef NDEBUG
+#include <assert.h>
 
 int main() {
     Vulkan::Instance instance(0, false);

@@ -399,3 +399,36 @@
 397|Opdateringen læses fra sin egen mappe: dine spil- og opdateringsmapper forbliver, som de er
 398|{folder} er DLC til den {region} version af LittleBigPlanet 3 ({id}). LBPPC skal bruge den amerikanske eller europæiske version ({ids}) og dens DLC.
 399|Den opdatering er til {update}, men spillet er {game}. Vælg opdateringen til samme udgave.
+400|Nyt gemt spil...
+401|Omdøb eller slet {name}
+402|Nyt gemt spil
+403|Dets fremskridt ligger i sin egen mappe. Når det slettes, gemmes en kopi i user\save_backups, så det kan hentes tilbage.
+404|Et nyt gemt spil starter LittleBigPlanet 3 forfra. Dine andre gemte spil forbliver, som de er. Indstillinger, DLC og din onlinekonto deles.
+405|Navn
+406|Gemt spil
+407|Omdøb / slet
+408|Gemt spil: {name}
+409|1 til 24 bogstaver, tal, mellemrum, - eller _.
+410|Omdøb
+411|Opret
+412|Slet
+413|Tryk på Slet igen for at slette {name}. En kopi gemmes i user\save_backups.
+414|Separate fremskridt. Indstillinger, DLC og din onlinekonto deles.
+415|Hoved
+416|Luk spillet, før du skifter gemt spil
+417|Det gemte spil kunne ikke skiftes: {error}
+418|Denne mappe indeholder kun en pakkes systemfiler ({size} MB: param.sfo, npbind.dat og lignende) og ingen af dens spilfiler. En komplet mappe med opdatering 1.28 fylder omkring 1,3 GB, med eboot.bin og patch_001.farc i.
+419|Dens deltainfo-filer markerer den som en deltaopdatering: den indeholder kun ændringerne fra versionen før, som en PS4 anvender ved installationen, så den kan ikke bruges alene. LBPPC skal bruge den komplette opdatering 1.28.
+420|Filerne fra opdatering 1.28 er ikke i dit spil (mangler: {count}, blandt andet patch_001.farc, 1,2 GB). Vælg den komplette mappe med opdatering 1.28: omkring 1,3 GB, med eboot.bin og patch_001.farc i.
+421|Din kopi har {have} GB af de {want} GB, LittleBigPlanet 3 1.28 fylder (mangler: {count}, for eksempel {file}). Udpakningen stoppede halvvejs eller sprang filer over: pak spillet ud igen, og tjek, at der er nok ledig plads.
+422|Et navn på et gemt spil har 1 til 24 bogstaver, tal, mellemrum, - eller _, og starter med et bogstav eller et tal.
+423|Windows tillader ikke det navn. Vælg et andet.
+424|Der findes allerede et gemt spil med navnet {name}.
+425|Det gemte spil Hoved kan ikke omdøbes.
+426|Det gemte spil Hoved kan ikke slettes.
+427|Der er intet gemt spil med navnet {name}.
+428|Genvej på skrivebordet oprettet: den starter spillet uden launcheren
+429|Genvej
+430|Genvejen kunne ikke oprettes: {error}
+431|Downloaden er ikke et LBPPC-AppImage: ikke installeret.
+432|LBPPC kunne ikke erstatte {name} ({error}). Hent den nye version fra udgivelsessiden i stedet.

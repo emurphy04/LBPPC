@@ -89,7 +89,15 @@ ImageViewInfo::ImageViewInfo(const AmdGpu::DepthBuffer& depth_buffer, AmdGpu::De
     type = range.extent.layers > 1 ? AmdGpu::ImageType::Color2DArray : AmdGpu::ImageType::Color2D;
 }
 
+// The module's load address, for return addresses as offsets: the PE image base, or on Linux the ELF header the
+// linker places at the start of libbbgpu.so.
+#ifdef _WIN32
 extern "C" char __ImageBase;
+#define BB_MODULE_BASE (&__ImageBase)
+#else
+extern "C" char __ehdr_start;
+#define BB_MODULE_BASE (&__ehdr_start)
+#endif
 ImageView::ImageView(const Vulkan::Instance& instance, const ImageViewInfo& info_,
                      const Image& image)
     : info{info_} {
@@ -132,7 +140,7 @@ ImageView::ImageView(const Vulkan::Instance& instance, const ImageViewInfo& info
             std::printf("lbppc: colour view %d of depth image %d at %#llx (storage %d), from %p %p %p\n",
                         int(format), int(image.info.pixel_format),
                         (unsigned long long)image.info.guest_address, int(info.is_storage),
-                        (void*)((char*)__builtin_return_address(0) - (char*)&__ImageBase), nullptr, nullptr);
+                        (void*)((char*)__builtin_return_address(0) - (char*)BB_MODULE_BASE), nullptr, nullptr);
         }
     }
 

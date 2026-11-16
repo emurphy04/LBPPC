@@ -399,3 +399,36 @@
 397|De update wordt uit zijn eigen map gelezen: je game- en updatemap blijven zoals ze zijn
 398|{folder} is DLC voor de {region} versie van LittleBigPlanet 3 ({id}). LBPPC heeft de Amerikaanse of Europese versie nodig ({ids}), en de DLC daarvan.
 399|Die update is voor {update}, maar de game is {game}. Kies de update van dezelfde editie.
+400|Nieuwe save...
+401|{name} hernoemen of verwijderen
+402|Nieuwe save
+403|De voortgang blijft in een eigen map. Bij verwijderen blijft een kopie in user\save_backups, zodat je hem kunt terugzetten.
+404|Een nieuwe save begint LittleBigPlanet 3 vanaf het begin. Je andere saves blijven zoals ze zijn. Instellingen, DLC en je online account worden gedeeld.
+405|Naam
+406|Save
+407|Hernoemen / verwijderen
+408|Save: {name}
+409|1 tot 24 letters, cijfers, spaties, - of _.
+410|Hernoemen
+411|Maken
+412|Verwijderen
+413|Druk nog eens op Verwijderen om {name} te verwijderen. Er blijft een kopie in user\save_backups.
+414|Aparte voortgang. Instellingen, DLC en je online account worden gedeeld.
+415|Hoofd
+416|Sluit het spel voordat je van save wisselt
+417|De save kon niet worden gewisseld: {error}
+418|Deze map bevat alleen de systeembestanden van een pakket ({size} MB: param.sfo, npbind.dat en dergelijke) en geen van de spelbestanden. Een volledige map van update 1.28 is ongeveer 1,3 GB, met eboot.bin en patch_001.farc erin.
+419|De deltainfo-bestanden geven aan dat dit een delta-update is: hij bevat alleen de wijzigingen ten opzichte van de vorige versie, die een PS4 bij het installeren toepast, dus hij is niet los te gebruiken. LBPPC heeft de volledige update 1.28 nodig.
+420|De bestanden van update 1.28 zitten niet in je spel (ontbrekend: {count}, waaronder patch_001.farc, 1,2 GB). Kies de volledige map van update 1.28: ongeveer 1,3 GB, met eboot.bin en patch_001.farc erin.
+421|Je kopie heeft {have} GB van de {want} GB van LittleBigPlanet 3 1.28 (ontbrekend: {count}, bijvoorbeeld {file}). Het uitpakken is halverwege gestopt of heeft bestanden overgeslagen: pak het spel opnieuw uit en controleer of er genoeg vrije ruimte is.
+422|Een savenaam heeft 1 tot 24 letters, cijfers, spaties, - of _, en begint met een letter of cijfer.
+423|Windows staat die naam niet toe. Kies een andere.
+424|Er is al een save met de naam {name}.
+425|De Hoofd-save kan niet worden hernoemd.
+426|De Hoofd-save kan niet worden verwijderd.
+427|Er is geen save met de naam {name}.
+428|Snelkoppeling op het bureaublad gemaakt: die start het spel zonder de launcher
+429|Snelkoppeling
+430|De snelkoppeling kon niet worden gemaakt: {error}
+431|De download is geen LBPPC-AppImage: niet geïnstalleerd.
+432|LBPPC kon {name} niet vervangen ({error}). Download de nieuwe versie in plaats daarvan van de releasepagina.

@@ -76,7 +76,10 @@ static ABI int32_t param_int(uint32_t id,int32_t *out) {
 #define LABEL_SIZE 17
 #define ADDON_NO_EXTRA_DATA 0u  /* an add-on that is only an entitlement (LittleBigPlanet 3's DLC) */
 #define ADDON_INSTALLED 4u      /* an add-on with data, installed */
-#define MAX_ADDONS 64
+/* The PS4's own limit (SCE_APP_CONTENT_INFO_LIST_MAX_SIZE). LittleBigPlanet 3 asks for the count first, then for a
+ * list of exactly that many (eboot 0x24644e, 0x24647e), so the count must be every pack: it was 64, and a player
+ * with more saw only the first 64 (alphabetically) in the game. */
+#define MAX_ADDONS 2500
 typedef struct { char label[LABEL_SIZE]; char padding[3]; uint32_t status; } AddonInfo;
 /* A DLC counts only as the player's own dump: <label>/sce_sys/param.sfo is additional content ("ac") whose
  * CONTENT_ID (UP9000-CUSA00473_00-LBPDLCSONYCO0001) ends in the folder's label. A bare folder named after a label

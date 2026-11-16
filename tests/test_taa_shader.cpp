@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 // Run the production TAA shader on synthetic inputs, including undefined/invalid history.
-#include <cassert>
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -15,6 +14,10 @@
 #include "video_core/host_shaders/taa_comp.h"
 #include "video_core/host_shaders/taa_sharpen_comp.h"
 #include <vk_mem_alloc.h>
+// Renderer headers are built as the GPU library builds them (NDEBUG: vulkan.hpp's dispatcher has a
+// debug-only member, so the layouts must match); this test's own assert checks are enabled after them.
+#undef NDEBUG
+#include <assert.h>
 
 int main(int argc, char** argv) {
     using namespace Vulkan;

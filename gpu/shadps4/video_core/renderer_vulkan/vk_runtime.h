@@ -75,6 +75,11 @@ public:
     void CopyImageWithBuffer(VideoCore::Image* src, VideoCore::Image* dst,
                              const VideoCore::Buffer* buffer, u64 offset);
     void CopyMip(VideoCore::Image* src, VideoCore::Image* dst, u32 mip, u32 slice);
+    /// lbppc: the whole of src (one mip, one layer) into dst's first mip and layer, starting at row dst_y.
+    void CopyIntoRows(VideoCore::Image* src, VideoCore::Image* dst, u32 dst_y);
+    /// lbppc (debug): the image's first mip and layer as it stands after the commands recorded so far,
+    /// written to `path` as raw texels once the GPU has done them.
+    void DumpImage(VideoCore::Image* image, const std::string& path);
 
     void CopyColorAndDepth(VideoCore::Image* src, VideoCore::Image* dst);
 

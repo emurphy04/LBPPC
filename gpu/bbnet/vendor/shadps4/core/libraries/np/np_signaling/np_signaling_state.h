@@ -250,6 +250,10 @@ struct PendingActivation {
     OrbisNpSignalingConnectionId conn_id = 0;
     std::string peer_online_id;
     bool start_handshake = true;
+    // lbppc: a peer whose address can't be had (the server gives it only to friends; or offline) is asked again
+    // after a growing pause, not on every pump (six times a second, for ever), and given up on in the end.
+    u32 attempts = 0;
+    s64 next_try_ms = 0;
 };
 
 struct NpSignalingState {

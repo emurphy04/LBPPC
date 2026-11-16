@@ -53,6 +53,9 @@ public:
     void BeginTextInput(const std::string& initial, const std::string& prompt);
     /// 0 while typing, 1 confirmed (Enter), 2 cancelled (Escape); text is UTF-8.
     int PollTextInput(std::string& text);
+    /// lbppc: ends the text entry as if Enter (accept) or Escape was pressed: the pad reader calls it for Cross or
+    /// Circle from any controller, keyboard binding or test pad (#19). Any thread; the window thread stops SDL text input.
+    void FinishTextInput(bool accept);
 
     /// Any thread (API-002): copies the accumulated mouse state out and resets dx/dy/buttons/
     /// wheel to zero (captured is left as-is: it reflects the window's current state, not
@@ -79,7 +82,7 @@ private:
     std::atomic<bool> is_open{true};
     std::atomic<bool> on_hdr_display{false};
     std::mutex text_mutex;
-    bool text_requested{}, text_active{};
+    bool text_requested{}, text_active{}, text_stop_requested{};
     int text_state{};
     std::string text, text_prompt, base_title;
     void UpdateTextTitle();

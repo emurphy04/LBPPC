@@ -353,6 +353,8 @@ static ABI int32_t ime_init(const ImeParam *param, const void *extended) {
     else printf("Runtime: ImeDialog opened: shown on screen; keyboard Enter or Cross accepts, Esc or Circle cancels\n");
     return 0;
 }
+/* lbppc: the game's text dialog is open (the pad reader finishes it with Cross or Circle, runtime_pad.c). */
+int runtime_ime_running(void) { return ime.running; }
 static ABI int32_t ime_status(void) {
     if (ime.running) {
         char text[512];

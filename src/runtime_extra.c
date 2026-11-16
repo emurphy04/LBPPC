@@ -7,6 +7,7 @@
 #define _GNU_SOURCE
 #include "runtime.h"
 #include "gpu/bbgpu.h"
+#include "runtime_jpeg_codec.h"
 #include <errno.h>
 #include <pthread.h>
 #include <stdio.h>
@@ -445,21 +446,177 @@ static ABI int32_t search_update_id(uint64_t *id) { if (id) *id=0; return ORBIS_
 #define CONTENT_SEARCH_NOT_FOUND ((int32_t)0x80F30001)
 static ABI int32_t search_nothing(void) { return CONTENT_SEARCH_NOT_FOUND; }
 
-/* JPEG: handles work; decoding and encoding fail until a codec is added, as for a damaged image. */
-#define JPEG_DEC_FAILED ((int32_t)0x80650008)
-#define JPEG_ENC_FAILED ((int32_t)0x80650108)
+/* JPEG (sceJpegDec, sceJpegEnc): a real codec (runtime_jpeg_codec.c, stb). LBP3 saves its photos, and costume and
+ * level icons, through sceJpegEnc: with encoding refused every photo came out black (#14) and costume icons never
+ * appeared (#29). Layouts and error codes as shadPS4's libraries (core/libraries/jpeg). */
+#define JPEG_DEC_INVALID_ADDR   ((int32_t)0x80650001)
+#define JPEG_DEC_INVALID_SIZE   ((int32_t)0x80650002)
+#define JPEG_DEC_INVALID_PARAM  ((int32_t)0x80650003)
+#define JPEG_DEC_INVALID_HANDLE ((int32_t)0x80650004)
+#define JPEG_DEC_INVALID_DATA   ((int32_t)0x80650010)
+#define JPEG_DEC_DECODE_ERROR   ((int32_t)0x80650012)
+#define JPEG_ENC_INVALID_ADDR   ((int32_t)0x80650101)
+#define JPEG_ENC_INVALID_SIZE   ((int32_t)0x80650102)
+#define JPEG_ENC_INVALID_PARAM  ((int32_t)0x80650103)
+#define JPEG_ENC_INVALID_HANDLE ((int32_t)0x80650104)
+#define JPEG_ENC_FAILED         ((int32_t)0x80650108)
+typedef struct { const void *jpeg; uint32_t jpeg_size; uint16_t decode_mode, downscale; } JpegParseParam;
+typedef struct {
+    uint32_t width, height; uint16_t color_space, components; uint8_t component_id[4], sampling[4];
+    uint32_t decode_mode, required_decode_mode, output_width, output_height;
+} JpegImageInfo;
+typedef struct {
+    const void *jpeg; void *image; void *aux; uint32_t jpeg_size, image_size, aux_size;
+    uint16_t decode_mode, downscale, pixel_format, alpha; uint32_t pitch;
+} JpegDecodeParam;
+typedef struct {
+    const void *image; void *jpeg; uint32_t image_size, jpeg_size, width, height, pitch;
+    uint16_t pixel_format, encode_mode, color_space; uint8_t sampling, compression_ratio; int32_t restart_interval;
+} JpegEncodeParam;
+typedef struct { uint32_t size, height; } JpegOutputInfo;
+_Static_assert(sizeof(JpegParseParam)==0x10,"sceJpegDec parse param");
+_Static_assert(sizeof(JpegImageInfo)==0x24,"sceJpegDec image info");
+_Static_assert(sizeof(JpegDecodeParam)==0x30,"sceJpegDec decode param");
+_Static_assert(sizeof(JpegEncodeParam)==0x30,"sceJpegEnc encode param");
+enum { JPEG_RGBA=0, JPEG_BGRA=1, JPEG_YUYV=10, JPEG_Y8=11 };
+#define JPEG_HANDLE_MAGIC 0x4c42505050454a50ull /* "PJEPPPBL" */
+typedef struct { uint64_t magic; void *self; } JpegHandle;
 static ABI int32_t jpeg_memory_size(const void *param) { (void)param; return 0x10000; }
-typedef struct { uint64_t magic; } JpegHandle;
 static ABI int32_t jpeg_create(const void *param,void *memory,uint32_t size,void **handle) {
-    (void)param; (void)size;
-    if (!memory || !handle) return (int32_t)0x80650002;
-    *handle=memory;
+    (void)param;
+    if (!memory || !handle) return JPEG_DEC_INVALID_ADDR;
+    if (size<sizeof(JpegHandle)) return JPEG_DEC_INVALID_SIZE;
+    JpegHandle *h=memory;
+    h->magic=JPEG_HANDLE_MAGIC; h->self=h;
+    *handle=h;
     return ORBIS_OK;
 }
-static ABI int32_t jpeg_delete(void *handle) { (void)handle; return ORBIS_OK; }
+static int jpeg_handle_ok(const void *handle) {
+    const JpegHandle *h=handle;
+    return h && h->magic==JPEG_HANDLE_MAGIC && h->self==h;
+}
+static ABI int32_t jpeg_delete(void *handle) {
+    if (!jpeg_handle_ok(handle)) return JPEG_DEC_INVALID_HANDLE;
+    ((JpegHandle *)handle)->magic=0;
+    return ORBIS_OK;
+}
 static int jpeg_seen;
-static ABI int32_t jpeg_decode_failed(void) { note_once(&jpeg_seen,"JPEG: decoding not implemented yet"); return JPEG_DEC_FAILED; }
-static ABI int32_t jpeg_encode_failed(void) { note_once(&jpeg_seen,"JPEG: encoding not implemented yet"); return JPEG_ENC_FAILED; }
+static void jpeg_fill_info(JpegImageInfo *info,int width,int height,int components,uint16_t mode,uint32_t ratio) {
+    memset(info,0,sizeof(*info));
+    info->width=(uint32_t)width; info->height=(uint32_t)height;
+    info->color_space=components==1 ? 2 : 1;
+    info->components=(uint16_t)components;
+    info->component_id[0]=1; info->component_id[1]=2; info->component_id[2]=3;
+    info->sampling[0]=components==1 ? 0x11 : 0x22; info->sampling[1]=0x11; info->sampling[2]=0x11;
+    info->decode_mode=mode; info->required_decode_mode=1;
+    info->output_width=((uint32_t)width+ratio-1)/ratio; info->output_height=((uint32_t)height+ratio-1)/ratio;
+}
+static ABI int32_t jpeg_parse_header(const JpegParseParam *param,JpegImageInfo *info) {
+    if (!param || !param->jpeg || !info) return JPEG_DEC_INVALID_ADDR;
+    const uint32_t ratio=param->downscale;
+    if (param->decode_mode>1 || (ratio!=1 && ratio!=2 && ratio!=4 && ratio!=8)) return JPEG_DEC_INVALID_PARAM;
+    const uint8_t *p=param->jpeg;
+    if (param->jpeg_size<4 || p[0]!=0xFF || p[1]!=0xD8) return JPEG_DEC_INVALID_DATA;
+    int width=0,height=0,components=0;
+    if (!jpeg_codec_info(param->jpeg,param->jpeg_size,&width,&height,&components)) return JPEG_DEC_DECODE_ERROR;
+    jpeg_fill_info(info,width,height,components,param->decode_mode,ratio);
+    return ORBIS_OK;
+}
+/* The picture (every ratio-th pixel when downscaled) in the format the game asks for. Returns width<<16 | height. */
+static ABI int32_t jpeg_decode(void *handle,const JpegDecodeParam *param,JpegImageInfo *info) {
+    if (!jpeg_handle_ok(handle)) return JPEG_DEC_INVALID_HANDLE;
+    if (!param || !param->jpeg || !param->image) return JPEG_DEC_INVALID_ADDR;
+    if (!param->jpeg_size || !param->image_size) return JPEG_DEC_INVALID_SIZE;
+    const uint32_t ratio=param->downscale, format=param->pixel_format;
+    if (param->decode_mode>1 || (ratio!=1 && ratio!=2 && ratio!=4 && ratio!=8) ||
+        (format!=JPEG_RGBA && format!=JPEG_BGRA && format!=JPEG_Y8) || param->alpha>0xff)
+        return JPEG_DEC_INVALID_PARAM;
+    int width=0,height=0,components=0;
+    uint8_t *rgba=jpeg_codec_decode_rgba(param->jpeg,param->jpeg_size,&width,&height,&components);
+    if (!rgba) {
+        static int failed_seen;
+        if (!failed_seen++) printf("Runtime: JPEG: a picture could not be decoded (%s)\n",jpeg_codec_error());
+        return JPEG_DEC_DECODE_ERROR;
+    }
+    const uint32_t out_w=((uint32_t)width+ratio-1)/ratio, out_h=((uint32_t)height+ratio-1)/ratio;
+    const uint32_t bpp=format==JPEG_Y8 ? 1 : 4, pitch=param->pitch ? param->pitch : out_w*bpp;
+    if (pitch<out_w*bpp || (bpp==4 && (pitch&3)) || (uint64_t)pitch*out_h>param->image_size) {
+        jpeg_codec_free(rgba);
+        return param->pitch ? JPEG_DEC_INVALID_PARAM : JPEG_DEC_INVALID_SIZE;
+    }
+    for (uint32_t y=0;y<out_h;++y) {
+        uint8_t *dst=(uint8_t *)param->image+(uint64_t)y*pitch;
+        for (uint32_t x=0;x<out_w;++x) {
+            const uint8_t *s=rgba+((uint64_t)y*ratio*(uint32_t)width+(uint64_t)x*ratio)*4;
+            const uint8_t a=param->alpha ? (uint8_t)param->alpha : s[3];
+            if (format==JPEG_Y8) dst[x]=(uint8_t)((s[0]*77+s[1]*150+s[2]*29)>>8);
+            else if (format==JPEG_BGRA) { dst[x*4]=s[2]; dst[x*4+1]=s[1]; dst[x*4+2]=s[0]; dst[x*4+3]=a; }
+            else { dst[x*4]=s[0]; dst[x*4+1]=s[1]; dst[x*4+2]=s[2]; dst[x*4+3]=a; }
+        }
+    }
+    jpeg_codec_free(rgba);
+    if (info) jpeg_fill_info(info,width,height,components,param->decode_mode,ratio);
+    return (int32_t)((out_w<<16)|(out_h&0xffff));
+}
+/* compression_ratio 1 (least) .. 255 (most) as JPEG quality 95 .. 20; 0 means the default, 85. */
+static int jpeg_quality(uint8_t ratio) { return ratio ? 95-(int)ratio*75/255 : 85; }
+static ABI int32_t jpeg_encode(void *handle,const JpegEncodeParam *param,JpegOutputInfo *output) {
+    if (!jpeg_handle_ok(handle)) return JPEG_ENC_INVALID_HANDLE;
+    if (!param || !param->image || !param->jpeg) return JPEG_ENC_INVALID_ADDR;
+    if (!param->image_size || !param->jpeg_size) return JPEG_ENC_INVALID_SIZE;
+    const uint32_t w=param->width, h=param->height, pitch=param->pitch, format=param->pixel_format;
+    if (!w || !h || w>8192 || h>8192 || !pitch || (uint64_t)pitch*h>param->image_size) return JPEG_ENC_INVALID_PARAM;
+    const uint32_t need=format==JPEG_Y8 ? w : format==JPEG_YUYV ? ((w+1)&~1u)*2 : w*4;
+    if ((format!=JPEG_RGBA && format!=JPEG_BGRA && format!=JPEG_YUYV && format!=JPEG_Y8) || pitch<need)
+        return JPEG_ENC_INVALID_PARAM;
+    const int components=format==JPEG_Y8 ? 1 : 3;
+    uint8_t *packed=malloc((size_t)w*h*(size_t)components);
+    if (!packed) return JPEG_ENC_FAILED;
+    for (uint32_t y=0;y<h;++y) {
+        const uint8_t *row=(const uint8_t *)param->image+(uint64_t)y*pitch;
+        uint8_t *dst=packed+(size_t)y*w*(size_t)components;
+        for (uint32_t x=0;x<w;++x) {
+            if (format==JPEG_Y8) { dst[x]=row[x]; continue; }
+            uint8_t r,g,b;
+            if (format==JPEG_YUYV) { /* Y0 U Y1 V for each pair of pixels (BT.601) */
+                const uint8_t *pair=row+(x&~1u)*2;
+                const int yy=pair[x&1 ? 2 : 0]-16, u=pair[1]-128, v=pair[3]-128;
+                const int rr=(298*yy+409*v+128)>>8, gg=(298*yy-100*u-208*v+128)>>8, bb=(298*yy+516*u+128)>>8;
+                r=(uint8_t)(rr<0 ? 0 : rr>255 ? 255 : rr); g=(uint8_t)(gg<0 ? 0 : gg>255 ? 255 : gg);
+                b=(uint8_t)(bb<0 ? 0 : bb>255 ? 255 : bb);
+            } else if (format==JPEG_BGRA) { r=row[x*4+2]; g=row[x*4+1]; b=row[x*4]; }
+            else { r=row[x*4]; g=row[x*4+1]; b=row[x*4+2]; }
+            dst[x*3]=r; dst[x*3+1]=g; dst[x*3+2]=b;
+        }
+    }
+    /* The picture's mean brightness (0-255): a black or empty capture shows as 0 in the log. */
+    uint64_t brightness=0;
+    const size_t samples=(size_t)w*h*(size_t)components;
+    for (size_t i=0;i<samples;i+=7) brightness+=packed[i];
+    const unsigned mean=(unsigned)(brightness/((samples+6)/7));
+    uint32_t written=0;
+    const int ok=jpeg_codec_encode(packed,(int)w,(int)h,components,jpeg_quality(param->compression_ratio),
+                                   param->jpeg,param->jpeg_size,&written);
+    free(packed);
+    if (!ok) {
+        note_once(&jpeg_seen,"JPEG: a picture did not fit the game's buffer, even at low quality");
+        return JPEG_ENC_FAILED;
+    }
+    if (output) { output->size=written; output->height=h; }
+    static int encoded_count;
+    if (encoded_count++<32)
+        printf("Runtime: JPEG: encoded a %ux%u picture (%u KB, format %u, pitch %u, from %p, mean brightness %u)\n",w,h,
+               (written+1023)/1024,format,pitch,param->image,mean);
+    /* LBPPC_JPEG_DUMP=<folder> (development): each encoded picture written there as jpeg-N.jpg. */
+    const char *dump=getenv("LBPPC_JPEG_DUMP");
+    if (dump && *dump) {
+        char path[1024];
+        snprintf(path,sizeof(path),"%s/jpeg-%d.jpg",dump,encoded_count);
+        FILE *f=fopen(path,"wb");
+        if (f) { fwrite(param->jpeg,1,written,f); fclose(f); }
+    }
+    return ORBIS_OK;
+}
 
 /* Sockets: real host sockets on this PC only. A game may send to itself on 127.0.0.1 to wake its own threads
  * (LBP3 does, on port 3658: with sockets that dropped every packet it stayed on "Connecting to LittleBigPlanet
@@ -939,9 +1096,10 @@ static const RuntimeExport exports[]={
     {"sceContentSearchGetMyApplicationIndex",search_index}, {"sceContentSearchGetContentLastUpdateId",search_update_id},
     {"sceContentSearchSearchContent",search_nothing},
     {"sceJpegDecQueryMemorySize",jpeg_memory_size}, {"sceJpegDecCreate",jpeg_create}, {"sceJpegDecDelete",jpeg_delete},
-    {"sceJpegDecParseHeader",jpeg_decode_failed}, {"sceJpegDecDecode",jpeg_decode_failed},
+    {"sceJpegDecParseHeader",jpeg_parse_header}, {"sceJpegDecDecode",jpeg_decode},
+    {"sceJpegDecDecodeWithInputControl",jpeg_decode},
     {"sceJpegEncQueryMemorySize",jpeg_memory_size}, {"sceJpegEncCreate",jpeg_create}, {"sceJpegEncDelete",jpeg_delete},
-    {"sceJpegEncEncode",jpeg_encode_failed},
+    {"sceJpegEncEncode",jpeg_encode},
     {"socket",socket_open}, {"bind",socket_bind}, {"recv",socket_receive}, {"recvfrom",socket_receive_from},
     {"sendto",socket_send}, {"sceNetSetsockopt",socket_option}, {"sceNetSocketClose",socket_close},
     {"sceNetEpollControl",epoll_control}, {"sceNetEpollWait",epoll_wait},

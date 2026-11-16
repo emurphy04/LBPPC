@@ -1,0 +1,169 @@
+# Builds the Linux AppImage (dist/LBPPC-<version>-linux-x86_64.AppImage and its .sha256) on Ubuntu 24.04 and keeps
+# it as this run's download (the run's page, Artifacts). Attaching it to a release is done by hand: download it
+# there, try it, then upload both files to the release beside the Windows zip.
+#
+# Started by hand (Actions > Linux AppImage > Run workflow, choosing the release's tag under "Use workflow from")
+# or by a push to the linux-appimage branch.
+# Ubuntu 24.04's glibc (2.39) is the oldest the AppImage runs on; SteamOS and current desktops are newer.
+# Built from source, where Ubuntu's are too old for the GPU code or bring many libraries with them: the Vulkan
+# headers, the Vulkan memory allocator, glslang, SDL3 and FFmpeg (the decoders the game's videos use). They are kept
+# between runs (the cache step), keyed on their versions.
+name: Linux AppImage
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [linux-appimage]
+
+permissions:
+  contents: read
+
+env:
+  DEPS: /opt/deps
+  VULKAN_HEADERS: v1.4.363
+  VMA: v3.4.0
+  GLSLANG: 16.6.0
+  SDL3: release-3.4.18
+  FFMPEG: n8.1.3
+  APPIMAGETOOL: '1.9.1'
+  APPIMAGETOOL_SHA256: ed4ce84f0d9caff66f50bcca6ff6f35aae54ce8135408b3fa33abfc3cb384eb0
+
+jobs:
+  appimage:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Packages
+        run: |
+          sudo apt-get update
+          # Not libvulkan-dev: its headers are older than the GPU code needs (the newer ones are built below);
+          # the loader itself (libvulkan1) is linked.
+          sudo apt-get install -y --no-install-recommends \
+            gcc-14 g++-14 cmake ninja-build pkg-config nasm patchelf file git \
+            libvulkan1 libboost-dev libfmt-dev libxxhash-dev libzydis-dev libprotobuf-dev protobuf-compiler \
+            nlohmann-json3-dev robin-map-dev libssl-dev zlib1g-dev libminiupnpc-dev \
+            libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxfixes-dev libxi-dev libxss-dev libxtst-dev \
+            libxkbcommon-dev libwayland-dev wayland-protocols libdecor-0-dev libegl-dev libgl-dev libgles-dev \
+            libdrm-dev libgbm-dev libasound2-dev libpulse-dev libpipewire-0.3-dev libdbus-1-dev libudev-dev \
+            libusb-1.0-0-dev libibus-1.0-dev \
+            python3 python3-venv python3-tk python3-dev
+
+      - name: Dependency cache
+        id: deps
+        uses: actions/cache@v4
+        with:
+          path: /opt/deps
+          key: deps-ubuntu24-gcc14-${{ env.VULKAN_HEADERS }}-${{ env.VMA }}-${{ env.GLSLANG }}-${{ env.SDL3 }}-${{ env.FFMPEG }}-1
+
+      - name: Dependencies from source
+        if: steps.deps.outputs.cache-hit != 'true'
+        env:
+          CC: gcc-14
+          CXX: g++-14
+        run: |
+          set -euo pipefail
+          sudo mkdir -p "$DEPS" && sudo chown "$USER" "$DEPS"
+          mkdir -p ~/src && cd ~/src
+          fetch() { git -c advice.detachedHead=false clone -q --depth 1 --branch "$2" "https://github.com/$1.git" "$3"; }
+          fetch KhronosGroup/Vulkan-Headers "$VULKAN_HEADERS" vulkan-headers
+          cmake -S vulkan-headers -B vulkan-headers/build -G Ninja -DCMAKE_INSTALL_PREFIX="$DEPS" -DVULKAN_HEADERS_ENABLE_MODULE=OFF
+          cmake --install vulkan-headers/build
+          fetch GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator "$VMA" vma
+          cmake -S vma -B vma/build -G Ninja -DCMAKE_INSTALL_PREFIX="$DEPS" -DCMAKE_PREFIX_PATH="$DEPS"
+          cmake --install vma/build
+          fetch KhronosGroup/glslang "$GLSLANG" glslang
+          cmake -S glslang -B glslang/build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$DEPS" \
+            -DENABLE_OPT=OFF -DGLSLANG_TESTS=OFF -DGLSLANG_ENABLE_INSTALL=ON -DBUILD_SHARED_LIBS=OFF
+          cmake --build glslang/build
+          cmake --install glslang/build
+          fetch libsdl-org/SDL "$SDL3" sdl3
+          cmake -S sdl3 -B sdl3/build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$DEPS" \
+            -DSDL_SHARED=ON -DSDL_STATIC=OFF -DSDL_TESTS=OFF -DSDL_EXAMPLES=OFF
+          cmake --build sdl3/build
+          cmake --install sdl3/build
+          fetch FFmpeg/FFmpeg "$FFMPEG" ffmpeg
+          cd ffmpeg
+          # Only what the game's video player needs (MP4/MPEG-TS/Matroska with H.264, HEVC, AAC and friends), and
+          # no system libraries: nothing for the AppImage to bring along beyond FFmpeg's own.
+          ./configure --prefix="$DEPS" --cc=gcc-14 --enable-shared --disable-static --enable-pic \
+            --disable-programs --disable-doc --disable-autodetect --disable-network --disable-avdevice \
+            --disable-avfilter --disable-everything \
+            --enable-decoder=h264,hevc,mpeg4,mpeg2video,mpeg1video,vp8,vp9,aac,aac_latm,mp3,mp2,ac3,eac3,opus,vorbis,flac,pcm_s16le,pcm_s16be,pcm_s24le,pcm_f32le \
+            --enable-demuxer=mov,mpegts,mpegps,matroska,mp3,aac,h264,hevc,ogg,wav,avi,m4v \
+            --enable-parser=h264,hevc,aac,aac_latm,mpeg4video,mpegvideo,mpegaudio,ac3,vp8,vp9,opus,vorbis,flac \
+            --enable-protocol=file,pipe --enable-bsf=h264_mp4toannexb,hevc_mp4toannexb,aac_adtstoasc
+          make -j"$(nproc)"
+          make install
+          mkdir -p "$DEPS/share/licenses"
+          cp LICENSE.md "$DEPS/share/licenses/FFmpeg-LICENSE.md"
+          cp COPYING.LGPLv2.1 "$DEPS/share/licenses/FFmpeg-COPYING.LGPLv2.1"
+          cp ../sdl3/LICENSE.txt "$DEPS/share/licenses/SDL3-LICENSE.txt"
+
+      - name: Vulkan loader for the build
+        run: |
+          # The loader from libvulkan1, under the name the build links (libvulkan-dev would bring old headers).
+          mkdir -p "$DEPS/lib/pkgconfig"
+          ln -sf /usr/lib/x86_64-linux-gnu/libvulkan.so.1 "$DEPS/lib/libvulkan.so"
+          printf '%s\n' "prefix=$DEPS" 'libdir=${prefix}/lib' 'includedir=${prefix}/include' '' \
+            'Name: Vulkan-Loader' 'Description: Vulkan Loader' "Version: ${VULKAN_HEADERS#v}" \
+            'Libs: -L${libdir} -lvulkan' 'Cflags: -I${includedir}' > "$DEPS/lib/pkgconfig/vulkan.pc"
+          echo "$DEPS/bin" >> "$GITHUB_PATH"
+          {
+            echo "PKG_CONFIG_PATH=$DEPS/lib/pkgconfig"
+            echo "CMAKE_PREFIX_PATH=$DEPS"
+            echo "LD_LIBRARY_PATH=$DEPS/lib"
+            echo "CC=gcc-14"
+            echo "CXX=g++-14"
+            echo "BB_PGO=off"
+          } >> "$GITHUB_ENV"
+
+      - name: Build
+        run: |
+          # g++ and gcc for package.sh's C++ library lookup: the build's own compiler.
+          mkdir -p ~/bin && ln -sf "$(command -v g++-14)" ~/bin/g++ && ln -sf "$(command -v gcc-14)" ~/bin/gcc
+          echo "$HOME/bin" >> "$GITHUB_PATH"
+          bash build.sh || { tail -80 out/gpu-build.log 2>/dev/null; exit 1; }
+
+      - name: Package
+        run: |
+          curl -fsSL -o ~/appimagetool \
+            "https://github.com/AppImage/appimagetool/releases/download/$APPIMAGETOOL/appimagetool-x86_64.AppImage"
+          echo "$APPIMAGETOOL_SHA256  $HOME/appimagetool" | sha256sum -c -
+          chmod +x ~/appimagetool
+          export PATH="$HOME/bin:$PATH"
+          APPIMAGE_EXTRACT_AND_RUN=1 APPIMAGETOOL=~/appimagetool bash packaging/linux/package.sh
+
+      - name: Check the package
+        run: |
+          set -euo pipefail
+          image=$(ls dist/LBPPC-*-linux-x86_64.AppImage)
+          cd "$(mktemp -d)"
+          "$OLDPWD/$image" --appimage-extract >/dev/null
+          app=squashfs-root/opt/lbppc
+          # The game's libraries all found with only the system's and the package's own (no build folders).
+          env -u LD_LIBRARY_PATH LD_LIBRARY_PATH="$app/lib" ldd "$app/bin/LBPPC-Game" "$app/bin/gpu/libbbgpu.so" | tee ldd.txt
+          if grep -q 'not found' ldd.txt; then echo 'Missing libraries'; exit 1; fi
+          if grep -q '/opt/deps' ldd.txt; then echo 'A library came from the build folder'; exit 1; fi
+          squashfs-root/AppRun --version
+          # The frozen Python runs the package's scripts (as it runs run.py) and has Tk and Pillow.
+          printf '%s\n' 'import sys, tkinter, PIL, updater' \
+            "print('Frozen Python', sys.version.split()[0], 'Tk', tkinter.TkVersion, 'Pillow', PIL.__version__)" \
+            "assert updater.ASSET.match('LBPPC-9.9.9-linux-x86_64.AppImage')" > check.py
+          "$app/LBPPC" --script check.py
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LBPPC-linux-x86_64-AppImage
+          path: |
+            dist/LBPPC-*-linux-x86_64.AppImage
+            dist/LBPPC-*-linux-x86_64.AppImage.sha256
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Tests
+        run: bash build.sh --test
