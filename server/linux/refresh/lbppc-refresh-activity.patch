@@ -1,0 +1,65 @@
+--- a/Refresh.Database/Models/Activity/DatabaseActivityPage.cs
++++ b/Refresh.Database/Models/Activity/DatabaseActivityPage.cs
+@@ -12,6 +12,9 @@
+     internal DatabaseActivityPage(GameDatabaseContext database, IReadOnlyCollection<Event> events, ActivityQueryParameters parameters)
+     {
+         this.StoreReferencedObjects(database, events);
++        // LBPPC: events about something since deleted (a photo, score, user) are left out: grouping them below would
++        // fail, and one such event in a player's history made their whole activity page an error.
++        events = events.Where(this.HasReferencedObject).ToList();
+         this.GenerateGroups(events);
+         
+         this.Cleanup();
+@@ -49,34 +52,48 @@
+ 
+     #region Generation
+ 
++    private bool HasReferencedObject(Event e) => e.User != null && e.StoredDataType switch
++    {
++        EventDataType.User => this.Users.Any(u => u.UserId == e.StoredObjectId),
++        EventDataType.Photo => this.Photos.Any(p => p.PhotoId == e.StoredSequentialId),
++        EventDataType.Score => this.Scores.Any(s => s.ScoreId == e.StoredObjectId) &&
++                               this.Scores.First(s => s.ScoreId == e.StoredObjectId).Level != null,
++        _ => true,
++    };
++
+     private void StoreReferencedObjects(GameDatabaseContext database, IReadOnlyCollection<Event> events)
+     {
+         // Users
+         this.Users.AddRange(events
+             .Select(e => e.User)
++            .Where(u => u != null)
+             .DistinctBy(e => e.UserId));
+ 
+         this.Users.AddRange(events.Where(e => e.StoredDataType == EventDataType.User)
+             .DistinctBy(e => e.StoredObjectId)
+-            .Select(e => database.GetUserFromEvent(e)!));
++            .Select(e => database.GetUserFromEvent(e)!)
++            .Where(x => x != null));
+ 
+         // Photos
+         this.Photos.AddRange(events
+             .Where(e => e.StoredDataType == EventDataType.Photo)
+             .DistinctBy(e => e.StoredSequentialId)
+-            .Select(e => database.GetPhotoFromEvent(e)!));
++            .Select(e => database.GetPhotoFromEvent(e)!)
++            .Where(x => x != null));
+         
+         // Scores
+         this.Scores.AddRange(events
+             .Where(e => e.StoredDataType == EventDataType.Score)
+             .DistinctBy(e => e.StoredObjectId)
+-            .Select(e => database.GetScoreFromEvent(e)!));
++            .Select(e => database.GetScoreFromEvent(e)!)
++            .Where(x => x != null));
+         
+         // Levels
+         this.Levels.AddRange(events
+             .Where(e => e.StoredDataType == EventDataType.Level)
+             .DistinctBy(e => e.StoredSequentialId)
+-            .Select(e => database.GetLevelFromEvent(e)!));
++            .Select(e => database.GetLevelFromEvent(e)!)
++            .Where(x => x != null));
+         
+         // Levels (from photos)
+         foreach (GamePhoto photo in this.Photos)
