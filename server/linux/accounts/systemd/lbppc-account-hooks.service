@@ -1,0 +1,39 @@
+[Unit]
+Description=LBPPC accounts: Kratos's hooks into shadNet (sign-up, password changes)
+After=network-online.target lbppc-shadnet.service
+
+[Service]
+User=lbppc-hooks
+Group=lbppc-hooks
+EnvironmentFile=/etc/lbppc/accounts/hooks.env
+ExecStart=/usr/bin/python3 -I /opt/lbppc-accounts/account_hooks.py
+Restart=on-failure
+RestartSec=5
+UMask=0077
+MemoryMax=150M
+
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+RestrictAddressFamilies=AF_INET AF_INET6
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+
+[Install]
+WantedBy=multi-user.target

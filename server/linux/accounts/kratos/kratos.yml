@@ -157,6 +157,8 @@ clients:
     disallow_private_ip_ranges: true    # webhooks and Discord can't be pointed at this machine's services...
     private_ip_exception_urls:
       - http://127.0.0.1:4480/check     # ...except the migration hook
+      - http://127.0.0.1:4481/registration       # and the account hooks (enable-phase2.sh)
+      - http://127.0.0.1:4481/password-changed
 
 log:
   level: info

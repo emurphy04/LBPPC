@@ -13,7 +13,7 @@ conf=/etc/lbppc/accounts
 install -d -m 711 -o root -g root "$conf"
 install -d -m 750 -o root -g ory-kratos "$conf/kratos"
 install -d -m 750 -o root -g ory-hydra "$conf/hydra"
-for f in kratos.yml identity.schema.json migrate-body.jsonnet discord-mapper.jsonnet; do
+for f in kratos.yml identity.schema.json migrate-body.jsonnet discord-mapper.jsonnet registration-body.jsonnet          password-body.jsonnet; do
     install -m 640 -o root -g ory-kratos "$here/kratos/$f" "$conf/kratos/$f"
 done
 install -m 640 -o root -g ory-hydra "$here/hydra/hydra.yml" "$conf/hydra/hydra.yml"
@@ -68,6 +68,20 @@ if [[ ! -f $conf/kratos/email.yml ]]; then
     chmod 640 "$conf/kratos/email.yml"
 fi
 
+# Phase 2 (sign-up, password changes): empty until enable-phase2.sh, on release day.
+if [[ ! -f $conf/kratos/phase2.yml ]]; then
+    echo '{}' > "$conf/kratos/phase2.yml"
+    chown root:ory-kratos "$conf/kratos/phase2.yml"
+    chmod 640 "$conf/kratos/phase2.yml"
+fi
+# The account hooks' keys: one for Kratos to call them, and shadNet's AdminApiKey for them to call shadNet.
+id lbppc-hooks >/dev/null 2>&1 || useradd --system --no-create-home --shell /usr/sbin/nologin lbppc-hooks
+if [[ ! -f $conf/hooks.env ]]; then
+    shadnet_key=$(sed -n 's/^LBPPC_SHADNET_KEY=//p' /etc/lbppc/refresh-login-check.env)
+    printf 'HOOKS_KEY=%s\nSHADNET_ADMIN_KEY=%s\n' "$(hex 32)" "$shadnet_key" > "$conf/hooks.env"
+    chmod 600 "$conf/hooks.env"
+fi
+
 if [[ ! -f $conf/hydra/secrets.yml ]]; then
     cat > "$conf/hydra/secrets.yml" <<EOF
 dsn: postgres://hydra:$(cat "$conf/hydra-db-password")@127.0.0.1:5432/hydra?sslmode=disable&max_conns=10
@@ -81,7 +95,8 @@ fi
 
 install -d -m 755 -o root -g root /opt/lbppc-accounts
 install -m 644 -o root -g root "$here/password_migration_hook.py" "$here/import_shadnet_accounts.py"     "$here/test_signin.py" /opt/lbppc-accounts/
-install -m 700 -o root -g root "$here/set-discord.sh" "$here/set-email.sh" /opt/lbppc-accounts/
+install -m 700 -o root -g root "$here/set-discord.sh" "$here/set-email.sh" "$here/enable-phase2.sh" /opt/lbppc-accounts/
+install -m 644 -o root -g root "$here/systemd/lbppc-account-hooks.service" /etc/systemd/system/   # started by enable-phase2.sh
 for unit in lbppc-kratos lbppc-hydra lbppc-password-migration; do
     install -m 644 -o root -g root "$here/systemd/$unit.service" /etc/systemd/system/
 done

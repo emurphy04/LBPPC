@@ -1,0 +1,95 @@
+--- a/src/admin_api.cpp
++++ b/src/admin_api.cpp
+@@ -69,6 +69,18 @@
+     return out;
+ }
+ 
++// LBPPC: a password nobody will ever type or see (40 characters from the system's secure generator), for accounts
++// whose players sign in with LBPPC account tokens instead.
++QString LbppcRandomPassword() {
++    static const QString chars = QStringLiteral("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789");
++    QString out;
++    out.reserve(40);
++    QRandomGenerator* gen = QRandomGenerator::system();
++    for (int i = 0; i < 40; ++i)
++        out.append(chars.at(gen->bounded(chars.size())));
++    return out;
++}
++
+ constexpr int kMaxLoginFailures = 5;
+ constexpr int kLoginBlockSeconds = 300;
+ 
+@@ -966,6 +978,73 @@
+             return JsonOk(body);
+         });
+ 
++    // LBPPC: POST /admin/v1/lbppc/accounts { "npid": name } -> { "userId": id }, for lbppc.com's sign-up (its
++    // account service on this machine, docs/accounts/DESIGN.md): a shadNet account for a name chosen on the site.
++    // Its password is random and never shown: the player signs in with LBPPC account tokens
++    // (lbppc-shadnet-tokens.patch). 409 when the name is taken, 403 when the blocked-names list refuses it.
++    // Same access as the checks above (this machine and the AdminApiKey only).
++    m_http->route(
++        "/admin/v1/lbppc/accounts", QHttpServerRequest::Method::Post,
++        [this](const QHttpServerRequest& req) -> QHttpServerResponse {
++            if (!req.remoteAddress().isLoopback() || m_config->GetAdminApiKey().isEmpty() ||
++                !CheckApiKey(req))
++                return ApiKeyError(req);
++            QString parseError;
++            const auto bodyOpt = ParseJsonBody(req, parseError);
++            if (!bodyOpt)
++                return JsonError(QHttpServerResponse::StatusCode::BadRequest, ERR_BAD_REQUEST, parseError);
++            const QString npid = bodyOpt->value(QStringLiteral("npid")).toString().trimmed();
++            if (!ClientSession::IsValidNpid(npid))
++                return JsonError(QHttpServerResponse::StatusCode::BadRequest, ERR_BAD_REQUEST,
++                                 QStringLiteral("Names are 3 to 16 letters, digits, '-' or '_'."));
++            if (!LbppcNames::BlockedBy(npid).isEmpty())
++                return JsonError(QHttpServerResponse::StatusCode::Forbidden, ERR_BAD_REQUEST,
++                                 QStringLiteral("That name isn't allowed."));
++            const QString email = npid.toLower() + QStringLiteral("@lbppc.invalid");
++            if (const auto err = m_db->CreateAccount(npid, LbppcRandomPassword(), QStringLiteral(
++                    "https://shadps4.net/shad_net/assets/avatar/default_01.png"), email)) {
++                if (*err == DbError::ExistingUsername || *err == DbError::ExistingEmail)
++                    return JsonError(QHttpServerResponse::StatusCode::Conflict, ERR_CONFLICT,
++                                     QStringLiteral("That name is taken."));
++                qCritical() << "LBPPC: account creation failed for" << npid << ":" << m_db->lastError();
++                return JsonError(QHttpServerResponse::StatusCode::InternalServerError, ERR_INTERNAL,
++                                 QStringLiteral("The account couldn't be created."));
++            }
++            const auto id = m_db->GetUserId(npid);
++            if (!id)
++                return JsonError(QHttpServerResponse::StatusCode::InternalServerError, ERR_INTERNAL,
++                                 QStringLiteral("The account was created but couldn't be read back."));
++            qInfo().noquote() << "LBPPC: account" << npid << "created for lbppc.com";
++            QJsonObject body;
++            body.insert(QStringLiteral("userId"), static_cast<qint64>(*id));
++            body.insert(QStringLiteral("npid"), npid);
++            return JsonOk(body);
++        });
++
++    // LBPPC: POST /admin/v1/lbppc/accounts/<id>/password-off, after the player changed or recovered their password
++    // on lbppc.com: the account's shadNet password is replaced with a random one nobody knows, so the old one (perhaps
++    // the reason for the change) no longer signs in; LBPPC account tokens still do. Same access as above.
++    m_http->route(
++        "/admin/v1/lbppc/accounts/<arg>/password-off", QHttpServerRequest::Method::Post,
++        [this](qint64 userId, const QHttpServerRequest& req) -> QHttpServerResponse {
++            if (!req.remoteAddress().isLoopback() || m_config->GetAdminApiKey().isEmpty() ||
++                !CheckApiKey(req))
++                return ApiKeyError(req);
++            const auto target = m_db->GetUsername(userId);
++            if (!target)
++                return JsonError(QHttpServerResponse::StatusCode::NotFound, ERR_NOT_FOUND,
++                                 QStringLiteral("No such account."));
++            if (!m_db->SetPassword(userId, LbppcRandomPassword())) {
++                qCritical() << "LBPPC: turning off the password failed for" << *target << ":" << m_db->lastError();
++                return JsonError(QHttpServerResponse::StatusCode::InternalServerError, ERR_INTERNAL,
++                                 QStringLiteral("The change couldn't be saved."));
++            }
++            qInfo().noquote() << "LBPPC: password sign-in turned off for" << *target << "(changed on lbppc.com)";
++            QJsonObject body;
++            body.insert(QStringLiteral("ok"), true);
++            return JsonOk(body);
++        });
++
+     // GET /admin/v1/version
+     m_http->route("/admin/v1/version", QHttpServerRequest::Method::Get,
+                   [](const QHttpServerRequest&) {
