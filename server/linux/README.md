@@ -55,12 +55,12 @@ this order:
    lists that stay fast with the archive's millions of levels.
 2. `refresh/lbppc-refresh-asset-types.patch`: those files are served only when they are a type the game itself
    shares (the rule `BlockedAssetFlags` applies to uploads).
-4. `refresh/lbppc-refresh-search.patch` (2026-11-17, built in `/opt/refresh-build-search`, not yet live): level search as
-   one database query, sorted and paged by the database. Before, every match was loaded first: "shark" matches 125,003
-   archived levels and took about 5 seconds; the first page alone takes 10 ms.
 3. `refresh/lbppc-refresh-security.patch`: a game login only while its account is signed in to shadNet from the
    same address; website sign-up only for names that have an LBPPC (shadNet) account and that the blocked-names
    list allows. Needs the shadNet security patch (section 4) and the settings in [Security](#security).
+4. `refresh/lbppc-refresh-search.patch` (2026-11-17, built in `/opt/refresh-build-search`, not yet live): level search as
+   one database query, sorted and paged by the database. Before, every match was loaded first: "shark" matches 125,003
+   archived levels and took about 5 seconds; the first page alone takes 10 ms.
 
 ```bash
 git clone https://github.com/LittleBigRefresh/Refresh /opt/refresh-src && cd /opt/refresh-src && git checkout 4060ec4
