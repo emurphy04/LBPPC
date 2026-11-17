@@ -2,9 +2,11 @@
 # Proves the latest backup can be restored: checks its checksums, decrypts each file here with the private key on this
 # PC, restores each database into a scratch database on the VPS, counts what came back, then deletes the scratch
 # databases and every decrypted copy. Nothing live is touched.
-# usage (Git Bash on Windows): bash restore-test.sh [key, as WSL sees it] [ssh target]
+# usage (Git Bash on Windows): bash restore-test.sh <key file, as WSL sees it> [ssh target]
+#   or set LBPPC_BACKUP_KEY to the key file instead of passing it
 set -euo pipefail
-key=${1:-/mnt/c/Users/ethan/lbppc-backup-key.txt}
+key=${1:-${LBPPC_BACKUP_KEY:-}}
+[[ -n $key ]] || { echo 'usage: bash restore-test.sh <key file, as WSL sees it (/mnt/c/...)> [ssh target]' >&2; exit 2; }
 vps=${2:-root@179.236.82.47}
 age() { MSYS_NO_PATHCONV=1 wsl -d Ubuntu-24.04 -- age "$@" < /dev/null; }   # files only: no pipes across WSL
 work=$(mktemp -d)
