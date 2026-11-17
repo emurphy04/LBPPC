@@ -27,7 +27,7 @@ from tkinter import filedialog, font as tkfont, messagebox, ttk
 
 from PIL import Image, ImageTk
 
-VERSION = '0.1.4'
+VERSION = '0.1.5'
 DISCORD = 'https://discord.gg/YqfBQCU4vc'  # the permanent invite: help, bug reports, finding co-op partners
 # Discord Rich Presence (scripts/discord_presence.py): LBPPC's application on the Discord Developer Portal, whose name
 # Discord shows ("Playing LBPPC") and whose art asset "lbppc" is the picture. Empty: no presence.

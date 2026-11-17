@@ -8,11 +8,11 @@ LBPPC runs the PS4 game's own code directly on your PC's processor. It is a nati
 community servers bring back creating, sharing and playing levels together, which ended when the original servers
 shut down.
 
-**Status:** 0.1.4, a public beta. It supports LittleBigPlanet 3 US (CUSA00473) and European (CUSA00063), version
+**Status:** 0.1.5, a public beta. It supports LittleBigPlanet 3 US (CUSA00473) and European (CUSA00063), version
 1.28. You need your own copy and its 1.28 update, extracted to folders on your PC.
 
 [Download and guide](https://lbppc.com/download) · [Discord](https://discord.gg/YqfBQCU4vc) ·
-[Release notes](docs/releases/0.1.4.md)
+[Release notes](docs/releases/0.1.5.md)
 
 ## What you get
 
