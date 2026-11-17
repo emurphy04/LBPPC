@@ -223,7 +223,15 @@ needs a code. Refresh's log shows which kind each refused login was.
 
 ## Backups
 
-The data is the PostgreSQL database and the folders under `/opt/lbppc` (uploaded levels and assets in
+**Account data, nightly and encrypted** (`backup/`, installed 2026-11-17): Kratos, Hydra and lbppc_web (accounts,
+two-factor, tokens, claims, staff, audit log) and shadNet's account database, every night at 03:30 UTC, to
+`/var/backups/lbppc/<date>/`, kept 14 days (`lbppc-backup.timer`, `/opt/lbppc-backup/backup.sh`). Each file is
+encrypted with age to `/etc/lbppc/backup/recipient.txt`; the private key is only on Ethan's PC
+(`C:\Users\ethan\lbppc-backup-key.txt`: keep a second copy somewhere safe, such as a password manager; without it the
+backups can't be read). `backup/restore-test.sh` (Git Bash) proves the latest set restores. Copying them off the VPS
+is still to do.
+
+Everything else, by hand: the data is the PostgreSQL database and the folders under `/opt/lbppc` (uploaded levels and assets in
 `refresh/`, shadNet's accounts in `shadnet/db/`):
 
 ```bash
