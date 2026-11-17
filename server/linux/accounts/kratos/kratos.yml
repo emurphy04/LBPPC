@@ -1,0 +1,164 @@
+# Ory Kratos v26.2.0 for LBPPC accounts (docs/accounts/DESIGN.md). Installed as /etc/lbppc/accounts/kratos/kratos.yml.
+# Secrets (database password, cookie and cipher keys, the migration hook's key, email and Discord credentials) are
+# in secrets.yml beside it (secrets.example.yml shows its shape), loaded second: `kratos serve -c kratos.yml -c
+# secrets.yml`. Both ports listen on 127.0.0.1 only. The public API is reached through lbppc.com/.ory/ (nginx), so the
+# session cookie belongs to lbppc.com alone.
+#
+# Self-hosted Kratos does not limit password guessing itself: nginx does (accounts/README.md), and the migration
+# hook limits guesses against old shadNet passwords.
+
+version: v26.2.0
+
+serve:
+  public:
+    base_url: https://lbppc.com/.ory/
+    host: 127.0.0.1
+    port: 4433
+    cors:
+      enabled: false
+  admin:
+    base_url: http://127.0.0.1:4434/
+    host: 127.0.0.1
+    port: 4434
+
+selfservice:
+  default_browser_return_url: https://lbppc.com/account
+  allowed_return_urls:
+    - https://lbppc.com/
+
+  methods:
+    password:
+      enabled: true
+      config:
+        min_password_length: 8
+        haveibeenpwned_enabled: true      # only a 5-character hash prefix leaves the server (k-anonymity)
+        max_breaches: 0
+        ignore_network_errors: true
+        identifier_similarity_check_enabled: true
+        migrate_hook:
+          enabled: true
+          config:
+            url: http://127.0.0.1:4480/check
+            method: POST
+            body: file:///etc/lbppc/accounts/kratos/migrate-body.jsonnet
+            emit_analytics_event: false
+            # auth: in secrets.yml
+    totp:
+      enabled: true
+      config:
+        issuer: LBPPC
+    lookup_secret:
+      enabled: true
+    # Security keys and passkeys: off until lbppc.com's pages handle them (they need Kratos's webauthn script).
+    webauthn:
+      enabled: false
+      config:
+        passwordless: false
+        rp:
+          id: lbppc.com
+          display_name: LBPPC
+          origins:
+            - https://lbppc.com
+    passkey:
+      enabled: false
+      config:
+        rp:
+          id: lbppc.com
+          display_name: LBPPC
+          origins:
+            - https://lbppc.com
+    code:
+      enabled: true
+    link:
+      enabled: false
+    profile:
+      enabled: true
+    oidc:
+      enabled: false   # Discord: turned on in secrets.yml once its client is registered
+
+  flows:
+    error:
+      ui_url: https://lbppc.com/account/error
+    login:
+      ui_url: https://lbppc.com/account/login
+      lifespan: 10m
+    # Sign-up and recovery stay off until the game signs in with tokens (DESIGN.md Phase 2): until then shadNet keeps
+    # its own names and passwords, so a site sign-up could clash with a launcher one, and a recovered (changed)
+    # password wouldn't reach the game. Accounts made in the launcher arrive through lbppc-account-import.timer.
+    registration:
+      enabled: false
+      ui_url: https://lbppc.com/account/register
+      lifespan: 10m
+      after:
+        password:
+          hooks:
+            - hook: session
+        oidc:
+          hooks:
+            - hook: session
+    settings:
+      ui_url: https://lbppc.com/account/settings
+      privileged_session_max_age: 15m
+      required_aal: highest_available
+    verification:
+      enabled: true
+      use: code
+      ui_url: https://lbppc.com/account/verify
+      lifespan: 1h
+    recovery:
+      enabled: false
+      use: code
+      ui_url: https://lbppc.com/account/recover
+      lifespan: 1h
+      notify_unknown_recipients: false
+    logout:
+      after:
+        default_browser_return_url: https://lbppc.com/
+
+session:
+  lifespan: 720h
+  earliest_possible_extend: 24h
+  cookie:
+    name: lbppc_session
+    same_site: Lax
+    persistent: true
+  whoami:
+    required_aal: highest_available
+
+ciphers:
+  algorithm: xchacha20-poly1305
+
+hashers:
+  algorithm: argon2
+  argon2:
+    memory: 64MB
+    iterations: 3
+    parallelism: 2
+    salt_length: 16
+    key_length: 32
+    expected_duration: 500ms
+    expected_deviation: 500ms
+    dedicated_memory: 1GB
+
+identity:
+  default_schema_id: lbppc
+  schemas:
+    - id: lbppc
+      url: file:///etc/lbppc/accounts/kratos/identity.schema.json
+
+courier:
+  smtp:
+    from_address: noreply@lbppc.com
+    from_name: LBPPC
+    # connection_uri: in secrets.yml (Amazon SES)
+
+clients:
+  http:
+    disallow_private_ip_ranges: true    # webhooks and Discord can't be pointed at this machine's services...
+    private_ip_exception_urls:
+      - http://127.0.0.1:4480/check     # ...except the migration hook
+
+log:
+  level: info
+  format: json
+  leak_sensitive_values: false

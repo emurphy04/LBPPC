@@ -96,7 +96,7 @@ sudo chown -R lbppc:lbppc /opt/lbppc/shadnet /opt/lbppc/qt
 `shadnet.cfg` listens on every interface (`Host=0.0.0.0`); its admin API stays on 127.0.0.1.
 
 The release build above lacks LBPPC's changes, so **a server other people can reach builds shadNet from source**
-at commit 75edbf0 with both patches applied (`git apply`, in this order), and uses that `shadnet` binary instead:
+at commit 75edbf0 with its three patches applied (`git apply`, in this order), and uses that `shadnet` binary instead:
 
 1. `shadnet/patches/lbppc-shadnet.patch`: a relay for players who can't reach each other directly (two players
    behind one router, or a router without UPnP), and LBP3 players counting as being in the same game, which the
@@ -105,6 +105,8 @@ at commit 75edbf0 with both patches applied (`git apply`, in this order), and us
    `/admin/v1/names/check`, only from this machine with the AdminApiKey), the player's real address through nginx
    (PROXY protocol), the blocked-names list, limits on password guessing and sign-ups, and 8-character passwords.
    See [Security](#security).
+3. `shadnet/patches/lbppc-shadnet-random.patch`: account tokens and password salts from the system's secure random
+   generator (`QRandomGenerator::system()`), as the sign-in codes already are.
 
 ## 5. Services
 

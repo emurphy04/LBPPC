@@ -1,0 +1,24 @@
+LBPPC: account tokens and password salts from the operating system's secure random generator.
+QRandomGenerator::global() is not cryptographically secure (its output can be predicted after enough of it has been
+seen); system() is, and auth_code_store.cpp already uses it for sign-in codes.
+
+--- a/src/database.cpp
++++ b/src/database.cpp
+@@ -14,7 +14,7 @@
+ 
+ QByteArray Database::GenerateSalt(int bytes) {
+     QByteArray salt(bytes, Qt::Uninitialized);
+-    QRandomGenerator* generator = QRandomGenerator::global();
++    QRandomGenerator* generator = QRandomGenerator::system();
+ 
+     for (int i = 0; i < bytes; ++i) {
+         salt[i] = static_cast<char>(generator->bounded(256));
+@@ -29,7 +29,7 @@
+     QString tok;
+     tok.reserve(len);
+ 
+-    QRandomGenerator* generator = QRandomGenerator::global();
++    QRandomGenerator* generator = QRandomGenerator::system();
+ 
+     for (int i = 0; i < len; ++i) {
+         tok.append(chars.at(generator->bounded(chars.size())));

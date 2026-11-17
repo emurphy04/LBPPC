@@ -1,0 +1,40 @@
+[Unit]
+Description=LBPPC accounts: Ory Hydra (OAuth 2 / OpenID Connect tokens)
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+User=ory-hydra
+Group=ory-hydra
+ExecStartPre=/usr/local/bin/hydra migrate sql up -e --yes -c /etc/lbppc/accounts/hydra/hydra.yml -c /etc/lbppc/accounts/hydra/secrets.yml
+ExecStart=/usr/local/bin/hydra serve all -c /etc/lbppc/accounts/hydra/hydra.yml -c /etc/lbppc/accounts/hydra/secrets.yml
+Restart=on-failure
+RestartSec=5
+UMask=0077
+MemoryMax=500M
+
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+
+[Install]
+WantedBy=multi-user.target

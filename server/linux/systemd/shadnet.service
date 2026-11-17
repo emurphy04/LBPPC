@@ -5,6 +5,8 @@ Wants=network-online.target
 
 [Service]
 User=lbppc
+# New files (the account database, its journal) readable by shadNet only.
+UMask=0077
 WorkingDirectory=/opt/lbppc/shadnet
 # Qt 6.10 from aqtinstall (the distribution's Qt is older than this build needs).
 Environment=LD_LIBRARY_PATH=/opt/lbppc/qt/6.10.0/gcc_64/lib

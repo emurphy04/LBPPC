@@ -1,0 +1,52 @@
+# Ory Hydra v26.2.0: the OAuth 2 / OpenID Connect provider for LBPPC accounts (docs/accounts/DESIGN.md). Installed as
+# /etc/lbppc/accounts/hydra/hydra.yml; secrets (database, system and cookie keys) in secrets.yml beside it, loaded
+# second. Both ports listen on 127.0.0.1 only; the public one is reached as https://auth.lbppc.com through nginx.
+# Sign-in and consent pages are lbppc.com's (the web app), which ask Kratos who the player is.
+
+serve:
+  public:
+    host: 127.0.0.1
+    port: 4444
+    cors:
+      enabled: false
+  admin:
+    host: 127.0.0.1
+    port: 4445
+  cookies:
+    same_site_mode: Lax
+
+urls:
+  self:
+    issuer: https://auth.lbppc.com/
+    public: https://auth.lbppc.com/
+  login: https://lbppc.com/oauth/login
+  consent: https://lbppc.com/oauth/consent
+  logout: https://lbppc.com/oauth/logout
+  error: https://lbppc.com/account/error
+  post_logout_redirect: https://lbppc.com/
+
+strategies:
+  access_token: opaque     # checked by asking Hydra (introspection), so a token can be revoked at once
+  scope: exact
+
+ttl:
+  access_token: 15m
+  id_token: 15m
+  auth_code: 5m
+  refresh_token: 720h
+  login_consent_request: 10m
+
+oauth2:
+  pkce:
+    enforced: true          # every client, the launcher included, must use PKCE
+  expose_internal_errors: false
+
+oidc:
+  subject_identifiers:
+    supported_types:
+      - public
+
+log:
+  level: info
+  format: json
+  leak_sensitive_values: false

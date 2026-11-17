@@ -1,0 +1,15 @@
+[Unit]
+Description=LBPPC accounts: copy accounts made in the launcher (shadNet) into Kratos
+After=lbppc-kratos.service
+
+[Service]
+Type=oneshot
+# Root reads shadNet's database (lbppc's, 600) read-only and talks to Kratos's admin API on 127.0.0.1.
+ExecStart=/usr/bin/python3 -I /opt/lbppc-accounts/import_shadnet_accounts.py
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadWritePaths=/srv/lbppc/shadnet/db
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX

@@ -1,0 +1,40 @@
+[Unit]
+Description=LBPPC accounts: Ory Kratos (identities, sign-in, email, two-factor)
+After=network-online.target postgresql.service lbppc-password-migration.service
+Wants=network-online.target
+
+[Service]
+User=ory-kratos
+Group=ory-kratos
+ExecStartPre=/usr/local/bin/kratos migrate sql -e --yes -c /etc/lbppc/accounts/kratos/kratos.yml -c /etc/lbppc/accounts/kratos/secrets.yml -c /etc/lbppc/accounts/kratos/discord.yml
+ExecStart=/usr/local/bin/kratos serve -c /etc/lbppc/accounts/kratos/kratos.yml -c /etc/lbppc/accounts/kratos/secrets.yml -c /etc/lbppc/accounts/kratos/discord.yml --watch-courier
+Restart=on-failure
+RestartSec=5
+UMask=0077
+MemoryMax=1500M
+
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+
+[Install]
+WantedBy=multi-user.target
