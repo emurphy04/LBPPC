@@ -156,9 +156,16 @@ imported from version 1.9.5 of the [Bloodborne PC port](https://github.com/Super
 - **fixdag** and **bashiku**, for the low-VRAM profile.
 - [Refresh](https://github.com/LittleBigRefresh/Refresh), the community server for levels and profiles.
 
-Contributors to the Bloodborne PC port's history: Aljoscha-Ide, 𝗔ᴍʙʀᴏsᴇ, andrecabralgit, Awaken, Axel, ayozetr, Berleis, DarkSpartan, deadinside28, devilismyfriend, DUDUYG, Eric DaRosa, FIocker, fliperama86, gStone, JackRushante, Jgamrot, Joao Ramos, João Pedro Valadares, lewiwiii, Macypor, Maurdekye, Mitra, nick24051998, noatdk, oat018, parsifal295, Pirvondal, RafaelHGOliveira, rattensuppe, Sergey Leonov, Stefano Scalfari, Supermedo, T0ug and yshtonytc.
+Contributors to the Bloodborne PC port's history: Aljoscha-Ide, 𝗔ᴍʙʀᴏsᴇ, andrecabralgit, Awaken, Axel, ayozetr, Berleis, DarkSpartan, deadinside28, devilismyfriend, DUDUYG, Eric DaRosa, FIocker, fliperama86, gStone, JackRushante, Jgamrot, Joao Ramos, João Pedro Valadares, lewiwiii, Macypor, Maurdekye, Mitra, nick24051998, noatdk, oat018, parsifal295, Pirvondal, RafaelHGOliveira, rattensuppe, Sergey Leonov, Stefano Scalfari, Supermedo, T0ug, yshtonytc, and me :)
 
 Also used: [FSR-Vulkan](https://github.com/FireBurn/FSR-Vulkan) and the AMD FidelityFX SDK, the DLSS bridge adapted from [IFreemz/shadPS4-Bloodborne-DLSS-FSR](https://github.com/IFreemz/shadPS4-Bloodborne-DLSS-FSR), the [NVIDIA DLSS SDK](https://github.com/NVIDIA/DLSS), [LibAtrac9](https://github.com/Thealexbarney/LibAtrac9), [SDL3](https://github.com/libsdl-org/SDL), [FFmpeg](https://ffmpeg.org), [Dear ImGui](https://github.com/ocornut/imgui), [sirit](https://github.com/shadps4-emu/sirit), [magic_enum](https://github.com/Neargye/magic_enum), [miniz](https://github.com/richgel999/miniz), [xbyak](https://github.com/herumi/xbyak), [wepoll](https://github.com/piscisaureus/wepoll), [cpp-httplib](https://github.com/yhirose/cpp-httplib), [Protocol Buffers](https://protobuf.dev), [OpenSSL](https://www.openssl.org), [miniupnpc](https://miniupnp.tuxfamily.org), [JSON for Modern C++](https://github.com/nlohmann/json), [Vulkan Memory Allocator](https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator), [MSYS2](https://www.msys2.org), [LLVM](https://llvm.org), [PyInstaller](https://pyinstaller.org) and [Pillow](https://python-pillow.org).
+
+## AI Usage Disclaimer
+
+LBPPC was built with help from Claude Code. I understand the skepticism behind AI assisted coding, and I am very aware of the implications that brings
+upon this project. However, the world doesn't work the way it used to anymore, and a developer that prides themselves on not using AI is a developer who
+chooses to be inefficient. Most of your favorite recent projects, most of your social media platforms, probably even your smart fridge's OS was made using
+some sort of AI assistance. This code is completely open source, so if you are skeptical, I highly encourage you to have a look for yourself before spreading hate.
 
 ## Licence
 
