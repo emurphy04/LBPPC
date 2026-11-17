@@ -1,6 +1,6 @@
 # LBPPC accounts: design
 
-Status: accepted 2026-11-16 (decisions at the end). Phase 0 live. Phase 1 built on the VPS, not public until the DNS move: Kratos, Hydra, the migration hook and shadNet import (server/linux/accounts), and lbppc.com's web app with sign-in, settings, two-factor, claims and the staff pages (IdeaProjectsbppc-web). The launcher's sign-in works end to end; the game side (Phase 2) is next.
+Status 2026-11-17: Phases 0, 1, 3 and 4 live (accounts, two-factor, Discord, email, claims and staff pages, levels/profiles/photos/activity, profile editing, hearts, following). Phase 2 built and tested, waiting for the shadNet and Refresh restart (server/linux/restart-day.sh) and the launcher release (then accounts/enable-phase2.sh). Phase 5 (forum) dropped for now. Security review: SECURITY-REVIEW.md.
 
 One LBPPC account for everything: the game, the launcher, lbppc.com (with all of Refresh's features) and
 the social features. Players sign in with their existing name and password, or with Discord. They can verify an
