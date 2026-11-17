@@ -40,6 +40,7 @@ BIN = ROOT / 'bin' if (ROOT / 'bin' / ('LBPPC-Game.exe' if os.name == 'nt' else 
 if not FROZEN:
     sys.path.insert(0, str(ROOT / 'scripts'))  # frozen, PyInstaller bundles the module
 import online_accounts  # noqa: E402
+import lbppc_signin  # noqa: E402
 import game_setup  # noqa: E402
 import game_files  # noqa: E402
 import save_import  # noqa: E402
@@ -170,7 +171,7 @@ OVERLAY = [('show_fps', N_('Frame rate'), False), ('show_frame_times', N_('Frame
            ('counter_colors', N_('Colour-coded values'), True)]
 DEFAULTS = {'game': '', 'update': '', 'language': 'auto', 'logs_scrubbed': False, 'resolution': '1920x1080', 'display': 'borderless', 'frame_gen': 'dlss', 'latency': 'on',
             'upscaling': 'off', 'sharpening': 'medium', 'beta_notice_seen': False,
-            'online': False, 'online_name': '', 'password': '', 'discord_presence': True, 'save_file': save_files.MAIN, 'discord_app_id': '',
+            'online': False, 'online_name': '', 'password': '', 'lbppc_signin': None, 'discord_presence': True, 'save_file': save_files.MAIN, 'discord_app_id': '',
             'diagnostics': {key: on for key, _env, _title, _hint, on in DIAGNOSTICS},
             # Not shown: the LBPPC server unless launcher.json names another (a test server on this PC).
             'server': online_accounts.OFFICIAL_SERVER}
@@ -291,6 +292,12 @@ def load_settings():
         if values.get('password_protected'):  # save_settings's DPAPI copy
             plain = _dpapi(base64.b64decode(values['password_protected']), protect=False)
             values['password'] = plain.decode('utf-8') if plain is not None else ''
+        if values.get('lbppc_signin_protected'):  # the lbppc.com sign-in (lbppc_signin.py), locked the same way
+            plain = _dpapi(base64.b64decode(values['lbppc_signin_protected']), protect=False)
+            try:
+                values['lbppc_signin'] = json.loads(plain) if plain is not None else None
+            except ValueError:
+                values['lbppc_signin'] = None
         settings = {**DEFAULTS, **{k: v for k, v in values.items() if k in DEFAULTS}}
         settings['diagnostics'] = {**DEFAULTS['diagnostics'], **(values.get('diagnostics') or {})}
     except (OSError, ValueError, AttributeError, TypeError):
@@ -300,7 +307,15 @@ def load_settings():
     return settings
 
 
+_SETTINGS_LOCK = threading.Lock()  # the sign-in is saved from the friends list's thread too
+
+
 def save_settings(values):
+    with _SETTINGS_LOCK:
+        _save_settings(values)
+
+
+def _save_settings(values):
     USER.mkdir(parents=True, exist_ok=True)
     # The password is kept locked with DPAPI, not as text; plain text only where DPAPI is missing.
     stored = dict(values)
@@ -309,9 +324,15 @@ def save_settings(values):
     if locked is not None:
         stored['password'] = ''
         stored['password_protected'] = base64.b64encode(locked).decode('ascii')
+    # The lbppc.com sign-in (its refresh token) too.
+    signin = values.get('lbppc_signin')
+    locked = _dpapi(json.dumps(signin).encode('utf-8'), protect=True) if signin else None
+    if locked is not None:
+        stored['lbppc_signin'] = None
+        stored['lbppc_signin_protected'] = base64.b64encode(locked).decode('ascii')
     SETTINGS.write_text(json.dumps(stored, indent=2), encoding='utf-8')
     if os.name != 'nt':
-        # No DPAPI here: the password is in the file as text, so only this user may read it.
+        # No DPAPI here: the password and sign-in are in the file as text, so only this user may read it.
         try:
             os.chmod(SETTINGS, 0o600)
         except OSError:
@@ -369,7 +390,8 @@ def known_players(friends):
 def report_scrubber(settings, friends=None):
     me = [settings.get('online_name', '')]
     return log_privacy.Scrubber(me=[m for m in me if m], names=known_players(friends),
-                                secrets=[settings.get('password', '')])
+                                secrets=[settings.get('password', ''),
+                                         (settings.get('lbppc_signin') or {}).get('refresh_token', '')])
 
 
 def scrub_old_logs(settings, friends=None):
@@ -400,7 +422,7 @@ def make_report(friends=None):
     logs = sorted((DATA / 'out' / 'logs').glob('run-*.log'))[-3:]
     files = [(log, f'logs/{log.name}') for log in logs] + [(LOG, 'last_run.log'), (INI, 'lbppc.ini'),
                                                            (INPUT_INI, 'input.ini')]
-    settings = {k: v for k, v in settings.items() if k != 'password'}
+    settings = {k: v for k, v in settings.items() if k not in ('password', 'lbppc_signin')}
     with zipfile.ZipFile(path, 'w', zipfile.ZIP_DEFLATED) as archive:
         for source, name in files:
             if source.is_file():
@@ -1549,6 +1571,8 @@ class Launcher(tk.Tk):
         self.configure(bg=BG)
         self.resizable(False, False)
         self.settings = load_settings()
+        # The lbppc.com sign-in (lbppc_signin.py): its refresh token lives in settings, DPAPI-locked on disk.
+        self.auth = lbppc_signin.Account(load=lambda: self.settings.get('lbppc_signin'), save=self.save_signin)
         # The launcher in the game's language (i18n.py): set before anything is drawn.
         i18n.set_language(self.game_language())
         self.process = None
@@ -1740,15 +1764,26 @@ class Launcher(tk.Tk):
         self.label('label:password', right, y + 76, t('Password'))
         self.online_name = tk.StringVar(value=self.settings['online_name'])
         self.password = tk.StringVar(value=self.settings['password'])
+        self.account_entries = []
         for cx, var, hidden in ((x + 20, self.online_name, False), (right, self.password, True)):
             entry = field(self, var, hidden)
             entry.bind('<FocusOut>', lambda _e: (self.store(), self.friends.account_changed()))
             scene.widget(entry, cx, y + 98, half, 30)
+            self.account_entries.append(entry)
         self.text(x + 22, y + 134, t('3 to 16 letters, digits, - or _, and a password of 8 or more characters. '
                                      'Only your friends can join your game.'))
         self.account_button = Tab(scene, t('Create account'), self.create_account, x + 20, y + 174, size=15, tilt=-3)
-        self.account_status = self.text(self.account_button.right + 22, y + 174, t('New here? Choose a name and '
-                                        'password, then Create account.'), anchor='w', width=560)
+        # Or sign in through lbppc.com in the browser (password, Discord, two-factor): lbppc_signin.py.
+        self.signin_button = Tab(scene, t('Sign in with lbppc.com'), self.sign_in_browser,
+                                 self.account_button.right + 16, y + 174, size=15, tilt=2)
+        self.account_status = self.text(self.signin_button.right + 18, y + 174, t('New here? Choose a name and '
+                                        'password, then Create account.'), anchor='w', width=430)
+        self.signout_link = self.text(x + w - 24, y + 134, '', ('Segoe UI Semibold', 10),
+                                      theme.hex_colour((200, 225, 150)), 'e')
+        scene.tag_bind(self.signout_link, '<Button-1>', lambda _e: self.sign_out_browser())
+        scene.tag_bind(self.signout_link, '<Enter>', lambda _e: scene.configure(cursor='hand2'))
+        scene.tag_bind(self.signout_link, '<Leave>', lambda _e: scene.configure(cursor=''))
+        self.show_signin()
 
         self.game_items = [item for item in scene.find_all() if item not in before]
 
@@ -2151,6 +2186,71 @@ class Launcher(tk.Tk):
         thread.start()
         self.after(200, finished)
 
+    def save_signin(self, value):
+        self.settings['lbppc_signin'] = value
+        save_settings(self.settings)
+
+    def show_signin(self):
+        """The Online panel as the sign-in stands: signed in through lbppc.com, the name is that account's and the
+        name and password fields aren't used."""
+        signed_in = self.auth.signed_in
+        for entry in self.account_entries:
+            entry.configure(state='disabled' if signed_in else 'normal')
+        self.account_button.set_enabled(not signed_in)
+        self.signin_button.set_enabled(not signed_in)
+        self.scene.itemconfigure(self.signout_link, text=t('Sign out') if signed_in else '')
+        if signed_in:
+            self.online_name.set(self.auth.username or '')
+            self.password.set('')
+            self.set_account_status(t('Signed in through lbppc.com as {name}.', name=self.auth.username or '?'), GOOD)
+
+    def sign_in_browser(self):
+        """Sign in through lbppc.com in the browser, off the window's thread (it waits for the browser)."""
+        self.signin_button.set_enabled(False)
+        self.account_button.set_enabled(False)
+        self.set_account_status(t('Finish signing in in your browser...'), MUTED)
+        result = {}
+
+        def work():
+            try:
+                result['tokens'] = lbppc_signin.browser_sign_in(webbrowser.open)
+            except lbppc_signin.SignInError as error:
+                result['error'] = str(error)
+            except Exception as error:  # noqa: BLE001 - the buttons must come back whatever happens
+                result['error'] = t('Signing in failed: {error}', error=error or type(error).__name__)
+
+        def finished():
+            if thread.is_alive():
+                self.after(250, finished)
+                return
+            if 'tokens' in result:
+                self.auth.signed_in_with(result['tokens'])
+                self.settings['online_name'] = self.auth.username or ''
+                self.settings['password'] = ''
+                if not self.online.get():
+                    self.toggle_online()
+                self.show_signin()
+                self.store()
+                self.friends.account_changed(force=True)
+            else:
+                self.show_signin()
+                self.set_account_status(result.get('error') or t('Signing in failed.'), ERROR)
+
+        thread = threading.Thread(target=work, daemon=True)
+        thread.start()
+        self.after(250, finished)
+
+    def sign_out_browser(self):
+        if not self.auth.signed_in:
+            return
+        threading.Thread(target=self.auth.sign_out, daemon=True).start()
+        self.settings['lbppc_signin'] = None
+        self.online_name.set('')
+        self.show_signin()
+        self.store()
+        self.set_account_status(t('Signed out.'), MUTED)
+        self.friends.account_changed(force=True)
+
     def toggle_log(self):
         """Show log / Hide log (and the log window's own close button): the log window shown or hidden."""
         self.log_shown = not self.log_shown
@@ -2221,9 +2321,15 @@ class Launcher(tk.Tk):
         if self.settings['online']:
             name, password = self.settings['online_name'], self.settings['password']
             try:
-                online_accounts.check_name_and_password(name, password)
+                if self.auth.signed_in:
+                    # Signed in through lbppc.com: the game gives shadNet a fresh access token, not a password.
+                    name, password = self.auth.username or '', self.auth.game_password()
+                else:
+                    online_accounts.check_name_and_password(name, password)
                 servers = online_accounts.server_endpoints(self.settings['server'])
-            except online_accounts.AccountError as error:
+            except (online_accounts.AccountError, lbppc_signin.SignInError) as error:
+                if not self.auth.signed_in:
+                    self.show_signin()
                 self.set_state(t('Online: {error}', error=error), ERROR)
                 return
             host, port, tls = online_accounts.shadnet_address(servers['shadnet'])
@@ -2870,12 +2976,18 @@ class FriendsPanel:
 
     # The account and when to sign in
 
+    TOKEN_MARKER = object()  # in account() when signed in through lbppc.com: run() swaps in a fresh token
+
     def account(self):
         """(shadNet server, name, password), or None with the reason shown."""
         settings = self.launcher.settings
+        auth = self.launcher.auth
         try:
-            online_accounts.check_name_and_password(settings['online_name'], settings['password'])
             server = online_accounts.server_endpoints(settings['server'])['shadnet']
+            if auth.signed_in:
+                # A marker, not the token: tokens change, the account doesn't (run() fetches the token).
+                return server, auth.username or '', self.TOKEN_MARKER
+            online_accounts.check_name_and_password(settings['online_name'], settings['password'])
         except online_accounts.AccountError:
             return None
         return server, settings['online_name'], settings['password']
@@ -2921,12 +3033,15 @@ class FriendsPanel:
         def work():
             client = f'LBPPC {VERSION} launcher'
             try:
+                login = account
+                if login[2] is self.TOKEN_MARKER:
+                    login = (login[0], login[1], self.launcher.auth.game_password())
                 if action:
-                    with online_accounts.ShadnetSession(*account, client) as session:
+                    with online_accounts.ShadnetSession(*login, client) as session:
                         action(session)
-                with online_accounts.ShadnetSession(*account, client) as session:
+                with online_accounts.ShadnetSession(*login, client) as session:
                     result['friends'] = session.friends
-            except online_accounts.AccountError as error:
+            except (online_accounts.AccountError, lbppc_signin.SignInError) as error:
                 result['error'] = str(error)
             except Exception as error:  # noqa: BLE001 - anything else must not leave the list stuck "Signing in..."
                 result['error'] = t('Signing in failed: {error}', error=error or type(error).__name__)
