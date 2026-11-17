@@ -1046,6 +1046,30 @@ static void render_res_install(void) {
                     memcpy(image+fixed[i].at,&v,4);
                 }
             }
+            /* Photos (#14, ultrawide): the photo code sizes its pictures as a half or a quarter of the canvas
+               (0x4026ff, 0x402ea8: the photo; 0x4045dc, 0x4046e1: a copy and texture made from it) and cuts them,
+               centred, from the 640x360 and 320x180 targets, which keep their 16:9 size. With the wide canvas the
+               picture was wider than the target (853 at 2560x1080): the centring offset went negative and the copy
+               read past it (a crash in 0x4014f0). Those four reads take the 1280-wide canvas they were made for:
+               lea reg,[rip+canvas width]; mov reg,[reg] -> mov reg,1280; nop. */
+            static const struct { uint32_t at; unsigned char reg_lea, reg_mov, mov_imm; } photo[]={
+                {0x4026ff,0x0d,0x09,0xb9}, /* rcx */
+                {0x402ea8,0x05,0x00,0xb8}, /* rax */
+                {0x4045dc,0x05,0x00,0xb8},
+                {0x4046e1,0x05,0x00,0xb8},
+            };
+            int photo_ok=1;
+            for (size_t i=0;i<sizeof(photo)/sizeof(*photo)&&photo_ok;++i) {
+                const unsigned char *p=image+photo[i].at; int32_t disp; memcpy(&disp,p+3,4);
+                photo_ok=p[0]==0x48 && p[1]==0x8d && p[2]==photo[i].reg_lea && p[7]==0x8b && p[8]==photo[i].reg_mov &&
+                         photo[i].at+7+(int64_t)disp==0x1060a04;
+            }
+            if (!photo_ok) fprintf(stderr,"2D canvas: unexpected photo code, photos may crash on a wide screen\n");
+            else for (size_t i=0;i<sizeof(photo)/sizeof(*photo);++i) {
+                unsigned char *p=image+photo[i].at;
+                const unsigned char code[9]={photo[i].mov_imm,0x00,0x05,0x00,0x00,0x0f,0x1f,0x40,0x00};
+                memcpy(p,code,sizeof(code));
+            }
         }
     }
     region=(uint32_t)grown;
