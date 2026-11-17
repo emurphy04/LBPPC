@@ -61,6 +61,13 @@ if [[ ! -f $conf/kratos/discord.yml ]]; then
     chmod 640 "$conf/kratos/discord.yml"
 fi
 
+# Email (Resend): no sending until set-email.sh writes its key.
+if [[ ! -f $conf/kratos/email.yml ]]; then
+    echo '{}' > "$conf/kratos/email.yml"
+    chown root:ory-kratos "$conf/kratos/email.yml"
+    chmod 640 "$conf/kratos/email.yml"
+fi
+
 if [[ ! -f $conf/hydra/secrets.yml ]]; then
     cat > "$conf/hydra/secrets.yml" <<EOF
 dsn: postgres://hydra:$(cat "$conf/hydra-db-password")@127.0.0.1:5432/hydra?sslmode=disable&max_conns=10
@@ -74,7 +81,7 @@ fi
 
 install -d -m 755 -o root -g root /opt/lbppc-accounts
 install -m 644 -o root -g root "$here/password_migration_hook.py" "$here/import_shadnet_accounts.py"     "$here/test_signin.py" /opt/lbppc-accounts/
-install -m 700 -o root -g root "$here/set-discord.sh" /opt/lbppc-accounts/
+install -m 700 -o root -g root "$here/set-discord.sh" "$here/set-email.sh" /opt/lbppc-accounts/
 for unit in lbppc-kratos lbppc-hydra lbppc-password-migration; do
     install -m 644 -o root -g root "$here/systemd/$unit.service" /etc/systemd/system/
 done

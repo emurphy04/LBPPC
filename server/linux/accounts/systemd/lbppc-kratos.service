@@ -6,8 +6,8 @@ Wants=network-online.target
 [Service]
 User=ory-kratos
 Group=ory-kratos
-ExecStartPre=/usr/local/bin/kratos migrate sql -e --yes -c /etc/lbppc/accounts/kratos/kratos.yml -c /etc/lbppc/accounts/kratos/secrets.yml -c /etc/lbppc/accounts/kratos/discord.yml
-ExecStart=/usr/local/bin/kratos serve -c /etc/lbppc/accounts/kratos/kratos.yml -c /etc/lbppc/accounts/kratos/secrets.yml -c /etc/lbppc/accounts/kratos/discord.yml --watch-courier
+ExecStartPre=/usr/local/bin/kratos migrate sql -e --yes -c /etc/lbppc/accounts/kratos/kratos.yml -c /etc/lbppc/accounts/kratos/secrets.yml -c /etc/lbppc/accounts/kratos/discord.yml -c /etc/lbppc/accounts/kratos/email.yml
+ExecStart=/usr/local/bin/kratos serve -c /etc/lbppc/accounts/kratos/kratos.yml -c /etc/lbppc/accounts/kratos/secrets.yml -c /etc/lbppc/accounts/kratos/discord.yml -c /etc/lbppc/accounts/kratos/email.yml --watch-courier
 Restart=on-failure
 RestartSec=5
 UMask=0077
