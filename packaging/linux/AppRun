@@ -17,8 +17,8 @@ for name in LD_LIBRARY_PATH SSL_CERT_FILE SSL_CERT_DIR; do
     if [ -n "${!name}" ]; then export "LBPPC_HOST_$name=${!name}"; fi
 done
 unset PYTHONHOME PYTHONPATH
-# Steam preloads its overlay library into every program it starts. It means nothing to the launcher (a plain X11
-# window) and is kept from the game too: Steam's overlay reaches the game through its Vulkan layer.
+# Steam preloads its overlay library into every program it starts. It means nothing to the launcher (a Qt window)
+# and is kept from the game too: Steam's overlay reaches the game through its Vulkan layer.
 unset LD_PRELOAD
 
 # The bundled Python's OpenSSL looks for certificates where Ubuntu keeps them: point it at this system's bundle.
@@ -29,9 +29,11 @@ if [ -z "$SSL_CERT_FILE" ]; then
     done
 fi
 
-# Tk is an X11 toolkit: on a Wayland desktop it runs through XWayland (always there on the Steam Deck).
-if [ -z "$DISPLAY" ] && [ -n "$WAYLAND_DISPLAY" ]; then
-    echo "LBPPC: DISPLAY is not set. The launcher needs XWayland on a Wayland desktop." >&2
+# The launcher is Qt: a native Wayland window when the desktop has Wayland, X11 (XWayland) otherwise. The player's
+# own QT_QPA_PLATFORM wins (for example, xcb to force XWayland).
+export QT_QPA_PLATFORM="${QT_QPA_PLATFORM:-wayland;xcb}"
+if [ -z "$DISPLAY" ] && [ -z "$WAYLAND_DISPLAY" ]; then
+    echo "LBPPC: no display found (DISPLAY and WAYLAND_DISPLAY are both unset)." >&2
 fi
 
 case "$1" in

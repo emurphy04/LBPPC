@@ -29,6 +29,7 @@ typedef SOCKET HostSocket;
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <ucontext.h>
 typedef int HostSocket;
 #define socket_error(s) ((s)<0)
 #define closesocket close
@@ -865,9 +866,12 @@ static ABI int32_t epoll_wait(int32_t epoll,EpollEvent *events,int32_t max,int32
 /* Fibers (libSceFiber): guest code switching between its own execution contexts on one thread. On Windows
  * each guest fiber is a Win32 fiber: SwitchToFiber keeps the thread's stack bounds in its TEB right, which
  * exception dispatch needs (the GPU layer's page tracking faults on every thread; a stack outside those
- * bounds ends the process without a word). The fiber runs on a stack of its own with room for host code,
- * not on the game's context memory, which is only recorded. The game's OrbisFiber (256 bytes) keeps
- * upstream shadPS4's layout, with the host fiber where shadPS4 keeps its context pointer. */
+ * bounds ends the process without a word). On Linux each guest fiber is a POSIX ucontext: swapcontext
+ * saves and restores the registers and the stack pointer, and the fiber keeps running on the same thread,
+ * so its TLS, signal state and the GPU layer's page tracking stay as they are. The fiber runs on a stack
+ * of its own with room for host code, not on the game's context memory, which is only recorded. The
+ * game's OrbisFiber (256 bytes) keeps upstream shadPS4's layout, with the host fiber where shadPS4 keeps
+ * its context pointer. */
 #define FIBER_NULL ((int32_t)0x80590001)
 #define FIBER_ALIGNMENT ((int32_t)0x80590002)
 #define FIBER_RANGE ((int32_t)0x80590003)
@@ -902,11 +906,19 @@ typedef struct {
 } FiberInfo;
 struct HostFiber {
     GuestFiber *guest;
+#ifdef _WIN32
     void *native;      /* the Win32 fiber */
     void *return_to;   /* the thread's own fiber that ran it, for sceFiberReturnToThread */
+#else
+    ucontext_t context; /* where the fiber is when it is not running */
+    void *stack;        /* its stack (the game's context memory is only recorded) */
+#endif
     uint64_t arg_on_run, arg_on_return;
 };
 static __thread HostFiber *current_fiber;
+#ifndef _WIN32
+static __thread ucontext_t fiber_thread_context; /* where the thread is when its fiber runs */
+#endif
 static int fiber_valid(const GuestFiber *f) {
     return f->magic_start==FIBER_SIGNATURE0 && f->magic_end==FIBER_SIGNATURE1 && f->host;
 }
@@ -925,6 +937,40 @@ static void WINAPI fiber_start(void *param) {
     fflush(stderr);
     _Exit(23);
 }
+#else
+/* The thread that runs it has set current_fiber just before the first swapcontext. */
+static void fiber_start(void) {
+    HostFiber *f=current_fiber;
+    f->guest->entry(f->guest->arg_on_initialize,f->arg_on_run);
+    /* An entry must end with sceFiberReturnToThread or a switch; returning has nowhere to go. */
+    fprintf(stderr,"STOP: fiber '%s' returned from its entry function\n",f->guest->name);
+    fflush(stderr);
+    _Exit(23);
+}
+#endif
+#ifndef _WIN32
+/* GCC's -Wclobbered calls the locals around a returns-twice getcontext clobbered, although control
+ * comes back to the same point and none of them is written between the two returns. */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wclobbered"
+static int fiber_prepare(HostFiber *host,uint64_t size_context) {
+    /* The game's context size plus room for host code (the runtime, the GPU layer, glibc). The stack
+     * grows down from the top of this block; malloc's 16-byte alignment is what makecontext wants. */
+    const size_t stack_size=((size_t)size_context+2*1024*1024+15)&~(size_t)15;
+    host->stack=malloc(stack_size);
+    if (!host->stack) return 0;
+    if (getcontext(&host->context)) {
+        free(host->stack);
+        host->stack=NULL;
+        return 0;
+    }
+    host->context.uc_stack.ss_sp=host->stack;
+    host->context.uc_stack.ss_size=stack_size;
+    host->context.uc_link=NULL; /* the entry never returns: fiber_start stops the process */
+    makecontext(&host->context,fiber_start,0);
+    return 1;
+}
+#pragma GCC diagnostic pop
 #endif
 static ABI int32_t fiber_init(GuestFiber *fiber,const char *name,FiberEntry entry,uint64_t arg_on_initialize,
                               void *addr_context,uint64_t size_context,const uint32_t *opt,uint32_t build_version) {
@@ -933,13 +979,16 @@ static ABI int32_t fiber_init(GuestFiber *fiber,const char *name,FiberEntry entr
     if ((uintptr_t)fiber&7 || (uintptr_t)addr_context&15) return FIBER_ALIGNMENT;
     if (opt && *opt!=FIBER_OPT_SIGNATURE) return FIBER_INVALID;
     if (addr_context && size_context<512) return FIBER_RANGE;
-#ifdef _WIN32
     HostFiber *host=calloc(1,sizeof(*host));
     if (!host) return FIBER_RANGE;
     host->guest=fiber;
+#ifdef _WIN32
     /* The game's context size plus room for host code (the runtime, the GPU layer, Windows). */
     host->native=CreateFiberEx(0,(SIZE_T)size_context+2*1024*1024,FIBER_FLAG_FLOAT_SWITCH,fiber_start,host);
     if (!host->native) { free(host); return FIBER_RANGE; }
+#else
+    if (!fiber_prepare(host,size_context)) { free(host); return FIBER_RANGE; }
+#endif
     memset(fiber,0,sizeof(*fiber));
     fiber->magic_start=FIBER_SIGNATURE0;
     fiber->magic_end=FIBER_SIGNATURE1;
@@ -953,11 +1002,6 @@ static ABI int32_t fiber_init(GuestFiber *fiber,const char *name,FiberEntry entr
     fiber->context_start=addr_context;
     fiber->context_end=addr_context ? (uint8_t *)addr_context+size_context : NULL;
     return ORBIS_OK;
-#else
-    (void)arg_on_initialize;
-    fputs("STOP: fibers are implemented on Windows only\n",stderr);
-    exit(21);
-#endif
 }
 static ABI int32_t fiber_finalize(GuestFiber *fiber) {
     if (!fiber) return FIBER_NULL;
@@ -966,6 +1010,8 @@ static ABI int32_t fiber_finalize(GuestFiber *fiber) {
     if (fiber->state!=FIBER_IDLE) return FIBER_STATE;
 #ifdef _WIN32
     DeleteFiber(fiber->host->native);
+#else
+    free(fiber->host->stack);
 #endif
     free(fiber->host);
     fiber->host=NULL;
@@ -995,8 +1041,21 @@ static ABI int32_t fiber_run(GuestFiber *fiber,uint64_t arg_on_run_to,uint64_t *
     if (arg_on_return) *arg_on_return=f->arg_on_return;
     return ORBIS_OK;
 #else
-    (void)arg_on_run_to; (void)arg_on_return;
-    return FIBER_PERMISSION;
+    HostFiber *f=fiber->host;
+    f->arg_on_run=arg_on_run_to;
+    fiber->state=FIBER_RUN;
+    current_fiber=f;
+    if (getcontext(&fiber_thread_context)) {
+        current_fiber=NULL;
+        fiber->state=FIBER_IDLE;
+        return FIBER_PERMISSION;
+    }
+    swapcontext(&fiber_thread_context,&f->context);
+    /* Back from sceFiberReturnToThread. */
+    current_fiber=NULL;
+    fiber->state=FIBER_IDLE;
+    if (arg_on_return) *arg_on_return=f->arg_on_return;
+    return ORBIS_OK;
 #endif
 }
 /* From a fiber: back to the thread that ran it; returns when a thread runs the fiber again. */
@@ -1010,8 +1069,11 @@ static ABI int32_t fiber_return_to_thread(uint64_t arg_on_return,uint64_t *arg_o
     if (arg_on_run) *arg_on_run=f->arg_on_run;
     return ORBIS_OK;
 #else
-    (void)arg_on_return; (void)arg_on_run;
-    return FIBER_PERMISSION;
+    f->arg_on_return=arg_on_return;
+    swapcontext(&f->context,&fiber_thread_context);
+    /* Run again (fiber_run set current_fiber and the argument on that thread). */
+    if (arg_on_run) *arg_on_run=f->arg_on_run;
+    return ORBIS_OK;
 #endif
 }
 static ABI int32_t fiber_get_self(GuestFiber **fiber) {

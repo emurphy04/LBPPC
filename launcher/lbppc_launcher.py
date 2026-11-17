@@ -1,22 +1,19 @@
 #!/usr/bin/env python3
-"""LBPPC launcher: pick the game folder (the player's own dump), choose the resolution, display mode and
-frame generation, and play. Settings are kept in user/launcher.json; frame generation also goes to
-lbppc.ini, which the renderer reads. The game runs through run.py with the same Python.
+"""LBPPC's Windows launcher: pick the game folder (the player's own dump), choose the resolution, display mode
+and frame generation, and play. Settings are kept in user/launcher.json; frame generation also goes to lbppc.ini.
 
-Its look follows LittleBigPlanet 3's menus (lbppc_theme.py draws it); the banner is the dump's own artwork
-(sce_sys/pic1.png). Nothing of the game ships with the launcher.
+The window is drawn with Tk and Pillow (lbppc_theme.py). Everything that isn't about drawing the window — the
+settings, the game check, the environment run.py gets and process stopping — lives in the toolkit-free
+lbppc_core.py, shared with the Linux Qt launcher (lbppc_qt.py).
 
 usage: python launcher/lbppc_launcher.py
 """
-import base64
 import gc
-import json
 import math
 import os
 from pathlib import Path
 import queue
 import re
-import struct
 import subprocess
 import sys
 import threading
@@ -27,156 +24,11 @@ from tkinter import filedialog, font as tkfont, messagebox, ttk
 
 from PIL import Image, ImageTk
 
-VERSION = '0.1.5'
-DISCORD = 'https://discord.gg/YqfBQCU4vc'  # the permanent invite: help, bug reports, finding co-op partners
-# Discord Rich Presence (scripts/discord_presence.py): LBPPC's application on the Discord Developer Portal, whose name
-# Discord shows ("Playing LBPPC") and whose art asset "lbppc" is the picture. Empty: no presence.
-DISCORD_APP_ID = '1569417825045712926'
-BLURPLE = (88, 101, 242)  # Discord's own colour, for its button
-# Packaged (frozen with PyInstaller): LBPPC.exe sits in the package folder and runs run.py itself (--script).
-FROZEN = getattr(sys, 'frozen', False)
-ROOT = Path(sys.executable).resolve().parent if FROZEN else Path(__file__).resolve().parent.parent
-BIN = ROOT / 'bin' if (ROOT / 'bin' / ('LBPPC-Game.exe' if os.name == 'nt' else 'LBPPC-Game')).is_file() else ROOT / 'out'
-if not FROZEN:
-    sys.path.insert(0, str(ROOT / 'scripts'))  # frozen, PyInstaller bundles the module
-import online_accounts  # noqa: E402
-import lbppc_signin  # noqa: E402
-import game_setup  # noqa: E402
-import game_files  # noqa: E402
-import save_import  # noqa: E402
-import save_files  # noqa: E402
-import log_privacy  # noqa: E402
-import discord_presence  # noqa: E402
-import updater  # noqa: E402
-import ui_scale  # noqa: E402
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-import lbppc_theme as theme  # noqa: E402
-from i18n import N_, t  # noqa: E402
-import i18n  # noqa: E402
-import input_settings  # noqa: E402
-# The player's files (user/, out/, lbppc.ini, input.ini): next to the program, or in LBPPC_DATA_DIR, which the Linux
-# AppImage's AppRun sets to ~/.local/share/LBPPC (its program files are read-only). run.py reads the same variable.
-DATA = Path(os.environ['LBPPC_DATA_DIR']).expanduser() if os.environ.get('LBPPC_DATA_DIR') else ROOT
-LINUX = sys.platform.startswith('linux')
-# Running from the AppImage (Linux): the AppImage file itself, which is what starts the launcher again (its program
-# files are a mount that goes away when this launcher closes).
-APPIMAGE = Path(os.environ['APPIMAGE']) if LINUX and os.environ.get('APPIMAGE') else None
-USER = DATA / 'user'
-SETTINGS = USER / 'launcher.json'
-INI = DATA / 'lbppc.ini'
-if not INI.exists() and (ROOT / 'bbport.ini').is_file():  # its name before 0.1.1 (the Bloodborne port's): kept
-    try:
-        (ROOT / 'bbport.ini').rename(INI)
-    except OSError:
-        pass
-INPUT_INI = DATA / 'input.ini'  # the game's controls (runtime_input_config.c), the Controls page's
-LOG = DATA / 'out' / 'last_run.log'
+import ui_scale
+import lbppc_theme as theme
+from lbppc_core import *  # noqa: F403 - see __all__ in lbppc_core.py
 
-# The game renders at these sizes natively (LBPPC_RENDER_RES: its render targets are made that large).
-# Other aspects widen the view (ultrawide: more of the level at the sides, the menus laid out for it). Wider than
-# 4480 the game does not survive yet (probe.c render_res_install); the window scales the picture up.
-RESOLUTIONS = [(N_('1280 x 720 (lighter on the GPU)'), '1280x720'), (N_('1920 x 1080 (original)'), '1920x1080'), ('2560 x 1440', '2560x1440'), ('3840 x 2160 (4K)', '3840x2160'),
-               ('2560 x 1080 (21:9)', '2560x1080'), ('3440 x 1440 (21:9)', '3440x1440'),
-               ('3840 x 1600 (21:9)', '3840x1600'), ('3840 x 1080 (32:9)', '3840x1080'),
-               ('4480 x 1260 (32:9)', '4480x1260')]
-# BB_WINDOW_MODE: borderless covers the desktop; exclusive takes the display mode.
-DISPLAY_MODES = [(N_('Windowed'), 'windowed'), (N_('Borderless fullscreen'), 'borderless'),
-                 (N_('Exclusive fullscreen'), 'fullscreen')]
-# lbppc.ini frame_gen: the game steps 30 times a second; frame generation shows 60.
-FRAME_GENS = [(N_('Off (30 FPS)'), 'off'), (N_('FSR 3.1 (any GPU)'), 'fsr3'), ('DLSS (GeForce RTX 40/50)', 'dlss')]
-# BB_FSR1: the finished picture scaled to the window with AMD FSR 1 instead of a plain stretch. It only does something
-# when the resolution is below the window's (full screen at a lower resolution): that is upscaling.
-UPSCALERS = [(N_('Off (plain scaling)'), 'off'), (N_('FSR 1 (any GPU)'), 'fsr1')]
-# BB_RCAS / BB_RCAS_ATTENUATION: FSR 1's sharpening (RCAS), in thousandths of a stop: 0 is the sharpest.
-SHARPENING = [(N_('Off'), 'off'), (N_('Low'), 'low'), (N_('Medium'), 'medium'), (N_('High'), 'high'),
-              (N_('Maximum'), 'max')]
-SHARPENING_ATTENUATION = {'low': 800, 'medium': 250, 'high': 100, 'max': 0}
-# BB_LOW_LATENCY: NVIDIA Reflex (AMD Anti-Lag 2 on AMD), with the 30 FPS limit kept before each game frame.
-LATENCY = [(N_('On (NVIDIA Reflex / AMD Anti-Lag 2)'), 'on'), (N_('On + Boost (NVIDIA)'), 'boost'), (N_('Off'), 'off')]
-OPTIONS = [('resolution', N_('Resolution'), RESOLUTIONS, N_('Wider than 16:9 shows more of the level.')),
-           ('display', N_('Display'), DISPLAY_MODES, N_('Borderless suits most screens; a full-size window is shrunk.')),
-           ('frame_gen', N_('Frame generation'), FRAME_GENS, N_('The game runs 30 steps a second; this shows 60.')),
-           ('latency', N_('Low latency'), LATENCY, N_('Less delay between your input and the screen.')),
-           ('upscaling', N_('Upscaling'), UPSCALERS, N_('Sharper when the resolution is below your screen\'s.')),
-           ('sharpening', N_('Sharpening'), SHARPENING, N_('How much FSR 1 sharpens the scaled picture.')),
-           ('language', N_('Language'), None, N_('The game and this launcher. Automatic follows Windows.'))]
-# The game's language: the PS4 system language LittleBigPlanet 3 reads (BB_LANGUAGE, runtime_services.c), numbered as
-# the game's own E_LANG list and the PS4's. The US edition allows only English and French by itself; LBPPC lifts that
-# (language_install, probe.c), so every language with text in the copy works. Arabic has none (only a subtitle stub).
-LANGUAGES = [(N_('Automatic'), 'auto'), ('English (US)', '1'), ('English (UK)', '18'), ('Français', '2'),
-             ('Español (España)', '3'), ('Español (Latinoamérica)', '20'), ('Deutsch', '4'), ('Italiano', '5'),
-             ('Nederlands', '6'), ('Português (Portugal)', '7'), ('Português (Brasil)', '17'), ('Русский', '8'),
-             ('Suomi', '12'), ('Svenska', '13'), ('Dansk', '14'), ('Norsk', '15'), ('Polski', '16')]
-OPTIONS[-1] = OPTIONS[-1][:2] + (LANGUAGES,) + OPTIONS[-1][3:]
-
-
-def linux_language():
-    """The game language for the desktop's language (LC_ALL, LC_MESSAGES, LANG: "fr_FR.UTF-8"), English (US) when
-    the game doesn't have it."""
-    name = next((os.environ[v] for v in ('LC_ALL', 'LC_MESSAGES', 'LANG') if os.environ.get(v)), '')
-    language, _, country = name.split('.')[0].split('@')[0].partition('_')
-    language, country = language.lower(), country.upper()
-    if language == 'en':
-        return '1' if country in ('', 'US', 'CA') else '18'
-    if language == 'es':
-        return '3' if country in ('', 'ES') else '20'
-    if language == 'pt':
-        return '17' if country == 'BR' else '7'
-    return {'fr': '2', 'de': '4', 'it': '5', 'nl': '6', 'ru': '8', 'fi': '12', 'sv': '13', 'da': '14', 'nb': '15',
-            'no': '15', 'nn': '15', 'pl': '16'}.get(language, '1')
-
-
-def windows_language():
-    """The game language for Windows' display language (Automatic), English (US) when the game doesn't have it."""
-    if LINUX:
-        return linux_language()
-    try:
-        import ctypes
-        lang = ctypes.windll.kernel32.GetUserDefaultUILanguage()
-    except (AttributeError, OSError):
-        return '1'
-    primary, full = lang & 0x3ff, lang
-    if primary == 0x09:  # English: the UK, Ireland, Australia and the like get UK English
-        return '1' if full in (0x0409, 0x1009, 0x2409) else '18'
-    if primary == 0x0a:  # Spanish: Spain's, or Latin American
-        return '3' if full in (0x0c0a, 0x040a) else '20'
-    if primary == 0x16:  # Portuguese: Brazil's, or Portugal's
-        return '17' if full == 0x0416 else '7'
-    return {0x0c: '2', 0x07: '4', 0x10: '5', 0x13: '6', 0x19: '8', 0x0b: '12', 0x1d: '13', 0x06: '14',
-            0x14: '15', 0x15: '16'}.get(primary, '1')
-# The game's progress through the shader list at its start: 'Shaders: preparing 120 of 464'.
-SHADER_PROGRESS = re.compile(r'^Shaders: (preparing|building) (\d+) of (\d+)$')
-# The Debug page's Diagnostics: (key, environment variable, title, hint, default). Each is passed to the game on
-# Play as 1 or 0.
-DIAGNOSTICS = [('frame_stats', 'BB_FRAME_STATS', N_('Frame log'), N_('Frame rate, pacing and every slow frame in the log.'),
-                True),
-               ('profile', 'LBPPC_PROFILE', N_('Slow-frame profiler'),
-                N_('What the game waited for in each slow frame, and the CPU each thread used.'), False),
-               ('positions', 'LBPPC_POS_LOG', N_('Player positions'),
-                N_('Each player\'s position and buttons at every step. Large logs: for chasing a bug.'), False),
-               ('no_readback', 'LBPPC_WRITE_FAULT_NO_READBACK', N_('Skip GPU readbacks'),
-                N_('Faster in busy levels. Turn it off if something flickers or looks wrong.'), True),
-               ('toggles', 'LBPPC_TOGGLES', N_('Optimization switches'),
-                N_('Turns optimizations off while the game runs, from user/toggles.txt. For chasing a bug.'), False),
-               ('friends_log', 'LBPPC_FRIENDS_LOG', N_('Friends menu log'),
-                N_('What the game\'s Friends menu holds, every 5 seconds while online.'), False),
-               ('async_shaders', 'BB_ASYNC_PIPELINES', N_('Background shader builds'),
-                N_('A shader the game hasn\'t used before is built without pausing the game. Off: no pop-in, but '
-                   'the game can freeze for a moment the first time.'), True)]
-# The Debug page's Performance overlay: lbppc.ini switches, which the in-game menu (Insert) also changes.
-OVERLAY = [('show_fps', N_('Frame rate'), False), ('show_frame_times', N_('Frame times'), False),
-           ('show_latency', N_('Render latency'), False), ('show_vram', N_('Video memory'), False),
-           ('show_gpu', N_('GPU usage'), False), ('show_cpu', N_('CPU usage'), False), ('show_ram', N_('RAM usage'), False),
-           ('show_fps_graph', N_('Frame time graph'), False), ('graph_game_frames', N_('Graph the game\'s own frames'), True),
-           ('counter_colors', N_('Colour-coded values'), True)]
-DEFAULTS = {'game': '', 'update': '', 'language': 'auto', 'logs_scrubbed': False, 'resolution': '1920x1080', 'display': 'borderless', 'frame_gen': 'dlss', 'latency': 'on',
-            'upscaling': 'off', 'sharpening': 'medium', 'beta_notice_seen': False,
-            'online': False, 'online_name': '', 'password': '', 'lbppc_signin': None, 'discord_presence': True, 'save_file': save_files.MAIN, 'discord_app_id': '',
-            'diagnostics': {key: on for key, _env, _title, _hint, on in DIAGNOSTICS},
-            # Not shown: the LBPPC server unless launcher.json names another (a test server on this PC).
-            'server': online_accounts.OFFICIAL_SERVER}
-DLSS_FILES = ('lbppc_dlss.dll', 'nvngx_dlss.dll', 'nvngx_dlssg.dll')
-
+# The window's colours (lbppc_theme.py draws the Tk UI; the Qt launcher has its own stylesheet).
 TEXT, MUTED, GOOD, ERROR, WARN = theme.TEXT, theme.MUTED, theme.GOOD, theme.ERROR, theme.WARN
 BG = theme.hex_colour(theme.NIGHT)
 # Windows: the launcher draws its own title bar (CUSTOM_FRAME); elsewhere the window manager's stays.
@@ -187,248 +39,11 @@ UI_FONT = ('Segoe UI', 10)
 HINT_FONT = ('Segoe UI', 9)
 
 
-def read_sfo(path):
-    """The strings and numbers of a param.sfo, by key; empty when it cannot be read."""
-    try:
-        data = Path(path).read_bytes()
-        magic, _version, key_table, data_table, count = struct.unpack_from('<4sIIII', data, 0)
-        if magic != b'\0PSF':
-            return {}
-        values = {}
-        for i in range(count):
-            key_offset, fmt, length, _max, data_offset = struct.unpack_from('<HHIII', data, 20 + i * 16)
-            key = data[key_table + key_offset:data.index(b'\0', key_table + key_offset)].decode('ascii', 'replace')
-            raw = data[data_table + data_offset:data_table + data_offset + length]
-            values[key] = struct.unpack('<I', raw)[0] if fmt == 0x0404 and length == 4 else \
-                raw.rstrip(b'\0').decode('utf-8', 'replace')
-        return values
-    except (OSError, ValueError, struct.error):
-        return {}
-
-
-_FILES_CHECKED = {}  # game folder: the quick file check's result (checked once a session, or after Set up)
-
-
-def quick_files(root, update=None):
-    key = f'{root}|{update or ""}'
-    if key not in _FILES_CHECKED:
-        try:
-            _FILES_CHECKED[key] = game_files.check(root, update=update)
-        except (OSError, ValueError):
-            _FILES_CHECKED[key] = None  # no file list (a development checkout without it): not checked
-    return _FILES_CHECKED[key]
-
-
-def check_game(folder, update=None):
-    """(state, description) of a game folder: 'ready', 'warn' (playable, but files are missing or the wrong size),
-    'setup' (Set up... fixes it) or 'missing' (scripts/game_setup.py, scripts/game_files.py). `update`: the update's
-    own folder (shadPS4's layout), read over the game; else the one beside the game is looked for."""
-    if not folder:
-        return 'missing', t("Choose your game's folder, or click Set up... to be walked through it.")
-    state, text = game_setup.status(folder, update or None)
-    if state == 'ready':
-        game = game_setup.Folder(folder)
-        extra = game_setup.separate_update(game, update or None) if game.version != game_setup.VERSION else None
-        files = quick_files(game.root or folder, extra)
-        if files and not files.ok:
-            return 'warn', files.summary(False)
-    dlc = len(game_setup.installed_dlc(USER)) if state == 'ready' else 0
-    return state, text + (t(', with {count} DLC', count=dlc) if dlc else '')
-
-
-def ini_frame_gen():
-    """lbppc.ini's frame_gen when the launcher offers it: the in-game menu (Insert) changes it there too."""
-    try:
-        lines = INI.read_text(encoding='utf-8').splitlines()
-    except OSError:
-        return None
-    value = next((line.split('=', 1)[1].strip() for line in lines if line.startswith('frame_gen=')), None)
-    return value if value in {v for _name, v in FRAME_GENS} else None
-
-
-def ini_values():
-    """lbppc.ini as key -> value (empty when it does not exist yet)."""
-    try:
-        lines = INI.read_text(encoding='utf-8').splitlines()
-    except OSError:
-        return {}
-    return {line.split('=', 1)[0].strip(): line.split('=', 1)[1].strip() for line in lines
-            if '=' in line and not line.lstrip().startswith('#')}
-
-
-def ini_set(key, value):
-    """One lbppc.ini line set, the others kept."""
-    lines = INI.read_text(encoding='utf-8').splitlines() if INI.is_file() else []
-    lines = [line for line in lines if not line.startswith(f'{key}=')] + [f'{key}={value}']
-    INI.write_text('\n'.join(lines) + '\n', encoding='utf-8')
-
-
-def _dpapi(data, protect):
-    """Windows DPAPI (also in Wine and Proton): data locked to, or unlocked by, this Windows account.
-    None when it is not available or the data was locked by another account."""
-    import ctypes
-    from ctypes import wintypes
-    if not hasattr(ctypes, 'windll'):
-        return None
-
-    class Blob(ctypes.Structure):
-        _fields_ = [('size', wintypes.DWORD), ('data', ctypes.POINTER(ctypes.c_char))]
-
-    buffer = ctypes.create_string_buffer(data, len(data))
-    source, result = Blob(len(data), ctypes.cast(buffer, ctypes.POINTER(ctypes.c_char))), Blob()
-    call = ctypes.windll.crypt32.CryptProtectData if protect else ctypes.windll.crypt32.CryptUnprotectData
-    if not call(ctypes.byref(source), None, None, None, None, 0x1, ctypes.byref(result)):  # no prompts
-        return None
-    try:
-        return ctypes.string_at(result.data, result.size)
-    finally:
-        ctypes.windll.kernel32.LocalFree(result.data)
-
-
-def load_settings():
-    try:
-        values = json.loads(SETTINGS.read_text(encoding='utf-8'))
-        values.setdefault('password', values.get('shadnet_password', ''))  # 0.0.1 betas' name for it
-        if values.get('password_protected'):  # save_settings's DPAPI copy
-            plain = _dpapi(base64.b64decode(values['password_protected']), protect=False)
-            values['password'] = plain.decode('utf-8') if plain is not None else ''
-        if values.get('lbppc_signin_protected'):  # the lbppc.com sign-in (lbppc_signin.py), locked the same way
-            plain = _dpapi(base64.b64decode(values['lbppc_signin_protected']), protect=False)
-            try:
-                values['lbppc_signin'] = json.loads(plain) if plain is not None else None
-            except ValueError:
-                values['lbppc_signin'] = None
-        settings = {**DEFAULTS, **{k: v for k, v in values.items() if k in DEFAULTS}}
-        settings['diagnostics'] = {**DEFAULTS['diagnostics'], **(values.get('diagnostics') or {})}
-    except (OSError, ValueError, AttributeError, TypeError):
-        settings = dict(DEFAULTS)
-        settings['diagnostics'] = dict(DEFAULTS['diagnostics'])
-    settings['frame_gen'] = ini_frame_gen() or settings['frame_gen']
-    return settings
-
-
-_SETTINGS_LOCK = threading.Lock()  # the sign-in is saved from the friends list's thread too
-
-
-def save_settings(values):
-    with _SETTINGS_LOCK:
-        _save_settings(values)
-
-
-def _save_settings(values):
-    USER.mkdir(parents=True, exist_ok=True)
-    # The password is kept locked with DPAPI, not as text; plain text only where DPAPI is missing.
-    stored = dict(values)
-    stored.pop('shadnet_password', None)
-    locked = _dpapi(values.get('password', '').encode('utf-8'), protect=True) if values.get('password') else None
-    if locked is not None:
-        stored['password'] = ''
-        stored['password_protected'] = base64.b64encode(locked).decode('ascii')
-    # The lbppc.com sign-in (its refresh token) too.
-    signin = values.get('lbppc_signin')
-    locked = _dpapi(json.dumps(signin).encode('utf-8'), protect=True) if signin else None
-    if locked is not None:
-        stored['lbppc_signin'] = None
-        stored['lbppc_signin_protected'] = base64.b64encode(locked).decode('ascii')
-    SETTINGS.write_text(json.dumps(stored, indent=2), encoding='utf-8')
-    if os.name != 'nt':
-        # No DPAPI here: the password and sign-in are in the file as text, so only this user may read it.
-        try:
-            os.chmod(SETTINGS, 0o600)
-        except OSError:
-            pass
-    # lbppc.ini: frame_gen set, its other lines kept.
-    lines = INI.read_text(encoding='utf-8').splitlines() if INI.is_file() else []
-    lines = [line for line in lines if not line.startswith('frame_gen=')]
-    lines.append(f"frame_gen={values['frame_gen']}")
-    INI.write_text('\n'.join(lines) + '\n', encoding='utf-8')
-
-
-def host_environment():
-    """The environment for programs of the system (the file manager, a new launcher from the AppImage): on Linux
-    without what PyInstaller changed for the bundled Python (it keeps earlier values in <NAME>_ORIG)."""
-    env = dict(os.environ)
-    if LINUX and FROZEN:
-        for name in ('LD_LIBRARY_PATH', 'TCL_LIBRARY', 'TK_LIBRARY', 'SSL_CERT_FILE', 'SSL_CERT_DIR'):
-            original = env.pop(f'{name}_ORIG', None)
-            if original:
-                env[name] = original
-            else:
-                env.pop(name, None)
-    return env
-
-
 def launcher_command():
-    """What starts this launcher again: the AppImage, LBPPC.exe, or the script with this Python."""
+    """What starts this launcher again: LBPPC.exe or the script with this Python."""
     if APPIMAGE:
         return [str(APPIMAGE)]
     return [sys.executable] if FROZEN else [sys.executable, str(Path(__file__).resolve())]
-
-
-def shutil_which(name):
-    import shutil
-    return shutil.which(name)
-
-
-def open_path(path):
-    if not path.suffix:
-        path.mkdir(parents=True, exist_ok=True)
-    if os.name == 'nt':
-        os.startfile(str(path))  # noqa: S606 - opens the folder or log in Explorer / the text editor
-    else:
-        subprocess.Popen(['xdg-open', str(path)], env=host_environment())
-
-
-def known_players(friends):
-    """Every other player's name the launcher knows: friends, requests both ways, blocked players."""
-    if not friends:
-        return []
-    names = [entry[0] if isinstance(entry, tuple) else entry for entry in friends.friends]
-    return [n for n in names + friends.sent + friends.received + friends.blocked if n]
-
-
-def report_scrubber(settings, friends=None):
-    me = [settings.get('online_name', '')]
-    return log_privacy.Scrubber(me=[m for m in me if m], names=known_players(friends),
-                                secrets=[settings.get('password', ''),
-                                         (settings.get('lbppc_signin') or {}).get('refresh_token', '')])
-
-
-def scrub_old_logs(settings, friends=None):
-    """Once: the logs kept from before 0.1.1, written with the player's details in them, rewritten without."""
-    scrub = report_scrubber(settings, friends)
-    for log in [*sorted((DATA / 'out' / 'logs').glob('run-*.log')), LOG]:
-        try:
-            if log.is_file():
-                log_privacy.scrub_file(log, scrub)
-        except OSError:
-            pass
-
-
-def make_report(friends=None):
-    """A zip for a bug report: the last game logs, the settings and input files, without the player's details
-    (scripts/log_privacy.py: names, IP addresses, the Windows user; the password left out); no game files. Returns
-    its path."""
-    import time
-    import zipfile
-    reports = DATA / 'out' / 'reports'
-    reports.mkdir(parents=True, exist_ok=True)
-    path = reports / time.strftime('LBPPC-report-%Y%m%d-%H%M%S.zip')
-    # The same replacements as the logs get while the game runs (scripts/log_privacy.py), one scrubber for the
-    # whole report so a label means the same thing in every file. Logs from before 0.1.1 were written unscrubbed.
-    settings = load_settings()
-    scrub = report_scrubber(settings, friends)
-
-    logs = sorted((DATA / 'out' / 'logs').glob('run-*.log'))[-3:]
-    files = [(log, f'logs/{log.name}') for log in logs] + [(LOG, 'last_run.log'), (INI, 'lbppc.ini'),
-                                                           (INPUT_INI, 'input.ini')]
-    settings = {k: v for k, v in settings.items() if k not in ('password', 'lbppc_signin')}
-    with zipfile.ZipFile(path, 'w', zipfile.ZIP_DEFLATED) as archive:
-        for source, name in files:
-            if source.is_file():
-                archive.writestr(name, scrub.text(source.read_text(encoding='utf-8', errors='replace')))
-        archive.writestr('launcher.json', scrub.text(json.dumps(settings, indent=2)))
-    return path
 
 
 def activate(window):
@@ -1257,11 +872,6 @@ class UpdateNotice(BetaNotice):
             tab.forget()
         self.window.grab_release()
         self.animate(0, opening=False)
-
-
-def zipfile_errors():
-    import zipfile
-    return zipfile.BadZipFile
 
 
 class SaveFileCard(BetaNotice):
@@ -2285,67 +1895,19 @@ class Launcher(tk.Tk):
             self.after(150, self.play)
             return
         self.store()
-        env = dict(os.environ)
-        env['LBPPC_RENDER_RES'] = self.settings['resolution']
-        env.pop('LBPPC_SAVE_DIR', None); env.pop('LBPPC_SAVE_NAME', None)
-        env.update(save_files.environment(USER, self.settings.get('save_file')))
-        if self.settings['display'] != 'windowed':
-            env['BB_WINDOW_MODE'] = self.settings['display']
-        else:
-            env.pop('BB_WINDOW_MODE', None)
-        env['BB_FSR1'] = '1' if self.settings['upscaling'] == 'fsr1' else '0'
-        env['BB_LANGUAGE'] = self.game_language()
-        env['BB_RCAS'] = '0' if self.settings['sharpening'] == 'off' else '1'
-        env['BB_RCAS_ATTENUATION'] = str(SHARPENING_ATTENUATION.get(self.settings['sharpening'], 250))
-        if self.settings['latency'] == 'off':
-            env.update(BB_LOW_LATENCY='off', BB_VBLANK_HZ='60', BB_FPS_LIMIT='-1')
-        else:
-            env.update(BB_LOW_LATENCY=self.settings['latency'], BB_VBLANK_HZ='0', BB_FPS_LIMIT='30')
-        for name in ('LBPPC_NP_USER', 'LBPPC_SERVER', 'BB_SHADNET_NPID', 'BB_SHADNET_PASSWORD', 'BB_SHADNET_SERVER',
-                     'LBPPC_JOIN_ALLOW', 'BB_SHADNET_WEBAPI', 'BB_SHADNET_TLS', 'BB_USER_NAME'):
-            env.pop(name, None)
-        # The mouse isn't offered yet (input_settings.MOUSE_SUPPORTED): input.ini from an earlier build that turned it
-        # on is saved again with it off.
+        warnings = []
         try:
-            mouse_on = re.search(r'(?m)^\s*mouse_to_joystick\s*=', INPUT_INI.read_text(encoding='utf-8'))
-        except OSError:
-            mouse_on = None
-        if mouse_on and not input_settings.MOUSE_SUPPORTED:
-            try:
-                input_settings.InputSettings.load(INPUT_INI).save(INPUT_INI)
-            except OSError as error:
-                self.append([f'Launcher: input.ini could not be saved with the mouse off: {error}'])
-        # The player's name in the game (pressing the right stick shows it), offline too.
-        if re.fullmatch(online_accounts.NAME_PATTERN, self.settings['online_name']):
-            env['BB_USER_NAME'] = self.settings['online_name']
-        if self.settings['online']:
-            name, password = self.settings['online_name'], self.settings['password']
-            try:
-                if self.auth.signed_in:
-                    # Signed in through lbppc.com: the game gives shadNet a fresh access token, not a password.
-                    name, password = self.auth.username or '', self.auth.game_password()
-                else:
-                    online_accounts.check_name_and_password(name, password)
-                servers = online_accounts.server_endpoints(self.settings['server'])
-            except (online_accounts.AccountError, lbppc_signin.SignInError) as error:
-                if not self.auth.signed_in:
-                    self.show_signin()
-                self.set_state(t('Online: {error}', error=error), ERROR)
-                return
-            host, port, tls = online_accounts.shadnet_address(servers['shadnet'])
-            env.update(LBPPC_SERVER=servers['refresh'], BB_SHADNET_NPID=name, BB_SHADNET_PASSWORD=password,
-                       BB_SHADNET_SERVER=f'{host}:{port}', BB_SHADNET_WEBAPI=servers['webapi'])
-            if tls:
-                env['BB_SHADNET_TLS'] = '1'
-        for key, variable, _title, _hint, _on in DIAGNOSTICS:
-            env[variable] = '1' if self.settings['diagnostics'].get(key) else '0'
-        env['PYTHONUNBUFFERED'] = '1'
-        env['LBPPC_VERSION'] = VERSION
-        # Other players' names the launcher knows, left out of the log (scripts/log_privacy.py, run.py).
-        env['LBPPC_LOG_NAMES'] = ','.join(known_players(self.friends.friends))
-        self.scrub = log_privacy.from_environment(env)
-        flags = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
+            env, self.scrub = game_environment(self.settings, self.friends.friends, warn=warnings.append,
+                                               auth=self.auth)
+        except (online_accounts.AccountError, lbppc_signin.SignInError) as error:
+            if not self.auth.signed_in:
+                self.show_signin()
+            self.set_state(t('Online: {error}', error=error), ERROR)
+            return
         self.clear_log()
+        if warnings:
+            self.append(warnings)
+        flags = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
         # The bridge's name before 0.1.1 (bbport_dlss.dll) is still loaded.
         dlss_files = [name if name != 'lbppc_dlss.dll' or (BIN / name).is_file() else 'bbport_dlss.dll'
                       for name in DLSS_FILES]
@@ -2433,29 +1995,6 @@ class Launcher(tk.Tk):
         if self.direct and (stopped or code == 0):
             self.close()  # the game closed normally: nothing to show
 
-    @staticmethod
-    def end_process(process):
-        """run.py's game process is its child: the whole tree ends (on Windows before run.py itself, whose
-        children taskkill finds through it). taskkill returns once the game is gone: in a level, Windows and the
-        driver take about 6 s to free its memory and GPU resources. Elsewhere run.py starts a process group of its
-        own (play), which ends together: asked first, then made to after 10 s."""
-        if os.name == 'nt':
-            subprocess.run(['taskkill', '/T', '/F', '/PID', str(process.pid)], capture_output=True,
-                           creationflags=subprocess.CREATE_NO_WINDOW)
-            process.terminate()
-            return
-        import signal
-        try:
-            os.killpg(process.pid, signal.SIGTERM)
-            process.wait(10)
-        except subprocess.TimeoutExpired:
-            try:
-                os.killpg(process.pid, signal.SIGKILL)
-            except OSError:
-                pass
-        except OSError:
-            process.terminate()
-
     def stop(self):
         """Stop: the game ended on a thread, so the launcher answers while Windows frees it. finished() runs when
         run.py's output ends, as for any exit."""
@@ -2463,7 +2002,7 @@ class Launcher(tk.Tk):
             self.stopping = True
             self.stop_button.set_enabled(False)
             self.set_state(t('Stopping...'), WARN)
-            threading.Thread(target=self.end_process, args=(self.process,), daemon=True).start()
+            threading.Thread(target=end_process, args=(self.process,), daemon=True).start()
 
     def set_icon(self):
         """The logo as the window's and taskbar button's icon. Its own app ID keeps the button from grouping under
@@ -2483,7 +2022,7 @@ class Launcher(tk.Tk):
 
     def close(self):
         if self.process:
-            self.end_process(self.process)  # here and now: the launcher leaves right after (no thread would run)
+            end_process(self.process)  # here and now: the launcher leaves right after (no thread would run)
         try:
             self.store()  # a field still being typed in has not lost focus, which is when it saves
         except Exception:  # noqa: BLE001 - closing must not fail

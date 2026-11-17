@@ -4,20 +4,29 @@
 # scripts with --script), the game (bin/LBPPC-Game, bin/gpu/libbbgpu.so), the libraries it needs that a desktop or
 # SteamOS may not have (lib/), the scripts, tools and documents. No game files: players point the launcher at their
 # own copy. The player's files live in ~/.local/share/LBPPC (packaging/linux/AppRun).
+# The launcher is the Qt one (launcher/lbppc_qt.py): a native Wayland window on a Wayland desktop, X11 otherwise.
 # Made on Ubuntu 24.04 (.github/workflows/linux-appimage.yml): the oldest system it runs on has that glibc (2.39).
-# Needs: python3 with venv and tkinter (python3-venv python3-tk), patchelf, file, and appimagetool (APPIMAGETOOL, or
-# on PATH).
+# Needs: python3 with venv (python3-venv), Pillow for the icon, patchelf, file, and appimagetool (APPIMAGETOOL, or
+# on PATH). The Linux launcher is Qt; it does not import the Tk launcher or bundle Tk.
 set -euo pipefail
 cd -- "$(dirname -- "$0")/../.."
 [[ -f out/LBPPC-Game && -f out/gpu/libbbgpu.so ]] || { echo 'Build first: bash build.sh' >&2; exit 1; }
-version=$(sed -n "s/^VERSION = '\(.*\)'$/\1/p" launcher/lbppc_launcher.py)
+version=$(sed -n "s/^VERSION = '\(.*\)'$/\1/p" launcher/lbppc_core.py)
 appimagetool=${APPIMAGETOOL:-$(command -v appimagetool || true)}
 [[ -n $appimagetool ]] || { echo 'Need appimagetool (APPIMAGETOOL=path)' >&2; exit 1; }
 
 # The launcher, frozen.
 python=${PYTHON:-python3}
+# A venv made on another machine (a build folder shared with the host, or a different Python) cannot be used here:
+# its packages are for that Python. Make it again when they are not found.
+if [[ -x out/pyenv-linux/bin/python ]] && ! out/pyenv-linux/bin/python -c \
+        'import importlib.util as u; raise SystemExit(not all(u.find_spec(m) for m in ("pip", "PyInstaller", "PIL", "PySide6")))' \
+        >/dev/null 2>&1; then
+    echo 'out/pyenv-linux holds another Python environment: making it again.' >&2
+    rm -rf out/pyenv-linux
+fi
 [[ -x out/pyenv-linux/bin/python ]] || "$python" -m venv out/pyenv-linux
-out/pyenv-linux/bin/python -m pip install -q --disable-pip-version-check pyinstaller pillow
+out/pyenv-linux/bin/python -m pip install -q --disable-pip-version-check pyinstaller pillow PySide6-Essentials
 hidden=()
 for module in argparse base64 bisect collections contextlib ctypes hashlib importlib.util json platform re runpy \
               secrets shutil signal socket struct subprocess tempfile time urllib.request urllib.error zlib; do
@@ -25,9 +34,9 @@ for module in argparse base64 bisect collections contextlib ctypes hashlib impor
 done
 out/pyenv-linux/bin/python -m PyInstaller --noconfirm --clean --log-level WARN --windowed --name LBPPC \
     --distpath out/pyi-dist-linux --workpath out/pyi-work-linux --specpath out/pyi-work-linux \
-    --paths "$PWD/scripts" "${hidden[@]}" \
+    --paths "$PWD/scripts" --paths "$PWD/launcher" "${hidden[@]}" \
     --add-data "$PWD/launcher/fonts:fonts" --add-data "$PWD/launcher/assets:assets" \
-    --add-data "$PWD/launcher/lang:lang" "$PWD/launcher/lbppc_launcher.py"
+    --add-data "$PWD/launcher/lang:lang" "$PWD/launcher/lbppc_qt.py"
 
 appdir=out/AppDir
 rm -rf -- "$appdir"
@@ -53,6 +62,7 @@ bundled=()
 for elf in out/LBPPC-Game out/gpu/libbbgpu.so; do
     while read -r name path; do
         [[ -n $path && -f $path ]] || continue
+        [[ $name == */* ]] && continue  # ldd can name the loader by path (/lib64/ld-linux-x86-64.so.2)
         [[ $name =~ $system ]] && continue
         [[ $name == libbbgpu.so ]] && continue  # bin/gpu/libbbgpu.so, found through the game's $ORIGIN/gpu
         [[ -f $dest/lib/$name ]] && continue
