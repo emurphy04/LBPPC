@@ -431,5 +431,10 @@
  "Shortcut": "Genväg",
  "The shortcut could not be made: {error}": "Genvägen kunde inte skapas: {error}",
  "The download is not an LBPPC AppImage: not installed.": "Nedladdningen är ingen LBPPC-AppImage: inte installerad.",
- "LBPPC could not replace {name} ({error}). Download the new version from the release page instead.": "LBPPC kunde inte ersätta {name} ({error}). Ladda ner den nya versionen från versionssidan i stället."
+ "LBPPC could not replace {name} ({error}). Download the new version from the release page instead.": "LBPPC kunde inte ersätta {name} ({error}). Ladda ner den nya versionen från versionssidan i stället.",
+ "Sign in with lbppc.com": "Logga in med lbppc.com",
+ "Finish signing in in your browser...": "Slutför inloggningen i webbläsaren...",
+ "Signed out.": "Utloggad.",
+ "Signed in through lbppc.com as {name}.": "Inloggad via lbppc.com som {name}.",
+ "Sign out": "Logga ut"
 }

@@ -432,3 +432,8 @@
 430|No se pudo crear el acceso directo: {error}
 431|La descarga no es una AppImage de LBPPC: no se ha instalado.
 432|LBPPC no ha podido reemplazar {name} ({error}). Descarga la nueva versión desde la página de la versión.
+433|Iniciar sesión con lbppc.com
+434|Termina de iniciar sesión en tu navegador...
+435|Sesión cerrada.
+436|Sesión iniciada con lbppc.com como {name}.
+437|Cerrar sesión

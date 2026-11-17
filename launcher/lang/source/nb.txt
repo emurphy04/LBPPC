@@ -432,3 +432,8 @@
 430|Snarveien kunne ikke lages: {error}
 431|Nedlastingen er ikke et LBPPC-AppImage: ikke installert.
 432|LBPPC kunne ikke erstatte {name} ({error}). Last ned den nye versjonen fra utgivelsessiden i stedet.
+433|Logg inn med lbppc.com
+434|Fullfør innloggingen i nettleseren...
+435|Logget ut.
+436|Logget inn via lbppc.com som {name}.
+437|Logg ut

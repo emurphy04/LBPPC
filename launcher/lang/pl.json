@@ -431,5 +431,10 @@
  "Shortcut": "Skrót",
  "The shortcut could not be made: {error}": "Nie udało się utworzyć skrótu: {error}",
  "The download is not an LBPPC AppImage: not installed.": "Pobrany plik nie jest AppImage LBPPC: nie zainstalowano.",
- "LBPPC could not replace {name} ({error}). Download the new version from the release page instead.": "LBPPC nie mógł zastąpić {name} ({error}). Zamiast tego pobierz nową wersję ze strony wydania."
+ "LBPPC could not replace {name} ({error}). Download the new version from the release page instead.": "LBPPC nie mógł zastąpić {name} ({error}). Zamiast tego pobierz nową wersję ze strony wydania.",
+ "Sign in with lbppc.com": "Zaloguj przez lbppc.com",
+ "Finish signing in in your browser...": "Dokończ logowanie w przeglądarce...",
+ "Signed out.": "Wylogowano.",
+ "Signed in through lbppc.com as {name}.": "Zalogowano przez lbppc.com jako {name}.",
+ "Sign out": "Wyloguj"
 }

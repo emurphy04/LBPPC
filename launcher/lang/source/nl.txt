@@ -432,3 +432,8 @@
 430|De snelkoppeling kon niet worden gemaakt: {error}
 431|De download is geen LBPPC-AppImage: niet geïnstalleerd.
 432|LBPPC kon {name} niet vervangen ({error}). Download de nieuwe versie in plaats daarvan van de releasepagina.
+433|Inloggen met lbppc.com
+434|Rond het inloggen af in je browser...
+435|Uitgelogd.
+436|Ingelogd via lbppc.com als {name}.
+437|Uitloggen

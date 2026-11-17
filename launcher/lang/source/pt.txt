@@ -432,3 +432,8 @@
 430|Não foi possível criar o atalho: {error}
 431|A transferência não é uma AppImage do LBPPC: não instalada.
 432|O LBPPC não conseguiu substituir {name} ({error}). Transfira a nova versão a partir da página da versão.
+433|Iniciar sessão com lbppc.com
+434|Conclui o início de sessão no teu navegador...
+435|Sessão terminada.
+436|Sessão iniciada através de lbppc.com como {name}.
+437|Terminar sessão

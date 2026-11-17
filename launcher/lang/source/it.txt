@@ -432,3 +432,8 @@
 430|Non è stato possibile creare il collegamento: {error}
 431|Il download non è un'AppImage di LBPPC: non installato.
 432|LBPPC non è riuscito a sostituire {name} ({error}). Scarica invece la nuova versione dalla pagina della release.
+433|Accedi con lbppc.com
+434|Completa l'accesso nel browser...
+435|Disconnesso.
+436|Accesso tramite lbppc.com come {name}.
+437|Esci

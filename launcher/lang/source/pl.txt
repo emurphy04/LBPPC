@@ -432,3 +432,8 @@
 430|Nie udało się utworzyć skrótu: {error}
 431|Pobrany plik nie jest AppImage LBPPC: nie zainstalowano.
 432|LBPPC nie mógł zastąpić {name} ({error}). Zamiast tego pobierz nową wersję ze strony wydania.
+433|Zaloguj przez lbppc.com
+434|Dokończ logowanie w przeglądarce...
+435|Wylogowano.
+436|Zalogowano przez lbppc.com jako {name}.
+437|Wyloguj

@@ -431,5 +431,10 @@
  "Shortcut": "Snelkoppeling",
  "The shortcut could not be made: {error}": "De snelkoppeling kon niet worden gemaakt: {error}",
  "The download is not an LBPPC AppImage: not installed.": "De download is geen LBPPC-AppImage: niet geïnstalleerd.",
- "LBPPC could not replace {name} ({error}). Download the new version from the release page instead.": "LBPPC kon {name} niet vervangen ({error}). Download de nieuwe versie in plaats daarvan van de releasepagina."
+ "LBPPC could not replace {name} ({error}). Download the new version from the release page instead.": "LBPPC kon {name} niet vervangen ({error}). Download de nieuwe versie in plaats daarvan van de releasepagina.",
+ "Sign in with lbppc.com": "Inloggen met lbppc.com",
+ "Finish signing in in your browser...": "Rond het inloggen af in je browser...",
+ "Signed out.": "Uitgelogd.",
+ "Signed in through lbppc.com as {name}.": "Ingelogd via lbppc.com als {name}.",
+ "Sign out": "Uitloggen"
 }

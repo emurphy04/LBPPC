@@ -432,3 +432,8 @@
 430|Die Verknüpfung konnte nicht erstellt werden: {error}
 431|Der Download ist kein LBPPC-AppImage: nicht installiert.
 432|LBPPC konnte {name} nicht ersetzen ({error}). Lade die neue Version stattdessen von der Release-Seite herunter.
+433|Mit lbppc.com anmelden
+434|Schließe die Anmeldung in deinem Browser ab...
+435|Abgemeldet.
+436|Über lbppc.com angemeldet als {name}.
+437|Abmelden

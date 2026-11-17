@@ -431,5 +431,10 @@
  "Shortcut",
  "The shortcut could not be made: {error}",
  "The download is not an LBPPC AppImage: not installed.",
- "LBPPC could not replace {name} ({error}). Download the new version from the release page instead."
+ "LBPPC could not replace {name} ({error}). Download the new version from the release page instead.",
+ "Sign in with lbppc.com",
+ "Finish signing in in your browser...",
+ "Signed out.",
+ "Signed in through lbppc.com as {name}.",
+ "Sign out"
 ]

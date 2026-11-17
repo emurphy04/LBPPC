@@ -432,3 +432,8 @@
 430|Genvejen kunne ikke oprettes: {error}
 431|Downloaden er ikke et LBPPC-AppImage: ikke installeret.
 432|LBPPC kunne ikke erstatte {name} ({error}). Hent den nye version fra udgivelsessiden i stedet.
+433|Log ind med lbppc.com
+434|Afslut login i din browser...
+435|Logget ud.
+436|Logget ind via lbppc.com som {name}.
+437|Log ud

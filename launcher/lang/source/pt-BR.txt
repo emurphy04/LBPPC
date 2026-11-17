@@ -432,3 +432,8 @@
 430|Não foi possível criar o atalho: {error}
 431|O download não é uma AppImage do LBPPC: não instalado.
 432|O LBPPC não conseguiu substituir {name} ({error}). Baixe a nova versão pela página da versão.
+433|Entrar com lbppc.com
+434|Termine de entrar no seu navegador...
+435|Você saiu.
+436|Conectado pelo lbppc.com como {name}.
+437|Sair

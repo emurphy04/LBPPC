@@ -432,3 +432,8 @@
 430|Genvägen kunde inte skapas: {error}
 431|Nedladdningen är ingen LBPPC-AppImage: inte installerad.
 432|LBPPC kunde inte ersätta {name} ({error}). Ladda ner den nya versionen från versionssidan i stället.
+433|Logga in med lbppc.com
+434|Slutför inloggningen i webbläsaren...
+435|Utloggad.
+436|Inloggad via lbppc.com som {name}.
+437|Logga ut

@@ -431,5 +431,10 @@
  "Shortcut": "Genvej",
  "The shortcut could not be made: {error}": "Genvejen kunne ikke oprettes: {error}",
  "The download is not an LBPPC AppImage: not installed.": "Downloaden er ikke et LBPPC-AppImage: ikke installeret.",
- "LBPPC could not replace {name} ({error}). Download the new version from the release page instead.": "LBPPC kunne ikke erstatte {name} ({error}). Hent den nye version fra udgivelsessiden i stedet."
+ "LBPPC could not replace {name} ({error}). Download the new version from the release page instead.": "LBPPC kunne ikke erstatte {name} ({error}). Hent den nye version fra udgivelsessiden i stedet.",
+ "Sign in with lbppc.com": "Log ind med lbppc.com",
+ "Finish signing in in your browser...": "Afslut login i din browser...",
+ "Signed out.": "Logget ud.",
+ "Signed in through lbppc.com as {name}.": "Logget ind via lbppc.com som {name}.",
+ "Sign out": "Log ud"
 }

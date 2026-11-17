@@ -432,3 +432,8 @@
 430|Le raccourci n'a pas pu être créé : {error}
 431|Le téléchargement n'est pas une AppImage LBPPC : non installé.
 432|LBPPC n'a pas pu remplacer {name} ({error}). Téléchargez plutôt la nouvelle version depuis la page de la version.
+433|Se connecter avec lbppc.com
+434|Terminez la connexion dans votre navigateur...
+435|Déconnecté.
+436|Connecté via lbppc.com en tant que {name}.
+437|Se déconnecter

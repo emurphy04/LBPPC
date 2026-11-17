@@ -432,3 +432,8 @@
 430|Pikakuvaketta ei voitu luoda: {error}
 431|Lataus ei ole LBPPC:n AppImage: ei asennettu.
 432|LBPPC ei voinut korvata tiedostoa {name} ({error}). Lataa uusi versio julkaisusivulta.
+433|Kirjaudu lbppc.comilla
+434|Viimeistele kirjautuminen selaimessa...
+435|Kirjauduttu ulos.
+436|Kirjauduttu lbppc.comin kautta käyttäjänä {name}.
+437|Kirjaudu ulos

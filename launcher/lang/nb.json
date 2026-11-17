@@ -431,5 +431,10 @@
  "Shortcut": "Snarvei",
  "The shortcut could not be made: {error}": "Snarveien kunne ikke lages: {error}",
  "The download is not an LBPPC AppImage: not installed.": "Nedlastingen er ikke et LBPPC-AppImage: ikke installert.",
- "LBPPC could not replace {name} ({error}). Download the new version from the release page instead.": "LBPPC kunne ikke erstatte {name} ({error}). Last ned den nye versjonen fra utgivelsessiden i stedet."
+ "LBPPC could not replace {name} ({error}). Download the new version from the release page instead.": "LBPPC kunne ikke erstatte {name} ({error}). Last ned den nye versjonen fra utgivelsessiden i stedet.",
+ "Sign in with lbppc.com": "Logg inn med lbppc.com",
+ "Finish signing in in your browser...": "Fullfør innloggingen i nettleseren...",
+ "Signed out.": "Logget ut.",
+ "Signed in through lbppc.com as {name}.": "Logget inn via lbppc.com som {name}.",
+ "Sign out": "Logg ut"
 }

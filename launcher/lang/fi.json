@@ -431,5 +431,10 @@
  "Shortcut": "Pikakuvake",
  "The shortcut could not be made: {error}": "Pikakuvaketta ei voitu luoda: {error}",
  "The download is not an LBPPC AppImage: not installed.": "Lataus ei ole LBPPC:n AppImage: ei asennettu.",
- "LBPPC could not replace {name} ({error}). Download the new version from the release page instead.": "LBPPC ei voinut korvata tiedostoa {name} ({error}). Lataa uusi versio julkaisusivulta."
+ "LBPPC could not replace {name} ({error}). Download the new version from the release page instead.": "LBPPC ei voinut korvata tiedostoa {name} ({error}). Lataa uusi versio julkaisusivulta.",
+ "Sign in with lbppc.com": "Kirjaudu lbppc.comilla",
+ "Finish signing in in your browser...": "Viimeistele kirjautuminen selaimessa...",
+ "Signed out.": "Kirjauduttu ulos.",
+ "Signed in through lbppc.com as {name}.": "Kirjauduttu lbppc.comin kautta käyttäjänä {name}.",
+ "Sign out": "Kirjaudu ulos"
 }

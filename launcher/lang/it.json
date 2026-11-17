@@ -431,5 +431,10 @@
  "Shortcut": "Collegamento",
  "The shortcut could not be made: {error}": "Non è stato possibile creare il collegamento: {error}",
  "The download is not an LBPPC AppImage: not installed.": "Il download non è un'AppImage di LBPPC: non installato.",
- "LBPPC could not replace {name} ({error}). Download the new version from the release page instead.": "LBPPC non è riuscito a sostituire {name} ({error}). Scarica invece la nuova versione dalla pagina della release."
+ "LBPPC could not replace {name} ({error}). Download the new version from the release page instead.": "LBPPC non è riuscito a sostituire {name} ({error}). Scarica invece la nuova versione dalla pagina della release.",
+ "Sign in with lbppc.com": "Accedi con lbppc.com",
+ "Finish signing in in your browser...": "Completa l'accesso nel browser...",
+ "Signed out.": "Disconnesso.",
+ "Signed in through lbppc.com as {name}.": "Accesso tramite lbppc.com come {name}.",
+ "Sign out": "Esci"
 }

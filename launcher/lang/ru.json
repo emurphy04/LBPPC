@@ -431,5 +431,10 @@
  "Shortcut": "Ярлык",
  "The shortcut could not be made: {error}": "Не удалось создать ярлык: {error}",
  "The download is not an LBPPC AppImage: not installed.": "Загруженный файл не является AppImage LBPPC: не установлено.",
- "LBPPC could not replace {name} ({error}). Download the new version from the release page instead.": "LBPPC не удалось заменить {name} ({error}). Скачайте новую версию со страницы релиза."
+ "LBPPC could not replace {name} ({error}). Download the new version from the release page instead.": "LBPPC не удалось заменить {name} ({error}). Скачайте новую версию со страницы релиза.",
+ "Sign in with lbppc.com": "Войти через lbppc.com",
+ "Finish signing in in your browser...": "Завершите вход в браузере...",
+ "Signed out.": "Вы вышли.",
+ "Signed in through lbppc.com as {name}.": "Вход через lbppc.com выполнен: {name}.",
+ "Sign out": "Выйти"
 }

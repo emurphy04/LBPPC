@@ -431,5 +431,10 @@
  "Shortcut": "Atalho",
  "The shortcut could not be made: {error}": "Não foi possível criar o atalho: {error}",
  "The download is not an LBPPC AppImage: not installed.": "O download não é uma AppImage do LBPPC: não instalado.",
- "LBPPC could not replace {name} ({error}). Download the new version from the release page instead.": "O LBPPC não conseguiu substituir {name} ({error}). Baixe a nova versão pela página da versão."
+ "LBPPC could not replace {name} ({error}). Download the new version from the release page instead.": "O LBPPC não conseguiu substituir {name} ({error}). Baixe a nova versão pela página da versão.",
+ "Sign in with lbppc.com": "Entrar com lbppc.com",
+ "Finish signing in in your browser...": "Termine de entrar no seu navegador...",
+ "Signed out.": "Você saiu.",
+ "Signed in through lbppc.com as {name}.": "Conectado pelo lbppc.com como {name}.",
+ "Sign out": "Sair"
 }
