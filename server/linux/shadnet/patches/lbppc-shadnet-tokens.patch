@@ -1,0 +1,221 @@
+--- a/src/database.h
++++ b/src/database.h
+@@ -134,6 +134,8 @@
+     // Account
+     std::optional<DbError> CreateAccount(const QString& npid, const QString& password,
+                                          const QString& avatarUrl, const QString& email);
++    /// LBPPC: an account by its user ID, without a password (LBPPC token sign-in, lbppc_tokens.h).
++    std::optional<UserRecord> GetUserRecord(int64_t userId);
+     std::optional<UserRecord> CheckUser(const QString& npid, const QString& password,
+                                         const QString& token, bool checkToken);
+     std::optional<int64_t> GetUserId(const QString& npid);
+--- a/src/database.cpp
++++ b/src/database.cpp
+@@ -599,8 +599,13 @@
+     r.statAgent = q.value(9).toBool();
+     r.banned = q.value(10).toBool();
+ 
++    // LBPPC: compared in constant time, so how long a wrong password takes says nothing about the hash.
+     QByteArray computed = HashPassword(password, r.salt);
+-    if (computed != r.hash)
++    bool same = !computed.isEmpty() && computed.size() == r.hash.size();
++    unsigned char diff = 0;
++    for (qsizetype i = 0; same && i < computed.size(); ++i)
++        diff |= static_cast<unsigned char>(computed[i] ^ r.hash[i]);
++    if (!same || diff != 0)
+         return std::nullopt; // WrongPass
+ 
+     if (checkToken && r.token != token)
+@@ -609,6 +614,26 @@
+     return r;
+ }
+ 
++std::optional<UserRecord> Database::GetUserRecord(int64_t userId) {
++    QSqlQuery q(m_db);
++    q.prepare("SELECT user_id,username,avatar_url,email,email_check,token,admin,stat_agent,banned "
++              "FROM account WHERE user_id=?");
++    q.addBindValue(static_cast<qlonglong>(userId));
++    if (!Exec(q) || !q.next())
++        return std::nullopt;
++    UserRecord r;
++    r.userId = q.value(0).toLongLong();
++    r.username = q.value(1).toString();
++    r.avatarUrl = q.value(2).toString();
++    r.email = q.value(3).toString();
++    r.emailCheck = q.value(4).toString();
++    r.token = q.value(5).toString();
++    r.admin = q.value(6).toBool();
++    r.statAgent = q.value(7).toBool();
++    r.banned = q.value(8).toBool();
++    return r;
++}
++
+ std::optional<int64_t> Database::GetUserId(const QString& npid) {
+     QSqlQuery q(m_db);
+     q.prepare("SELECT user_id FROM account WHERE username=? COLLATE NOCASE");
+--- a/src/cmd_account.cpp
++++ b/src/cmd_account.cpp
+@@ -1,6 +1,7 @@
+ // SPDX-FileCopyrightText: Copyright 2019-2026 rpcsn Project
+ // SPDX-FileCopyrightText: Copyright 2026 shadNet Project
+ // SPDX-License-Identifier: GPL-2.0-or-later
++#include "lbppc_tokens.h"
+ #include <tuple>
+ #include <QRegularExpression>
+ #include <QDateTime>
+@@ -103,8 +104,21 @@
+         return ErrorType::TooSoon;
+     }
+ 
+-    bool checkToken = m_shared->config->IsEmailValidated();
+-    auto userOpt = m_db->CheckUser(npid, QString::fromStdString(req.password()), token, checkToken);
++    // LBPPC: the launcher passes an LBPPC account token ("lbppc-token:...") where the password goes; it must name
++    // this very account (lbppc_tokens.h). Anything else is a password, checked as before.
++    std::optional<UserRecord> userOpt;
++    if (LbppcTokens::IsToken(req.password())) {
++        if (const auto tokenUser = LbppcTokens::Verify(req.password())) {
++            userOpt = m_db->GetUserRecord(*tokenUser);
++            if (userOpt && userOpt->username != npid) {
++                qWarning().noquote() << "LBPPC token for user" << *tokenUser << "used to sign in as" << npid;
++                userOpt.reset();
++            }
++        }
++    } else {
++        bool checkToken = m_shared->config->IsEmailValidated();
++        userOpt = m_db->CheckUser(npid, QString::fromStdString(req.password()), token, checkToken);
++    }
+     if (!userOpt) {
+         qWarning() << "Login failed for" << npid << "from" << PeerIp();
+         LbppcGuard::LoginFailed(PeerIp(), npid);
+--- a/src/lbppc_tokens.h
++++ b/src/lbppc_tokens.h
+@@ -0,0 +1,129 @@
++// SPDX-License-Identifier: GPL-2.0-or-later
++// LBPPC: signing in to shadNet with an LBPPC account token instead of a password (docs/accounts/DESIGN.md, Phase 2).
++//
++// The launcher signs the player in through lbppc.com (Ory Hydra) and passes the game an access token where the
++// password used to go: "lbppc-token:<token>". shadNet asks Hydra about it (token introspection, on this machine) and
++// accepts it only if Hydra says it is active, was issued to the LBPPC launcher, carries the "game" scope, and names a
++// shadNet account. The token is never stored or logged.
++//
++// The check is a short blocking request: each player's connection runs on its own thread (ShadNetServer::
++// SpawnSession), so it only delays that player's own sign-in. Hydra's admin API is reached only on the loopback
++// address; anything else in LBPPC_HYDRA_ADMIN is refused.
++#pragma once
++
++#include <QByteArray>
++#include <QDebug>
++#include <QHostAddress>
++#include <QJsonDocument>
++#include <QJsonObject>
++#include <QString>
++#include <QTcpSocket>
++#include <QUrl>
++#include <optional>
++#include <string>
++
++namespace LbppcTokens {
++
++constexpr const char* Prefix = "lbppc-token:";
++constexpr const char* LauncherClient = "lbppc-launcher";
++constexpr int MaxTokenLength = 4096;
++constexpr int TimeoutMs = 3000;
++constexpr qint64 MaxReplyBytes = 64 * 1024;
++
++inline bool IsToken(const std::string& password) {
++    return password.rfind(Prefix, 0) == 0;
++}
++
++/// Hydra's admin API, from LBPPC_HYDRA_ADMIN ("127.0.0.1:4445" by default). Loopback addresses only.
++inline bool AdminAddress(QHostAddress& host, quint16& port) {
++    const QByteArray value = qgetenv("LBPPC_HYDRA_ADMIN");
++    const QString text = value.isEmpty() ? QStringLiteral("127.0.0.1:4445") : QString::fromUtf8(value);
++    const int colon = text.lastIndexOf(':');
++    bool ok = false;
++    port = colon > 0 ? text.mid(colon + 1).toUShort(&ok) : 0;
++    host = QHostAddress(colon > 0 ? text.left(colon) : text);
++    return ok && port != 0 && host.isLoopback();
++}
++
++/// The shadNet user ID an LBPPC token signs in as, or nothing (the reason is logged, never the token).
++inline std::optional<qint64> Verify(const std::string& password) {
++    if (!IsToken(password))
++        return std::nullopt;
++    const std::string token = password.substr(std::char_traits<char>::length(Prefix));
++    if (token.empty() || token.size() > MaxTokenLength) {
++        qWarning() << "LBPPC token: missing or too long";
++        return std::nullopt;
++    }
++    QHostAddress host;
++    quint16 port = 0;
++    if (!AdminAddress(host, port)) {
++        qCritical() << "LBPPC token: LBPPC_HYDRA_ADMIN must be a loopback address and port; token sign-in is off";
++        return std::nullopt;
++    }
++
++    // HTTP/1.0 so the reply ends when the connection closes (no chunked encoding to undo).
++    const QByteArray body = "token=" + QUrl::toPercentEncoding(QString::fromStdString(token)) + "&scope=game";
++    QByteArray request = "POST /admin/oauth2/introspect HTTP/1.0\r\n"
++                         "Host: 127.0.0.1\r\n"
++                         "Content-Type: application/x-www-form-urlencoded\r\n"
++                         "Accept: application/json\r\n"
++                         "Content-Length: " + QByteArray::number(body.size()) + "\r\n\r\n" + body;
++
++    QTcpSocket socket;
++    socket.connectToHost(host, port);
++    if (!socket.waitForConnected(TimeoutMs)) {
++        qWarning() << "LBPPC token: Hydra unreachable:" << socket.errorString();
++        return std::nullopt;
++    }
++    socket.write(request);
++    if (!socket.waitForBytesWritten(TimeoutMs)) {
++        qWarning() << "LBPPC token: sending to Hydra failed";
++        return std::nullopt;
++    }
++    QByteArray reply;
++    while (socket.state() == QAbstractSocket::ConnectedState || socket.bytesAvailable() > 0) {
++        if (socket.bytesAvailable() == 0 && !socket.waitForReadyRead(TimeoutMs))
++            break;
++        reply += socket.readAll();
++        if (reply.size() > MaxReplyBytes) {
++            qWarning() << "LBPPC token: Hydra's reply is too long";
++            return std::nullopt;
++        }
++    }
++
++    const int split = reply.indexOf("\r\n\r\n");
++    if (!reply.startsWith("HTTP/1.") || split < 0) {
++        qWarning() << "LBPPC token: no answer from Hydra";
++        return std::nullopt;
++    }
++    const QList<QByteArray> status = reply.left(reply.indexOf("\r\n")).split(' ');
++    if (status.size() < 2 || status[1] != "200") {
++        qWarning() << "LBPPC token: Hydra answered" << (status.size() > 1 ? status[1] : QByteArray("?"));
++        return std::nullopt;
++    }
++    QJsonParseError error{};
++    const QJsonDocument json = QJsonDocument::fromJson(reply.mid(split + 4), &error);
++    if (error.error != QJsonParseError::NoError || !json.isObject()) {
++        qWarning() << "LBPPC token: Hydra's reply isn't JSON";
++        return std::nullopt;
++    }
++    const QJsonObject o = json.object();
++    if (!o.value("active").toBool()) {
++        qWarning() << "LBPPC token: not active (expired, revoked, unknown, or without the game scope)";
++        return std::nullopt;
++    }
++    if (o.value("client_id").toString() != QLatin1String(LauncherClient) ||
++        o.value("token_use").toString() != QLatin1String("access_token")) {
++        qWarning() << "LBPPC token: not an access token from the LBPPC launcher";
++        return std::nullopt;
++    }
++    const QJsonValue id = o.value("ext").toObject().value("shadnet_user_id");
++    const qint64 userId = id.isDouble() ? static_cast<qint64>(id.toDouble()) : 0;
++    if (userId <= 0 || static_cast<double>(userId) != id.toDouble()) {
++        qWarning() << "LBPPC token: no shadNet account in it";
++        return std::nullopt;
++    }
++    return userId;
++}
++
++} // namespace LbppcTokens
