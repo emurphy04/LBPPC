@@ -58,11 +58,11 @@ this order:
 3. `refresh/lbppc-refresh-security.patch`: a game login only while its account is signed in to shadNet from the
    same address; website sign-up only for names that have an LBPPC (shadNet) account and that the blocked-names
    list allows. Needs the shadNet security patch (section 4) and the settings in [Security](#security).
-5. `refresh/lbppc-refresh-activity.patch` (2026-11-17, not yet live): activity pages leave out events about something
-   since deleted, instead of failing (a player's whole activity page was an error).
-4. `refresh/lbppc-refresh-search.patch` (2026-11-17, not yet live): level search as
+4. `refresh/lbppc-refresh-search.patch` (2026-11-17, built with 5 in `/opt/refresh-build-next`; swapped in by `restart-day.sh`): level search as
    one database query, sorted and paged by the database. Before, every match was loaded first: "shark" matches 125,003
    archived levels and took about 5 seconds; the first page alone takes 10 ms.
+5. `refresh/lbppc-refresh-activity.patch` (2026-11-17, not yet live): activity pages leave out events about something
+   since deleted, instead of failing (a player's whole activity page was an error).
 
 ```bash
 git clone https://github.com/LittleBigRefresh/Refresh /opt/refresh-src && cd /opt/refresh-src && git checkout 4060ec4
