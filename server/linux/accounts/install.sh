@@ -100,11 +100,11 @@ install -m 644 -o root -g root "$here/systemd/lbppc-account-hooks.service" /etc/
 for unit in lbppc-kratos lbppc-hydra lbppc-password-migration; do
     install -m 644 -o root -g root "$here/systemd/$unit.service" /etc/systemd/system/
 done
-install -m 644 -o root -g root "$here/systemd/lbppc-account-import.service" "$here/systemd/lbppc-account-import.timer"     /etc/systemd/system/
+install -m 644 -o root -g root "$here/systemd/lbppc-account-import.service" "$here/systemd/lbppc-account-import.timer"     "$here/systemd/lbppc-kratos-cleanup.service" "$here/systemd/lbppc-kratos-cleanup.timer" /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable --now lbppc-password-migration lbppc-hydra lbppc-kratos
 systemctl restart lbppc-password-migration lbppc-hydra lbppc-kratos   # pick up changed files
-systemctl enable --now lbppc-account-import.timer
+systemctl enable --now lbppc-account-import.timer lbppc-kratos-cleanup.timer
 sleep 5
 for unit in lbppc-password-migration lbppc-hydra lbppc-kratos; do
     printf '%s: %s\n' "$unit" "$(systemctl is-active "$unit")"
