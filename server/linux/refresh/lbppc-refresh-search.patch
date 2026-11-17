@@ -1,0 +1,52 @@
+--- a/Refresh.Database/GameDatabaseContext.Levels.cs
++++ b/Refresh.Database/GameDatabaseContext.Levels.cs
+@@ -1,3 +1,4 @@
++using MongoDB.Bson;
+ using System.Diagnostics;
+ using System.Reflection;
+ using JetBrains.Annotations;
+@@ -491,33 +492,20 @@
+         IQueryable<GameLevel> validLevels = this.GetLevelsByGameVersion(levelFilterSettings.GameVersion)
+                 .FilterByLevelFilterSettings(user, levelFilterSettings);
+ 
++        // LBPPC: one query, sorted and paged by the database. Loading every match first (as before) took seconds
++        // with the archive's millions of levels: a common word matches over a hundred thousand of them.
+         string dbQuery = $"%{query}%";
+-        List<GameLevel> levels = validLevels.Where(l =>
++        bool isId = int.TryParse(query, out int id);
++        // Also the levels of a player by that name, and the level with that ID.
++        ObjectId? publisherId = this.GetUserByUsername(query, false)?.UserId;
++        IQueryable<GameLevel> matches = validLevels.Where(l =>
+             EF.Functions.ILike(l.Title, dbQuery) ||
+-            EF.Functions.ILike(l.Description, dbQuery)
+-        ).ToList();
+-        
+-        // If the search is just an int, then we should also look for levels which match that ID
+-        if (int.TryParse(query, out int id))
+-        {
+-            // Try to find a level with the ID
+-            GameLevel? idLevel = validLevels.FirstOrDefault(l => l.LevelId == id);
+-
+-            // If we found it, and it does not duplicate, add it
+-            if (idLevel != null && !levels.Contains(idLevel))
+-            {
+-                levels.Add(idLevel);
+-            }
+-        }
+-        
+-        // Try to look up a username to search by publisher.
+-        GameUser? publisher = this.GetUserByUsername(query, false); 
+-        if (publisher != null)
+-        {
+-            levels.AddRange(validLevels.Where(l => l.Publisher == publisher));
+-        }
++            EF.Functions.ILike(l.Description, dbQuery) ||
++            (isId && l.LevelId == id) ||
++            (publisherId != null && l.PublisherUserId == publisherId));
+ 
+-        return new DatabaseList<GameLevel>(levels.OrderByDescending(l => l.CoolRating), skip, count);
++        return new DatabaseList<GameLevel>(matches.OrderByDescending(l => l.CoolRating).ThenByDescending(l => l.LevelId),
++            skip, count);
+     }
+ 
+     [Pure]
