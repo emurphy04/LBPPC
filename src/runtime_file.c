@@ -282,7 +282,44 @@ static int translate_path(const char *guest,char *out,size_t size,int overlay) {
     if (result==ENOENT) fprintf(stderr,"Runtime: no mount for guest path %s\n",guest);
     return result;
 }
-static int translate(const char *guest,char *out,size_t size) { return translate_path(guest,out,size,1); }
+/* LBP3's voices for a language the copy doesn't have (#35: the US copy carries only English and French story voices,
+ * so in Spanish, German and the rest the characters were silent): the English recording instead of nothing. Only
+ * paths that don't exist are changed:
+ *   /gamedata/audio/<language>/<bank>_<xxx>.fsb   -> /gamedata/audio/<bank>_eng.fsb
+ *   /gamedata/audio/<language>/<bank>.fsb         -> /gamedata/audio/<bank>.fsb
+ *   /gamedata/audio/dialogue/<language>/<rest>    -> /gamedata/audio/dialogue/<rest>  */
+static int english_voice(const char *guest,char *english,size_t size) {
+    static const char *languages[]={"arabic","braz_portuguese","danish","dutch","finnish","french","german","italian",
+        "latam_spanish","norwegian","polish","portuguese","russian","spanish","swedish"};
+    const char *audio=strstr(guest,"/gamedata/audio/");
+    if (!audio) return 0;
+    const char *rest=audio+strlen("/gamedata/audio/");
+    int dialogue=!strncmp(rest,"dialogue/",9);
+    const char *folder=dialogue ? rest+9 : rest;
+    for (size_t i=0;i<sizeof(languages)/sizeof(*languages);++i) {
+        size_t n=strlen(languages[i]);
+        if (strncmp(folder,languages[i],n) || folder[n]!='/') continue;
+        const char *file=folder+n+1;
+        if (!*file || (!dialogue && strchr(file,'/'))) return 0;
+        int keep=(int)(folder-guest); /* everything before the language folder */
+        size_t len=strlen(file);
+        if (!dialogue && len>8 && file[len-8]=='_' && !strcmp(file+len-4,".fsb"))
+            return (size_t)snprintf(english,size,"%.*s%.*s_eng.fsb",keep,guest,(int)(len-8),file)<size;
+        return (size_t)snprintf(english,size,"%.*s%s",keep,guest,file)<size;
+    }
+    return 0;
+}
+static int translate(const char *guest,char *out,size_t size) {
+    int result=translate_path(guest,out,size,1);
+    char english[1024], english_host[1024]; HostStat file;
+    if (!result && host_stat(out,&file) && english_voice(guest,english,sizeof(english)) &&
+        !translate_path(english,english_host,sizeof(english_host),1) && !host_stat(english_host,&file) &&
+        (size_t)snprintf(out,size,"%s",english_host)<size) {
+        static int told;
+        if (!told++) printf("Runtime: this copy has no voices for the language, English voices instead (%s)\n",guest);
+    }
+    return result;
+}
 static int game_path(const char *p);
 static Listing *list_directory(const char *path);
 static void free_listing(Listing *l);
@@ -572,7 +609,8 @@ static int64_t do_open(const char *guest,int flags,int mode) {
     snprintf(files[fd].path,sizeof(files[fd].path),"%s",guest);
     ++opens;
     pthread_mutex_unlock(&lock);
-    if (audio_trace() && strstr(guest,"sound/")) printf("Audio trace: open(%s) -> fd %d, %lld bytes\n",guest,fd,(long long)s.st_size);
+    if (audio_trace() && (strstr(guest,"sound/") || strstr(guest,"/audio/"))) /* Bloodborne's sound/, LBP3's audio/ */
+        printf("Audio trace: open(%s) -> fd %d, %lld bytes\n",guest,fd,(long long)s.st_size);
     const char *mod_trace=getenv("BB_MOD_TRACE"), *mod_root=getenv("BB_MODS_DIR");
     if (mod_trace && mod_trace[0]=='1' && mod_root) {
         char actual[PATH_MAX],root[PATH_MAX];
