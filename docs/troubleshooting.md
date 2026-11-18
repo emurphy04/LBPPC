@@ -83,6 +83,16 @@ A single long frame when a level starts is normal: the level's textures are uplo
 | `Clear: target ... dropped (blended: check this one)` | Only appears with the image sync switched off for testing. If effects build up or leave trails, send a report. |
 | `Clear warning: shader ...` | The same: only worth a look if something draws wrongly. |
 
+Two graphics messages need no action in the normal case:
+
+- `Window mode margins top = ..., bottom = ...` means the game set the margins for the PS4's
+  windowed output mode. The port records them but always presents the picture full-screen, so this
+  does not change the image. A negative margin is rejected and logged as invalid.
+- `Coercing copy source layers ... and destination layers ... to minimum` means an image copy had
+  different layer counts. A destination with more layers is normal when an image grows a layer at a
+  time; only the source's layers are copied, and this is now logged at debug level. A warning means
+  the source had more layers than the destination, so those extra source layers were dropped.
+
 ## Debug page switches
 
 The launcher's Debug page has diagnostics that add to the log. Only switch one on when asked to: they make logs
@@ -96,6 +106,43 @@ larger.
 | Skip GPU readbacks (on) | Not a log: faster busy levels. Turn it off if something flickers or draws wrongly. |
 | Optimization switches | Reads `user/toggles.txt` while the game runs; each bit turns an optimization off. |
 | Friends menu log | `Friends (menu):` lines while online: what the game's Friends page holds. |
+
+## Tracing file access
+
+To see which files the game opens or checks, and where they are on this PC, start the game with
+`LBPPC_FILE_TRACE` set. The launcher passes the environment through, so on Linux:
+
+```
+LBPPC_FILE_TRACE=1 ./LBPPC-*.AppImage
+```
+
+| Value | Adds |
+|---|---|
+| `1` or `paths` | A `Runtime: file trace:` line for every open, stat and access check. |
+| `reads` or `all` | The same, plus every read and pread with its offset, size and result. |
+| unset or `0` | Nothing. |
+
+Each line shows the PS4 path the game used, the file on this PC, and the folder holding it:
+
+```
+Runtime: file trace: open /app0/data/.../base_001.farc -> /home/me/Games/LBPPC/base_001.farc [game folder /home/me/Games/LBPPC]
+Runtime: file trace: open /app0/craftworld.ini -> /home/me/Games/LBPPC/craftworld.ini [game folder /home/me/Games/LBPPC] (No such file or directory)
+Runtime: file trace: read /app0/data/.../base_001.farc -> /home/me/Games/LBPPC/base_001.farc offset 4096 size 65536 -> 65536
+```
+
+`[update folder ...]` means the file came from the update folder instead of the game's folder.
+`reads` makes the log large quickly, so use it for short runs.
+
+Game files are matched ignoring case when the exact spelling is missing, because the PS4 mounts are
+case-insensitive and a dump may not preserve the spelling (LBP3 asks for `Chunk1_001.farc` while an
+extracted copy is `chunk1_001.farc`). The trace then shows the match with a `(case differs)` note:
+
+```
+Runtime: file trace: /app0/Chunk1_001.farc matched /home/me/Games/LBP3/chunk1_001.farc (case differs)
+Runtime: file trace: open /app0/Chunk1_001.farc -> /home/me/Games/LBP3/chunk1_001.farc [game folder /home/me/Games/LBP3]
+```
+
+Save files and other writable paths still use their exact names.
 
 ## Tips
 

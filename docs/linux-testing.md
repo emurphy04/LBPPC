@@ -33,6 +33,7 @@ on and background shader builds on. With FSR 3 enabled the game rendered 30 simu
 | `dist/LBPPC-0.1.4-linux-x86_64.AppImage` | 166,369,784 bytes | `e108fe91e8eef0c56b43d049f436404938203177c559d466584984268996666d` | Built directly on CachyOS with glibc 2.44. Local test build only. |
 | `dist/LBPPC-0.1.5-linux-x86_64.AppImage` (before the shared-core refactor) | 74,275,320 bytes | `cf740a14ec120e6885d69f8c2e875ec4df99c187012e2e7c02eb2ea75ac20028` | Built in the Ubuntu 24.04 Docker image from `packaging/linux/Dockerfile`. |
 | `dist/LBPPC-0.1.5-linux-x86_64.AppImage` (after the shared-core refactor) | 63,801,848 bytes | `42eaecb617b90e7ec9d6ae7f775c101c3c1ac716c5aa50ef72838f1b098aa78d` | Same Ubuntu 24.04 Docker image; contains `lbppc_qt.py` + `lbppc_core.py` with no Tk launcher. |
+| `dist/LBPPC-0.1.5-linux-x86_64.AppImage` (with case-insensitive game paths) | 63,810,040 bytes | `93f4810225969a0d28ea1faf7f7e55f800b19e43d4d159045903067713ca0b07` | Same Docker image; contains the `Chunk1_001.farc` path fix. |
 
 The build commands were:
 
@@ -133,6 +134,34 @@ Observed usage:
 * **4K:** about 3.3 GB, using part of the 512 MiB reserve; FPS was GPU- and VRAM-bound.
 * **1440p:** about 3.0 GB, 30 simulation steps per second and 60 FPS displayed with FSR 3, with stable memory.
 
+### 3.4 Game files and case-insensitive paths
+
+The costume screen probed thousands of palette plans, and the `chunk1_001.farc` content was never used. The trace
+showed LBP3 asking for `/app0/Chunk1_001.farc` (capital `C`) while the extracted file is `chunk1_001.farc`
+(lowercase). The PS4's mounts ignore case; Linux does not, so the archive was never opened. The game then tried
+4,152 `.plan` palette, costume and related plan files as loose files under `/temp0` first and `/app0` second, and
+every probe missed. Those plans and `sackboy_stitch_diffuse.tex` were present in `chunk1_001.farc`: 4,153 of the
+4,281 unique missing paths the log recorded.
+
+The stat loop was not the multi-second stall. The 8,304 missing stat calls took about 14 ms on this btrfs volume, or
+about 85 ms through the new fallback. The 3.0 s and 2.0 s frames immediately after the scan were Bink video startup.
+
+The fix in `src/runtime_file.c` retries a missing read-only game path one component at a time, matching each name
+against the real folder spelling and differing only by case. It applies to `/app0` and `/hostapp`, checks the update
+folder first to keep update precedence, and leaves saves and other writable mounts on exact names.
+`tests/test_file_edits.c` covers both a mismatched file name and a mismatched folder name.
+
+After the fix, the trace and open succeeded:
+
+```
+Runtime: file trace: /app0/Chunk1_001.farc matched <home>/Documents/Games/LBP3/chunk1_001.farc (case differs)
+Runtime: file trace: open /app0/Chunk1_001.farc -> <home>/Documents/Games/LBP3/chunk1_001.farc [game folder <home>/Documents/Games/LBP3]
+```
+
+The real file opened with a size of 3,344,395,907 bytes, and costume loading worked in the rebuilt AppImage. The
+path fix is in `src/runtime_file.c`; `LBPPC_FILE_TRACE` and the trace output are described in
+[troubleshooting.md](troubleshooting.md#tracing-file-access).
+
 ---
 
 ## 4. Launcher debugging
@@ -196,6 +225,7 @@ The Qt launcher was exercised offscreen on this machine:
 ### Source and launcher
 
 * `python3 -m py_compile launcher/lbppc_core.py launcher/lbppc_launcher.py launcher/lbppc_qt.py`
+* `out/file-edits-test` and `out/file-mods-test` pass, including case-mismatched file names and folder names.
 * `python3 launcher/i18n.py --extract`: 464 texts, 0 new after the merge.
 * A stub-auth check of `core.game_environment()` produced `BB_SHADNET_PASSWORD=lbppc-token:abc` from a signed-in
   `lbppc.com` session, and the Tk module still reported `0.1.5` and `Play` after the extraction.

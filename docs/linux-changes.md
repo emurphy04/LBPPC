@@ -14,6 +14,8 @@ artifact hashes — are in [linux-testing.md](linux-testing.md).
 | Area | Change |
 |---|---|
 | Runtime | Guest fibers (`libSceFiber`) implemented on Linux with POSIX `ucontext`, replacing the Windows-only path that called `exit(21)`. Windows is unchanged. |
+| Game files | Read-only game paths resolve ignoring case when the exact spelling is missing, because the PS4 mounts are case-insensitive and Linux is not. Saves and writable paths keep exact names. |
+| File tracing | `LBPPC_FILE_TRACE=1` logs every open, stat and access with the PS4 path and the host file and folder; `reads` adds every read and pread. |
 | Linux launcher | New PySide6/Qt launcher (`launcher/lbppc_qt.py`), native Wayland with an X11 fallback, with the same settings, game check and options as the Windows launcher. |
 | Why a new launcher | The Tk launcher is an X11 application: on Wayland it needs XWayland, its Windows-only window attributes and screen sizing fail on X11, and its fullscreen modes can change the desktop resolution. |
 | Shared launcher code | `launcher/lbppc_core.py` holds the settings, game check, game environment, process stopping and report code used by both launchers. It imports neither Tk nor Qt. |
@@ -21,6 +23,10 @@ artifact hashes — are in [linux-testing.md](linux-testing.md).
 | Docker build | `packaging/linux/Dockerfile` reproduces the Ubuntu 24.04 CI toolchain so anyone can build the game and the AppImage from source on Linux. |
 | i18n | The Qt launcher's texts are included in `python3 launcher/i18n.py --extract`. |
 | Windows | The Tk launcher keeps its previous behavior; only the shared code and the `VERSION` constant moved out of it. |
+
+The case-insensitive game-file diagnosis and the successful run are in
+[linux-testing.md](linux-testing.md#34-game-files-and-case-insensitive-paths). The trace switch is in
+[troubleshooting.md](troubleshooting.md#tracing-file-access).
 
 ---
 
@@ -333,6 +339,17 @@ Working tree against `cb4cbe7` (0.1.5):
  16 files changed, 3490 insertions(+), 522 deletions(-)
 ```
 
+This checkout also has follow-up fixes:
+
+* `src/runtime_file.c`: read-only game paths resolve ignoring case, and `LBPPC_FILE_TRACE` logs path lookups and,
+  optionally, reads.
+* `tests/test_file_edits.c`: the case-insensitive file-name and folder-name cases.
+* `gpu/shadps4/core/libraries/videoout/`: `sceVideoOutSetWindowModeMargins` validates and records the margins
+  instead of logging the call as stubbed. Presentation stays full-screen, so the picture does not change.
+* `gpu/shadps4/video_core/renderer_vulkan/vk_runtime.cpp`: only warn when a copy drops source layers; a destination
+  with more layers is the normal case and is logged at debug level.
+* `docs/troubleshooting.md`: how to read the file trace, the case-insensitive match note and the graphics messages.
+
 The `gpu/third_party/fsr-vulkan` submodule shows as dirty only because `build.sh` applies the tracked patches in
 `gpu/patches/fsr-vulkan/` to its working tree; there are no new submodule changes in this work.
 
@@ -344,4 +361,8 @@ Suggested commit split:
 4. `packaging: build the Qt launcher into the Linux AppImage`
 5. `packaging: add an Ubuntu 24.04 Docker build environment`
 6. `i18n: extract the Qt launcher's texts`
-7. `docs: describe the Linux support changes and the debugging record`
+7. `runtime: resolve read-only game paths ignoring case`
+8. `runtime: add LBPPC_FILE_TRACE file access tracing`
+9. `videoout: record window mode margins`
+10. `vulkan: quiet expected copy-layer coercion`
+11. `docs: describe the Linux support changes and the debugging record`
