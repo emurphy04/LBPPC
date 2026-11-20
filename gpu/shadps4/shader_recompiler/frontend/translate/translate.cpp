@@ -313,6 +313,7 @@ void Translator::EmitPrologue(IR::Block* first_block) {
             [[fallthrough]];
         case AmdGpu::PrimitiveType::LineList:
         case AmdGpu::PrimitiveType::LineStrip:
+        case AmdGpu::PrimitiveType::LineLoop:
             ir.SetVectorReg(IR::VectorReg::V1, ir.Imm32(1u)); // vertex 1
             [[fallthrough]];
         default:

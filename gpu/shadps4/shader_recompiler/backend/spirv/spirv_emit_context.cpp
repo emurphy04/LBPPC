@@ -45,6 +45,7 @@ static constexpr u32 NumVertices(AmdGpu::PrimitiveType type) {
         return 1u;
     case AmdGpu::PrimitiveType::LineList:
     case AmdGpu::PrimitiveType::LineStrip:
+    case AmdGpu::PrimitiveType::LineLoop:
         return 2u;
     case AmdGpu::PrimitiveType::TriangleList:
     case AmdGpu::PrimitiveType::TriangleStrip:

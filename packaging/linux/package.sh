@@ -26,13 +26,13 @@ if [[ -x out/pyenv-linux/bin/python ]] && ! out/pyenv-linux/bin/python -c \
     rm -rf out/pyenv-linux
 fi
 [[ -x out/pyenv-linux/bin/python ]] || "$python" -m venv out/pyenv-linux
-out/pyenv-linux/bin/python -m pip install -q --disable-pip-version-check pyinstaller pillow PySide6-Essentials
+out/pyenv-linux/bin/python -m pip install --disable-pip-version-check pyinstaller pillow PySide6-Essentials
 hidden=()
 for module in argparse base64 bisect collections contextlib ctypes hashlib importlib.util json platform re runpy \
               secrets shutil signal socket struct subprocess tempfile time urllib.request urllib.error zlib; do
     hidden+=(--hidden-import "$module")
 done
-out/pyenv-linux/bin/python -m PyInstaller --noconfirm --clean --log-level WARN --windowed --name LBPPC \
+out/pyenv-linux/bin/python -m PyInstaller --noconfirm --clean --log-level INFO --windowed --name LBPPC \
     --distpath out/pyi-dist-linux --workpath out/pyi-work-linux --specpath out/pyi-work-linux \
     --paths "$PWD/scripts" --paths "$PWD/launcher" "${hidden[@]}" \
     --add-data "$PWD/launcher/fonts:fonts" --add-data "$PWD/launcher/assets:assets" \
