@@ -21,6 +21,7 @@ artifact hashes — are in [linux-testing.md](linux-testing.md).
 | Shared launcher code | `launcher/lbppc_core.py` holds the settings, game check, game environment, process stopping and report code used by both launchers. It imports neither Tk nor Qt. |
 | Linux packaging | The AppImage freezes the Qt launcher, bundles PySide6-Essentials, exports a `wayland;xcb` platform fallback and no longer collects the dynamic loader as a library. |
 | Docker build | `packaging/linux/Dockerfile` reproduces the Ubuntu 24.04 CI toolchain so anyone can build the game and the AppImage from source on Linux. |
+| Shader recompiler | `LineLoop` primitives are handled in the shader compiler and Vulkan topology mapping, so the painting screen's **Advanced Colour** picker no longer traps the emulator. |
 | i18n | The Qt launcher's texts are included in `python3 launcher/i18n.py --extract`. |
 | Windows | The Tk launcher keeps its previous behavior; only the shared code and the `VERSION` constant moved out of it. |
 
@@ -296,7 +297,53 @@ docker run --rm -v "$PWD":/src lbppc-linux \
 
 ---
 
-## 6. Known gaps and follow-ups
+## 6. Painting screen crash: unhandled `LineLoop` primitive
+
+Selecting **Advanced Colour** in the painting screen used to terminate the game outright. The common thread in the four
+GPU-side edits is the PS4/GCN primitive type `AmdGpu::PrimitiveType::LineLoop` (value `18` in
+`gpu/shadps4/video_core/amdgpu/regs_vertex.h`): part of that picker is drawn as a closed loop of lines, but the emulator
+had no case for the primitive in its shader recompiler or its Vulkan topology mapping.
+
+`LineLoop` was already known in one place: `IsPrimitiveCulled()` in
+`gpu/shadps4/video_core/renderer_vulkan/liverpool_to_vk.cpp` returns `false` for it, like the other line primitives.
+The switches that did not handle it were:
+
+| File | Function | Behaviour before the fix |
+|---|---|---|
+| `gpu/shadps4/shader_recompiler/backend/spirv/emit_spirv.cpp` | `GetInputPrimitiveType()` | `default: UNREACHABLE_MSG("Unknown input primitive type {}", u32(type))` (type `18`) |
+| `gpu/shadps4/shader_recompiler/backend/spirv/spirv_emit_context.cpp` | `NumVertices()` | `default: UNREACHABLE()` |
+| `gpu/shadps4/shader_recompiler/frontend/translate/translate.cpp` | `Translator::EmitPrologue()` | `default:` was taken, so V1 was never set to the second vertex index |
+| `gpu/shadps4/video_core/renderer_vulkan/liverpool_to_vk.cpp` | `PrimitiveType()` | `default: UNREACHABLE_MSG("Unimplemented primitive type: {}", static_cast<u32>(type))` (type `18`) |
+
+### Why it crashed instead of just looking wrong
+
+The `UNREACHABLE` macros log a critical message and call `unreachable_impl()` in `gpu/shadps4/common/assert.cpp`. That
+shuts down the emulator and executes `int $3` on x86-64 (`brk 0` on ARM64), so reaching any of those defaults is an
+immediate trap. Shaders are compiled lazily on first use, which is why the failure appeared when the advanced-colour
+screen was opened rather than at startup. The `translate.cpp` case was the exception: falling through its `default:`
+did not trap, it only left the geometry shader's V1 register unset.
+
+### The added cases
+
+- `emit_spirv.cpp`: emit `spv::ExecutionMode::InputLines` for a geometry shader whose input primitive is `LineLoop`
+  (called from `EmitMain()`).
+- `spirv_emit_context.cpp`: return two vertices from `NumVertices()`, so `gl_in` and the per-vertex input arrays are
+  sized for a line's two endpoints in `DefineInputs()`.
+- `translate.cpp`: set `V1 = 1` in the geometry-shader prologue for line-like inputs, alongside `LineList` and
+  `LineStrip`. This is a correctness fix; it was not the crashing path.
+- `liverpool_to_vk.cpp`: map `LineLoop` to `vk::PrimitiveTopology::eLineStrip` with a warning. Vulkan has no line-loop
+  topology, so the closing segment is omitted — a close visual approximation, but no trap.
+
+With these cases in place, shader compilation and pipeline creation both have a valid path for primitive `18`, so no
+`int $3` is reached and the painting screen stays up. The reason that particular UI uses `LineLoop` lives in the game's
+own rendering code; what is recorded here is the emulator-side mechanism. At the time of writing these four edits are
+unstaged on `main`: a Docker build of this checkout includes them, while a pristine `main` checkout does not. The other
+unstaged edits (`build.sh`, `packaging/linux/package.sh` and the README files) only change build-output streaming and
+log verbosity; they are unrelated to the crash.
+
+---
+
+## 7. Known gaps and follow-ups
 
 1. **`--play` shows the launcher for a moment.** The Tk launcher withdraws its window in `--play` mode; the Qt
    launcher starts the game after 500 ms but leaves the window visible. Revealing it on errors is useful, but it
@@ -315,7 +362,7 @@ docker run --rm -v "$PWD":/src lbppc-linux \
 
 ---
 
-## 7. Files changed
+## 8. Files changed
 
 Working tree against `cb4cbe7` (0.1.5):
 
@@ -348,6 +395,11 @@ This checkout also has follow-up fixes:
   instead of logging the call as stubbed. Presentation stays full-screen, so the picture does not change.
 * `gpu/shadps4/video_core/renderer_vulkan/vk_runtime.cpp`: only warn when a copy drops source layers; a destination
   with more layers is the normal case and is logged at debug level.
+* `gpu/shadps4/shader_recompiler/backend/spirv/emit_spirv.cpp`,
+  `gpu/shadps4/shader_recompiler/backend/spirv/spirv_emit_context.cpp`,
+  `gpu/shadps4/shader_recompiler/frontend/translate/translate.cpp` and
+  `gpu/shadps4/video_core/renderer_vulkan/liverpool_to_vk.cpp`: handle `LineLoop` input primitives so the painting
+  screen's advanced-colour picker no longer traps; see [section 6](#6-painting-screen-crash-unhandled-lineloop-primitive).
 * `docs/troubleshooting.md`: how to read the file trace, the case-insensitive match note and the graphics messages.
 
 The `gpu/third_party/fsr-vulkan` submodule shows as dirty only because `build.sh` applies the tracked patches in
@@ -366,3 +418,4 @@ Suggested commit split:
 9. `videoout: record window mode margins`
 10. `vulkan: quiet expected copy-layer coercion`
 11. `docs: describe the Linux support changes and the debugging record`
+12. `gpu: handle LineLoop primitives in the shader recompiler and Vulkan topology mapping`
