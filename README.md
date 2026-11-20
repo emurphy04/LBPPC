@@ -125,8 +125,10 @@ don't post game files in issues or pull requests, and don't ask for them.
 Windows, with MSYS2 CLANG64: `./build.sh`. The packages it needs are listed in
 [packaging/windows/README.md](packaging/windows/README.md). Linux: `bash build.sh`, then
 `bash packaging/linux/package.sh` for the AppImage; [.github/workflows/linux-appimage.yml](.github/workflows/linux-appimage.yml)
-lists the packages and builds it on Ubuntu 24.04. The launcher is Python; `run.py` starts the game from a
-checkout.
+lists the packages and builds it on Ubuntu 24.04. [packaging/linux/README.md](packaging/linux/README.md) has an
+Ubuntu 24.04 Docker environment and a one-shot command that runs both steps on any Linux machine; build progress
+streams to stdout and Ninja's output is also saved in `out/gpu-build.log`. The launcher is Python; `run.py` starts
+the game from a checkout.
 
 | Folder | What's there |
 |---|---|

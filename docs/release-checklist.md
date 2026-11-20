@@ -4,7 +4,7 @@ Before tagging a release.
 
 ## Diagnostics
 
-The temporary diagnostics are Debug page switches, off by default (`DIAGNOSTICS` in `launcher/lbppc_launcher.py`):
+The temporary diagnostics are Debug page switches, off by default (`DIAGNOSTICS` in `launcher/lbppc_core.py`):
 the slow-frame profiler (`LBPPC_PROFILE`), optimization switches (`LBPPC_TOGGLES`, which sets `BB_TOGGLE_FILE` in
 `run.py`) and the friends menu log (`LBPPC_FRIENDS_LOG`, `src/probe.c`). Check they are still off by default.
 
@@ -24,7 +24,7 @@ Keep on:
 
 ## Publish
 
-- [ ] `VERSION` in `launcher/lbppc_launcher.py` and the status line in `README.md`.
+- [ ] `VERSION` in `launcher/lbppc_core.py` and the status line in `README.md`.
 - [ ] Release notes in `docs/releases/<version>.md`.
 - [ ] `bash packaging/windows/package.sh`, then the GitHub release with the zip and the notes.
 - [ ] The website: download link and version (`lbppc-site`), and deploy.

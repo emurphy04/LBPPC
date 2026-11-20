@@ -8,7 +8,7 @@ set -euo pipefail
 cd -- "$(dirname -- "$0")/../.."
 source ./msys2-env.sh
 [[ -f out/LBPPC-Game.exe ]] || { echo 'Build first: bash build.sh' >&2; exit 1; }
-version=$(sed -n "s/^VERSION = '\(.*\)'$/\1/p" launcher/lbppc_launcher.py)
+version=$(sed -n "s/^VERSION = '\(.*\)'$/\1/p" launcher/lbppc_core.py)
 
 # A Windows Python (not MSYS2's) for PyInstaller.
 python=${WINPYTHON:-}
@@ -28,12 +28,12 @@ out/pyenv/Scripts/python.exe -m pip install -q --disable-pip-version-check pyins
 hidden=()
 for module in argparse base64 bisect collections contextlib ctypes ctypes.wintypes hashlib importlib.util json \
               platform re runpy secrets shutil socket struct subprocess tempfile time urllib.request \
-              urllib.error zlib; do
+              urllib.error zlib PIL._tkinter_finder; do  # PIL.features imports it by name; PyInstaller cannot see that
     hidden+=(--hidden-import "$module")
 done
 out/pyenv/Scripts/python.exe -m PyInstaller --noconfirm --clean --log-level WARN --windowed --name LBPPC \
     --distpath out/pyi-dist --workpath out/pyi-work --specpath out/pyi-work \
-    --paths "$(cygpath -w "$PWD/scripts")" "${hidden[@]}" \
+    --paths "$(cygpath -w "$PWD/scripts")" --paths "$(cygpath -w "$PWD/launcher")" "${hidden[@]}" \
     --add-data "$(cygpath -w "$PWD/launcher/fonts");fonts" --add-data "$(cygpath -w "$PWD/launcher/assets");assets" \
     --add-data "$(cygpath -w "$PWD/launcher/lang");lang" \
     --icon "$(cygpath -w "$PWD/launcher/assets/lbppc.ico")" "$(cygpath -w "$PWD/launcher/lbppc_launcher.py")"

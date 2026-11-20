@@ -67,9 +67,28 @@ int main(void) {
     assert(!do_fstat(fd,&info) && info.size==15);
     assert(!do_close(fd));
 
+    /* A dump spelling that differs only by case still resolves (LBP3 asks for Chunk1_001.farc
+     * while the extracted file is chunk1_001.farc), in the file name and in a folder name. */
+    snprintf(path,sizeof(path),"%s/chunk1_001.farc",game);
+    f=fopen(path,"wb"); assert(f); put(f,"casefold",8); assert(!fclose(f));
+    fd=(int)do_open("/app0/Chunk1_001.farc",0,0); assert(fd>=3);
+    assert(do_read(fd,buffer,32)==8 && !memcmp(buffer,"casefold",8));
+    assert(!do_stat("/app0/chunk1_001.farc",&info) && info.size==8);
+    assert(!do_close(fd));
+    assert(do_stat("/app0/no_such_archive.farc",&info)==-ENOENT);
+    snprintf(path,sizeof(path),"%s/Inner",game); assert(!mkdir(path,0755));
+    snprintf(path,sizeof(path),"%s/Inner/file.farc",game);
+    f=fopen(path,"wb"); assert(f); put(f,"folder",6); assert(!fclose(f));
+    fd=(int)do_open("/app0/inner/file.farc",0,0); assert(fd>=3);
+    assert(do_read(fd,buffer,32)==6 && !memcmp(buffer,"folder",6));
+    assert(!do_close(fd));
+
     remove(list);
     snprintf(path,sizeof(path),"%s/data.farc",game); remove(path);
     snprintf(path,sizeof(path),"%s/other.farc",game); remove(path);
+    snprintf(path,sizeof(path),"%s/chunk1_001.farc",game); remove(path);
+    snprintf(path,sizeof(path),"%s/Inner/file.farc",game); remove(path);
+    snprintf(path,sizeof(path),"%s/Inner",game); rmdir(path);
     rmdir(game);
     const char *dirs[]={"temp0","download0","data"};
     for (int i=0;i<3;++i) { snprintf(path,sizeof(path),"%s/%s",user,dirs[i]); rmdir(path); }

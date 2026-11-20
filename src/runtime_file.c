@@ -57,8 +57,8 @@ typedef struct { uint64_t at; uint32_t size; const unsigned char *bytes; } FileP
 typedef struct { char path[128]; uint64_t original, cut, total; const unsigned char *tail; uint32_t patch_count; FilePatch *patches; } FileEdit;
 static FileEdit *edits;
 static size_t edit_count;
-typedef struct { int used, host, dirty; Listing *dir; size_t position; char path[512]; char *commit, *temp;
-                 const FileEdit *edit; uint64_t edit_position; } File;
+typedef struct { int used, host, dirty; Listing *dir; size_t position; char path[512]; char host_path[1024];
+                 char *commit, *temp; const FileEdit *edit; uint64_t edit_position; } File;
 typedef struct { char guest[64]; char host[512]; } Mount;
 static File files[MAX_FILES];
 static Mount mounts[MAX_MOUNTS];
@@ -196,9 +196,63 @@ static char user_root[512]="user";
  * from it when it has one, else from the game's folder; directory listings hold both. Neither folder is ever
  * written (game_path: game mounts are read-only). */
 static char update_root[512];
+/* LBPPC_FILE_TRACE=1 (or "paths") logs every path the game looks up, with the host file and folder it
+ * resolves to; LBPPC_FILE_TRACE=reads (or "all") also logs each read and pread. Unset or 0: silent. */
+static int file_trace_paths(void) {
+    static int enabled=-1;
+    if (enabled<0) {
+        const char *value=getenv("LBPPC_FILE_TRACE");
+        enabled=value && value[0] && strcmp(value,"0");
+    }
+    return enabled;
+}
+static int file_trace_reads(void) {
+    static int enabled=-1;
+    if (enabled<0) {
+        const char *value=getenv("LBPPC_FILE_TRACE");
+        enabled=value && (!strcmp(value,"reads") || !strcmp(value,"all"));
+    }
+    return enabled;
+}
+static void host_folder(const char *path,char *out,size_t size) {
+    snprintf(out,size,"%s",path);
+    char *slash=strrchr(out,'/');
+    if (slash && slash!=out) *slash=0;
+}
+/* "update" when the host path was read from the update folder instead of the game's folder. */
+static int under_root(const char *path,const char *root) {
+    size_t n=strlen(root);
+    return !strncmp(path,root,n) && (path[n]=='/' || !path[n]);
+}
+static const char *trace_origin(const char *guest,const char *host) {
+    if (update_root[0] && host && under_root(host,update_root)) return "update";
+    if (!guest || guest[0]!='/' || under_root(guest,"/app0") || under_root(guest,"/hostapp")) return "game";
+    return "user";
+}
+static void trace_path(const char *op,const char *guest,const char *host,int error) {
+    if (!file_trace_paths() || !guest) return;
+    if (!host || !host[0]) {
+        const char *where=error==EROFS ? "<read-only game path>" : "<no host path>";
+        if (error) printf("Runtime: file trace: %s %s -> %s (%s)\n",op,guest,where,strerror(error));
+        else printf("Runtime: file trace: %s %s -> %s\n",op,guest,where);
+        return;
+    }
+    char folder[1024];
+    host_folder(host,folder,sizeof(folder));
+    const char *origin=trace_origin(guest,host);
+    if (error)
+        printf("Runtime: file trace: %s %s -> %s [%s folder %s] (%s)\n",
+               op,guest,host,origin,folder,strerror(error));
+    else
+        printf("Runtime: file trace: %s %s -> %s [%s folder %s]\n",
+               op,guest,host,origin,folder);
+}
 void runtime_file_set_update(const char *dir) {
     snprintf(update_root,sizeof(update_root),"%s",dir ? dir : "");
-    if (update_root[0]) printf("Runtime: update %s read over /app0\n",update_root);
+    if (update_root[0]) {
+        printf("Runtime: update %s read over /app0\n",update_root);
+        if (file_trace_paths()) printf("Runtime: file trace: update folder %s\n",update_root);
+    }
 }
 const char *runtime_file_user_dir(void) { return user_root; }
 void runtime_file_configure(const char *app0,const char *user) {
@@ -214,6 +268,10 @@ void runtime_file_configure(const char *app0,const char *user) {
         mkdir(path,0755);
         char guest[32]; snprintf(guest,sizeof(guest),"/%s",writable[i]);
         runtime_file_mount(guest,path);
+    }
+    if (file_trace_paths()) {
+        printf("Runtime: file trace: /app0 and /hostapp -> %s [game folder]\n",app0);
+        printf("Runtime: file trace: /temp0, /download0 and /data -> %s [user folder]\n",user);
     }
 }
 /* Resolve a guest path to a host path; returns 0 or a host errno. */
@@ -309,10 +367,83 @@ static int english_voice(const char *guest,char *english,size_t size) {
     }
     return 0;
 }
+static int game_path(const char *p);
+/* The PS4 mounts ignore case. A dump may keep a different spelling from the one the game asks for
+ * (LBP3 asks for Chunk1_001.farc, its extracted files are chunk1_001.farc), so after an exact miss
+ * look for the entry that differs only by case. Only the read-only game folders are resolved this
+ * way; saves and other writable paths keep their exact names. */
+static int find_ignoring_case(const char *folder,const char *name,char *out,size_t size) {
+    DIR *d=opendir(folder);
+    if (!d) return ENOENT;
+    int result=ENOENT;
+    for (struct dirent *e;(e=readdir(d));) {
+        if (!strcmp(e->d_name,".") || !strcmp(e->d_name,"..") || strcasecmp(e->d_name,name)) continue;
+        result=(size_t)snprintf(out,size,"%s/%s",folder,e->d_name)>=size ? ENAMETOOLONG : 0;
+        break;
+    }
+    closedir(d);
+    return result;
+}
+/* Resolve relative under root one component at a time, taking the real spelling from the folder
+ * when a component is missing only by case. */
+static int casefold_path(const char *root,const char *relative,char *out,size_t size) {
+    char path[1024];
+    if ((size_t)snprintf(path,sizeof(path),"%s",root)>=sizeof(path)) return ENAMETOOLONG;
+    const char *p=relative;
+    while (*p) {
+        while (*p=='/') ++p;
+        if (!*p) break;
+        const char *end=strchr(p,'/');
+        size_t n=end ? (size_t)(end-p) : strlen(p);
+        if (n>=NAME_MAX) return ENAMETOOLONG;
+        char name[256], next[1024];
+        memcpy(name,p,n); name[n]=0;
+        if ((size_t)snprintf(next,sizeof(next),"%s/%s",path,name)>=sizeof(next)) return ENAMETOOLONG;
+        HostStat entry;
+        if (host_stat(next,&entry)) {
+            int e=find_ignoring_case(path,name,next,sizeof(next));
+            if (e) return e;
+        }
+        snprintf(path,sizeof(path),"%s",next);
+        p=end ? end+1 : p+n;
+    }
+    if ((size_t)snprintf(out,size,"%s",path)>=size) return ENAMETOOLONG;
+    return 0;
+}
+static int translate_casefold(const char *guest,char *out,size_t size) {
+    char buffer[1024];
+    if (guest[0]!='/') snprintf(buffer,sizeof(buffer),"/app0/%s",guest);
+    else snprintf(buffer,sizeof(buffer),"%s",guest);
+    char root[512], update[512];
+    size_t best=0; int app0=0, found=0;
+    pthread_mutex_lock(&lock);
+    for (size_t i=0;i<mount_count;++i) {
+        size_t n=strlen(mounts[i].guest);
+        if (!strncmp(buffer,mounts[i].guest,n) && (buffer[n]=='/' || !buffer[n]) && n>best) {
+            best=n; found=1;
+            snprintf(root,sizeof(root),"%s",mounts[i].host);
+            app0=!strcmp(mounts[i].guest,"/app0") || !strcmp(mounts[i].guest,"/hostapp");
+        }
+    }
+    snprintf(update,sizeof(update),"%s",update_root);
+    pthread_mutex_unlock(&lock);
+    if (!found) return ENOENT;
+    if (app0 && update[0] && !casefold_path(update,buffer+best,out,size)) return 0;
+    return casefold_path(root,buffer+best,out,size);
+}
 static int translate(const char *guest,char *out,size_t size) {
     int result=translate_path(guest,out,size,1);
     char english[1024], english_host[1024]; HostStat file;
-    if (!result && host_stat(out,&file) && english_voice(guest,english,sizeof(english)) &&
+    int exists=!result && !host_stat(out,&file);
+    if (!result && !exists && game_path(guest)) {
+        char folded[1024];
+        if (!translate_casefold(guest,folded,sizeof(folded))) {
+            if ((size_t)snprintf(out,size,"%s",folded)>=size) return ENAMETOOLONG;
+            if (file_trace_paths()) printf("Runtime: file trace: %s matched %s (case differs)\n",guest,folded);
+            exists=1;
+        }
+    }
+    if (!result && !exists && english_voice(guest,english,sizeof(english)) &&
         !translate_path(english,english_host,sizeof(english_host),1) && !host_stat(english_host,&file) &&
         (size_t)snprintf(out,size,"%s",english_host)<size) {
         static int told;
@@ -320,7 +451,6 @@ static int translate(const char *guest,char *out,size_t size) {
     }
     return result;
 }
-static int game_path(const char *p);
 static Listing *list_directory(const char *path);
 static void free_listing(Listing *l);
 /* An /app0 directory read from the update: the game folder's entries it lacks are added (the update holds only the
@@ -424,6 +554,18 @@ static void convert_stat(const HostStat *s,GuestStat *g) {
 static File *get(int fd) {
     if (fd<3 || fd>=MAX_FILES || !files[fd].used) return NULL;
     return &files[fd];
+}
+static void trace_read(int fd,int64_t offset,uint64_t size,int64_t result) {
+    if (!file_trace_reads()) return;
+    File *f=get(fd);
+    if (!f) {
+        printf("Runtime: file trace: read fd %d offset %lld size %llu -> %lld\n",
+               fd,(long long)offset,(unsigned long long)size,(long long)result);
+        return;
+    }
+    printf("Runtime: file trace: read %s -> %s offset %lld size %llu -> %lld\n",
+           f->path,f->host_path[0] ? f->host_path : "<none>",(long long)offset,
+           (unsigned long long)size,(long long)result);
 }
 /* BB_AUDIO_TRACE=1: sound file opens and failed reads (missing game sounds). */
 static int audio_trace(void) { static int v=-1; if (v<0) { const char *e=getenv("BB_AUDIO_TRACE"); v=e && e[0]=='1'; } return v; }
@@ -533,10 +675,13 @@ static int commit_file(const File *f) {
 }
 /* All operations return >=0 or -(host errno); wrappers adapt the convention. */
 static int64_t do_open(const char *guest,int flags,int mode) {
-    if (game_path(guest) && (flags & (3|0x8|0x200|0x400|0x800))) return -EROFS;
+    if (game_path(guest) && (flags & (3|0x8|0x200|0x400|0x800))) {
+        trace_path("open",guest,NULL,EROFS);
+        return -EROFS;
+    }
     char path[1024];
     int e=translate(guest,path,sizeof(path));
-    if (e) return -e;
+    if (e) { trace_path("open",guest,NULL,e); return -e; }
     char *commit=NULL, *temp=NULL;
 #ifdef _WIN32
     /* Windows cannot open a directory as a CRT descriptor: directories are listings only. */
@@ -545,12 +690,14 @@ static int64_t do_open(const char *guest,int flags,int mode) {
     Listing *dir=NULL;
     int host=-1;
     if (!host_stat(path,&s) && S_ISDIR(s.st_mode)) {
-        if (flags&3) return -EISDIR;
-        if (!(dir=list_directory(path))) return -EACCES;
+        if (flags&3) { trace_path("open",guest,path,EISDIR); return -EISDIR; }
+        if (!(dir=list_directory(path))) { trace_path("open",guest,path,EACCES); return -EACCES; }
         add_base_entries(dir,guest,path);
+        trace_path("open",guest,path,0);
     } else if (flags&0x20000) {
         e=errno==ENOENT ? ENOENT : ENOTDIR;
         if (e==ENOENT) { ++missing; printf("Runtime: open(%s) -> not found\n",guest); }
+        trace_path("open",guest,path,e);
         return -e;
     } else {
         if (save_path(guest) && (flags&3)) {
@@ -568,9 +715,11 @@ static int64_t do_open(const char *guest,int flags,int mode) {
         if (host<0) {
             e=errno;
             if (e==ENOENT) { ++missing; printf("Runtime: open(%s) -> not found\n",guest); }
+            trace_path("open",guest,path,e);
             return -e;
         }
         if (host_fstat(host,&s)) memset(&s,0,sizeof(s));
+        trace_path("open",guest,temp ? temp : path,0);
     }
 #else
     int host;
@@ -589,11 +738,13 @@ static int64_t do_open(const char *guest,int flags,int mode) {
     if (host<0) {
         e=errno;
         if (e==ENOENT) { ++missing; printf("Runtime: open(%s) -> not found\n",guest); }
+        trace_path("open",guest,path,e);
         return -e;
     }
     struct stat s;
     Listing *dir=NULL;
     if (!fstat(host,&s) && S_ISDIR(s.st_mode)) { dir=list_directory(path); if (dir) add_base_entries(dir,guest,path); }
+    trace_path("open",guest,temp ? temp : path,0);
 #endif
     const FileEdit *edit=dir || (flags&3) ? NULL : edit_for(guest,(uint64_t)s.st_size);
     pthread_mutex_lock(&lock);
@@ -607,6 +758,7 @@ static int64_t do_open(const char *guest,int flags,int mode) {
     }
     files[fd]=(File){.used=1,.host=host,.dir=dir,.commit=commit,.temp=temp,.edit=edit};
     snprintf(files[fd].path,sizeof(files[fd].path),"%s",guest);
+    snprintf(files[fd].host_path,sizeof(files[fd].host_path),"%s",temp ? temp : path);
     ++opens;
     pthread_mutex_unlock(&lock);
     if (audio_trace() && (strstr(guest,"sound/") || strstr(guest,"/audio/"))) /* Bloodborne's sound/, LBP3's audio/ */
@@ -695,13 +847,18 @@ static int64_t do_read(int fd,void *buffer,uint64_t size) {
     touch_for_write(buffer,size);
     File *f=fd>=3 ? get(fd) : NULL;
     if (f && f->edit) {
+        int64_t at=(int64_t)f->edit_position;
         int64_t n=edited_pread(f->edit,h,buffer,size,(int64_t)f->edit_position);
         if (n>0) { f->edit_position+=(uint64_t)n; __atomic_add_fetch(&reads,1,__ATOMIC_RELAXED); __atomic_add_fetch(&bytes_read,(uint64_t)n,__ATOMIC_RELAXED); }
+        trace_read(fd,at,size,n);
         return n;
     }
+    int64_t at=-1;
+    if (f && file_trace_reads()) at=host_lseek(f->host,0,SEEK_CUR);
     ssize_t n=host_read(h,buffer,size);
-    if (n<0) { if (audio_trace()) printf("Audio trace: read(fd %d, %llu) failed, errno %d\n",fd,(unsigned long long)size,errno); return -errno; }
+    if (n<0) { if (audio_trace()) printf("Audio trace: read(fd %d, %llu) failed, errno %d\n",fd,(unsigned long long)size,errno); trace_read(fd,at,size,-errno); return -errno; }
     __atomic_add_fetch(&reads,1,__ATOMIC_RELAXED); __atomic_add_fetch(&bytes_read,(uint64_t)n,__ATOMIC_RELAXED);
+    trace_read(fd,at,size,n);
     return n;
 }
 static int64_t do_pread(int fd,void *buffer,uint64_t size,int64_t offset) {
@@ -713,8 +870,9 @@ static int64_t do_pread(int fd,void *buffer,uint64_t size,int64_t offset) {
     ssize_t n=f && f->edit ? (ssize_t)edited_pread(f->edit,h,buffer,size,offset) : pread(h,buffer,size,offset);
     if (f && f->edit && n<0) { errno=(int)-n; n=-1; }
     io_watch(fd,buffer,size,offset,"end");
-    if (n<0) { if (audio_trace()) printf("Audio trace: pread(fd %d, %llu @%lld) failed, errno %d\n",fd,(unsigned long long)size,(long long)offset,errno); return -errno; }
+    if (n<0) { if (audio_trace()) printf("Audio trace: pread(fd %d, %llu @%lld) failed, errno %d\n",fd,(unsigned long long)size,(long long)offset,errno); trace_read(fd,offset,size,-errno); return -errno; }
     __atomic_add_fetch(&reads,1,__ATOMIC_RELAXED); __atomic_add_fetch(&bytes_read,(uint64_t)n,__ATOMIC_RELAXED);
+    trace_read(fd,offset,size,n);
     return n;
 }
 static int64_t do_write(int fd,const void *buffer,uint64_t size) {
@@ -773,10 +931,11 @@ static int64_t do_fstat(int fd,GuestStat *out) {
 static int64_t do_stat(const char *guest,GuestStat *out) {
     char path[1024]; HostStat s;
     int e=translate(guest,path,sizeof(path));
-    if (e) return -e;
+    if (e) { trace_path("stat",guest,NULL,e); return -e; }
     if (save_path(guest)) current_copy(path,sizeof(path),0);
     if (!out) return -EFAULT;
-    if (host_stat(path,&s)) return -errno;
+    if (host_stat(path,&s)) { e=errno; trace_path("stat",guest,path,e); return -e; }
+    trace_path("stat",guest,path,0);
     convert_stat(&s,out);
     const FileEdit *edit=S_ISDIR(s.st_mode) ? NULL : edit_for(guest,(uint64_t)s.st_size);
     if (edit) out->size=(int64_t)edit->total;
@@ -861,13 +1020,15 @@ static int64_t do_fsync(int fd) { int h=host_fd(fd); if (h<0) return -EBADF; ret
 static int64_t do_access(const char *guest,int mode) {
     char path[1024];
     int e=translate(guest,path,sizeof(path));
-    if (e) return -e;
+    if (e) { trace_path("access",guest,NULL,e); return -e; }
     if (save_path(guest)) current_copy(path,sizeof(path),0);
 #ifdef _WIN32
-    return access(path,mode&6) ? -errno : 0; /* X_OK is invalid for the CRT */
+    if (access(path,mode&6)) { e=errno; trace_path("access",guest,path,e); return -e; } /* X_OK is invalid for the CRT */
 #else
-    return access(path,mode&7) ? -errno : 0;
+    if (access(path,mode&7)) { e=errno; trace_path("access",guest,path,e); return -e; }
 #endif
+    trace_path("access",guest,path,0);
+    return 0;
 }
 
 /* Convention adapters: sceKernel* -> Orbis error codes, POSIX -> -1 + errno. */

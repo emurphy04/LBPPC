@@ -488,7 +488,19 @@ s32 PS4_SYSV_ABI sceVideoOutSubmitChangeBufferAttribute(s32 handle, s32 attribut
 }
 
 s32 PS4_SYSV_ABI sceVideoOutSetWindowModeMargins(s32 handle, s32 top, s32 bottom) {
-    LOG_ERROR(Lib_VideoOut, "(STUBBED) called top = {}, bottom = {}", top, bottom);
+    auto* port = driver->GetPort(handle);
+    if (!port || !port->is_open) {
+        return ORBIS_VIDEO_OUT_ERROR_INVALID_HANDLE;
+    }
+    if (top < 0 || bottom < 0) {
+        LOG_WARNING(Lib_VideoOut, "Invalid window mode margins top = {}, bottom = {}", top, bottom);
+        return ORBIS_VIDEO_OUT_ERROR_INVALID_VALUE;
+    }
+    // lbppc: the margins only apply to the PS4's windowed output mode; the picture is always
+    // presented full-screen here, so remember them for completeness and leave presentation alone.
+    port->window_mode_margin_top = top;
+    port->window_mode_margin_bottom = bottom;
+    LOG_INFO(Lib_VideoOut, "Window mode margins top = {}, bottom = {}", top, bottom);
     return ORBIS_OK;
 }
 

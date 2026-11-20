@@ -36,6 +36,8 @@ struct VideoOutPort {
     std::condition_variable vblank_cv;
     int flip_rate = 0;
     int prev_index = -1;
+    s32 window_mode_margin_top = 0;
+    s32 window_mode_margin_bottom = 0;
     bool is_open = false;
     bool is_hdr = false;
 

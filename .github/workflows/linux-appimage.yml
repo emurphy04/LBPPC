@@ -150,9 +150,11 @@ jobs:
           if grep -q 'not found' ldd.txt; then echo 'Missing libraries'; exit 1; fi
           if grep -q '/opt/deps' ldd.txt; then echo 'A library came from the build folder'; exit 1; fi
           squashfs-root/AppRun --version
-          # The frozen Python runs the package's scripts (as it runs run.py) and has Tk and Pillow.
-          printf '%s\n' 'import sys, tkinter, PIL, updater' \
-            "print('Frozen Python', sys.version.split()[0], 'Tk', tkinter.TkVersion, 'Pillow', PIL.__version__)" \
+          # The frozen Python runs the package's scripts (as it runs run.py). It has Qt, not Tk or Pillow.
+          printf '%s\n' 'import importlib.util, sys, lbppc_core, updater' \
+            'from PySide6 import QtCore' \
+            "print('Frozen Python', sys.version.split()[0], 'Qt', QtCore.qVersion(), 'core', lbppc_core.VERSION)" \
+            "assert importlib.util.find_spec('tkinter') is None, 'Tk must not be bundled in the Linux package'" \
             "assert updater.ASSET.match('LBPPC-9.9.9-linux-x86_64.AppImage')" > check.py
           "$app/LBPPC" --script check.py
 
